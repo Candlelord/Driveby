@@ -96,9 +96,9 @@ const GradeShader = {
  * pass carries the look on its own, just without the glow.
  */
 export class Post {
-  constructor(renderer, scene, camera) {
+  constructor(renderer, scene, camera, tier) {
     this.renderer = renderer;
-    this.enabled = true;
+    this.tier = tier;
 
     // Highlights need headroom above 1.0 for bloom to have anything to pick up,
     // so tone mapping happens after it rather than in the base render.
@@ -126,12 +126,12 @@ export class Post {
     this.bloomEnabled = true;
     this.setSize(window.innerWidth, window.innerHeight);
 
-    // Frame-time watchdog for CONFIG.quality === 'auto'.
+    // Frame-time watchdog state.
     this._sampleTime = 0;
     this._sampleFrames = 0;
-    this._downgraded = false;
+    this._step = 0;
 
-    if (CONFIG.quality === 'low') this.setBloomEnabled(false);
+    if (!tier.bloom) this.setBloomEnabled(false);
   }
 
   setSize(width, height) {
@@ -154,7 +154,7 @@ export class Post {
 
     // Exposure is applied before tone mapping, so it rolls highlights off the
     // way a real stop change does instead of just lifting the whole image.
-    this.renderer.toneMappingExposure = live.exposure;
+    this.renderer.toneMappingExposure = live.exposureFinal;
     u.uContrast.value = live.contrast;
     u.uSaturation.value = live.saturation;
     u.uTintStrength.value = live.tintStrength;
@@ -171,15 +171,18 @@ export class Post {
     this.bloom.threshold = live.bloomThreshold;
     this.bloom.radius = live.bloomRadius;
 
-    if (CONFIG.quality === 'auto') this._watchPerformance(state.dt);
+    this._watchPerformance(state.dt);
   }
 
   /**
-   * Bloom is the first thing to go if the device can't hold a decent frame
-   * rate. One-way: re-enabling on a recovered average would just oscillate.
+   * Walk the two runtime-adjustable costs back if the device can't hold a
+   * decent frame rate: bloom first, then resolution. Geometry budgets are fixed
+   * at startup by the tier, since changing those means reallocating buffers.
+   *
+   * One-way. Re-enabling on a recovered average would just oscillate.
    */
   _watchPerformance(dt) {
-    if (this._downgraded || !this.bloomEnabled) return;
+    if (this._step >= 2) return;
 
     this._sampleTime += dt;
     this._sampleFrames++;
@@ -187,8 +190,14 @@ export class Post {
 
     const averageFrameMs = (this._sampleTime / this._sampleFrames) * 1000;
     if (averageFrameMs > CONFIG.bloomDropFrameMs) {
-      this.setBloomEnabled(false);
-      this._downgraded = true;
+      if (this._step === 0 && this.bloomEnabled) {
+        this.setBloomEnabled(false);
+      } else {
+        const ratio = Math.max(1, this.renderer.getPixelRatio() * 0.75);
+        this.renderer.setPixelRatio(ratio);
+        this.setSize(window.innerWidth, window.innerHeight);
+      }
+      this._step++;
     }
     this._sampleTime = 0;
     this._sampleFrames = 0;

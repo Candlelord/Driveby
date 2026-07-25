@@ -1,24 +1,36 @@
 import * as THREE from 'three';
 import './style.css';
 
-import { CONFIG } from './config.js';
+import { CONFIG, applyTier } from './config.js';
+import { detectTier, tierFromQuery } from './quality.js';
 import { PathFrame, heading } from './path.js';
-import { MoodDirector } from './moodDirector.js';
+import { Environment } from './environment.js';
 import { MOOD_PROFILES } from './moods.js';
+import { TERRAIN_PROFILES } from './terrains.js';
+import { CLIMATE_PROFILES } from './climates.js';
 import { Input } from './input.js';
 import { Ui } from './ui.js';
+import { Post } from './post.js';
 import { Sky } from './world/sky.js';
 import { Road } from './world/road.js';
 import { Terrain } from './world/terrain.js';
 import { Props } from './world/props.js';
 import { Car } from './world/car.js';
+import { Traffic } from './world/traffic.js';
 import { Weather } from './world/weather.js';
-import { Post } from './post.js';
+
+const tier = tierFromQuery() ?? detectTier();
+applyTier(tier);
 
 const container = document.getElementById('scene');
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, CONFIG.maxPixelRatio));
+const renderer = new THREE.WebGLRenderer({
+  // MSAA is the first thing worth giving up on a phone; the grade pass hides
+  // most of what it was buying.
+  antialias: tier.name === 'high',
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.pixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 container.appendChild(renderer.domElement);
@@ -36,21 +48,22 @@ const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(60, 90, -40);
 scene.add(sun, sun.target);
 
-const director = new MoodDirector();
+const environment = new Environment();
 const frame = new PathFrame();
 
-const sky = new Sky(scene);
-const terrain = new Terrain(scene);
+const sky = new Sky(scene, tier);
+const terrain = new Terrain(scene, tier);
 const road = new Road(scene);
-const props = new Props(scene);
+const props = new Props(scene, tier);
+const traffic = new Traffic(scene, tier);
 const car = new Car(scene);
-const weather = new Weather(scene);
+const weather = new Weather(scene, tier);
 
 const input = new Input(renderer.domElement, {
   tiltButton: document.getElementById('tilt-btn'),
 });
 const ui = new Ui();
-const post = new Post(renderer, scene, camera);
+const post = new Post(renderer, scene, camera, tier);
 
 const state = {
   travelled: 0,
@@ -61,8 +74,8 @@ const state = {
   time: 0,
   dt: 0,
   hasInput: false,
-  live: director.live,
-  propWeights: director.propWeights,
+  live: environment.live,
+  propWeights: environment.propWeights,
 };
 
 const lookTarget = new THREE.Vector3(0, 1.8, -20);
@@ -72,24 +85,44 @@ const sunDirection = new THREE.Vector3();
 
 let cameraRoll = 0;
 let cameraFov = 62;
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  post.setSize(window.innerWidth, window.innerHeight);
-});
+let running = true;
 
 const clock = new THREE.Clock();
 
+function resize() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+  post.setSize(width, height);
+}
+window.addEventListener('resize', resize);
+// Mobile browsers collapse the address bar without firing a window resize.
+window.visualViewport?.addEventListener('resize', resize);
+
+// Stop rendering entirely when backgrounded — on a phone this is the difference
+// between a game and a battery drain.
+document.addEventListener('visibilitychange', () => {
+  const visible = document.visibilityState === 'visible';
+  const wasRunning = running;
+  running = visible;
+  if (visible && !wasRunning) {
+    clock.getDelta(); // discard the time spent hidden
+    requestAnimationFrame(tick);
+  }
+});
+
 function tick() {
-  // Clamped so a backgrounded tab doesn't teleport the car on resume.
+  if (!running) return;
+
+  // Clamped so a slow frame doesn't teleport the car.
   const dt = Math.min(clock.getDelta(), 1 / 20);
   state.dt = dt;
   state.time += dt;
 
   updateDriving(dt);
-  director.update(dt);
+  environment.update(dt, state.travelled);
 
   frame.setOrigin(state.travelled);
   state.heading = heading(state.travelled);
@@ -102,10 +135,11 @@ function tick() {
   terrain.update(state, frame);
   road.update(state, frame);
   props.update(state, frame);
+  traffic.update(state, frame);
   car.update(state, frame);
   weather.update(state);
 
-  ui.update(director, state);
+  ui.update(environment, state);
   post.update(state);
 
   post.render();
@@ -149,11 +183,7 @@ function updateCamera(dt) {
   const swayX = Math.sin(state.time * 0.63) * Math.sin(state.time * 0.29) * CONFIG.camSway;
   const swayY = Math.sin(state.time * 0.47 + 1.3) * CONFIG.camSway * 0.6;
 
-  camTarget.set(
-    state.lateral * 0.45 + swayX,
-    CONFIG.camHeight + swayY,
-    CONFIG.camDistance
-  );
+  camTarget.set(state.lateral * 0.45 + swayX, CONFIG.camHeight + swayY, CONFIG.camDistance);
   camera.position.lerp(camTarget, lag);
 
   // Aim at a point up the road so corners lead the car instead of trailing it.
@@ -182,13 +212,24 @@ function updateCamera(dt) {
   }
 }
 
-// Prime the profile so frame zero is already correct, then go.
-director.update(0);
 tick();
 
 // Handles for poking at the sim from the dev console while tuning.
 if (import.meta.env.DEV) {
-  window.__roadtrip = { state, director, scene, camera, renderer, post, CONFIG, MOOD_PROFILES };
+  window.__roadtrip = {
+    state,
+    environment,
+    traffic,
+    scene,
+    camera,
+    renderer,
+    post,
+    tier,
+    CONFIG,
+    MOOD_PROFILES,
+    TERRAIN_PROFILES,
+    CLIMATE_PROFILES,
+  };
 }
 
 // PWA shell. Stubbed for now — enough structure to install, not a full offline story.

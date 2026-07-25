@@ -91,7 +91,9 @@ export class Road {
     const live = state.live;
     this.surfaceMaterial.color.copy(live.roadColor);
     this.lineMaterial.color.copy(live.lineColor);
-    this.shoulderMaterial.color.copy(live.shoulderColor);
+    this.shoulderMaterial.color
+      .copy(live.shoulderColor)
+      .lerp(live.groundTint, live.groundTintStrength * 0.85);
 
     // Wet moods drop the roughness so the key light lays a sheen down the
     // asphalt — the cheapest "it has been raining" cue there is.

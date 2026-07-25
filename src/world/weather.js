@@ -1,30 +1,32 @@
 import * as THREE from 'three';
-import { CONFIG } from '../config.js';
 import { softDotTexture } from './textures.js';
 
 const RAIN_BOX = { x: 42, yMin: -2, yMax: 28, zNear: 22, zFar: -150 };
+const SNOW_BOX = { x: 40, yMin: -1, yMax: 24, zNear: 14, zFar: -130 };
 // zNear keeps motes ahead of the camera; drifting past the lens at mist sizes
 // reads as a dirty lens rather than atmosphere.
-const DUST_BOX = { x: 38, yMin: 0, yMax: 16, zNear: -4, zFar: -130 };
+const HAZE_BOX = { x: 38, yMin: 0, yMax: 16, zNear: -4, zFar: -130 };
 
 const RAIN_FALL_SPEED = 62;
-const STREAK = new THREE.Vector3(0, -1, 0.42).normalize();
+const SNOW_FALL_SPEED = 5.5;
 
 /**
- * Rain and dust, both living in car-local space (the car never actually moves,
- * so a fixed box around the origin is all the volume that's needed).
+ * Precipitation and haze, all living in car-local space (the car never actually
+ * moves, so a fixed box around the origin is all the volume that's needed).
  *
- * Amounts come from the blended mood profile, so weather crossfades along with
- * everything else: streak count and opacity ramp instead of switching on.
+ * Rain, snow and haze are three separate systems rather than one with a mode
+ * switch, because they want genuinely different motion: rain falls hard and
+ * straight, snow drifts and sways, haze barely moves at all. Amounts come from
+ * the blended climate profile, so a change of weather ramps rather than cuts.
  */
 export class Weather {
-  constructor(scene) {
-    this._buildRain(scene);
-    this._buildDust(scene);
+  constructor(scene, tier) {
+    this._buildRain(scene, tier.rainStreaks);
+    this._buildSnow(scene, tier.snowFlakes);
+    this._buildHaze(scene, tier.hazeMotes);
   }
 
-  _buildRain(scene) {
-    const count = CONFIG.maxRainStreaks;
+  _buildRain(scene, count) {
     this.rainCount = count;
     this.rainSeeds = new Float32Array(count * 3);
     this.rainPositions = new Float32Array(count * 6); // two endpoints per streak
@@ -54,30 +56,61 @@ export class Weather {
     scene.add(this.rain);
   }
 
-  _buildDust(scene) {
-    const count = CONFIG.maxDustMotes;
-    this.dustCount = count;
-    this.dustPositions = new Float32Array(count * 3);
-    this.dustDrift = new Float32Array(count * 3);
+  _buildSnow(scene, count) {
+    this.snowCount = count;
+    this.snowPositions = new Float32Array(count * 3);
+    this.snowPhase = new Float32Array(count * 2); // sway phase and rate
 
     for (let i = 0; i < count; i++) {
-      this.dustPositions[i * 3] = randomRange(-DUST_BOX.x, DUST_BOX.x);
-      this.dustPositions[i * 3 + 1] = randomRange(DUST_BOX.yMin, DUST_BOX.yMax);
-      this.dustPositions[i * 3 + 2] = randomRange(DUST_BOX.zFar, DUST_BOX.zNear);
-      this.dustDrift[i * 3] = randomRange(-1.2, 1.2);
-      this.dustDrift[i * 3 + 1] = randomRange(-0.5, 0.9);
-      this.dustDrift[i * 3 + 2] = randomRange(-0.8, 0.8);
+      this.snowPositions[i * 3] = randomRange(-SNOW_BOX.x, SNOW_BOX.x);
+      this.snowPositions[i * 3 + 1] = randomRange(SNOW_BOX.yMin, SNOW_BOX.yMax);
+      this.snowPositions[i * 3 + 2] = randomRange(SNOW_BOX.zFar, SNOW_BOX.zNear);
+      this.snowPhase[i * 2] = Math.random() * Math.PI * 2;
+      this.snowPhase[i * 2 + 1] = 0.6 + Math.random() * 1.4;
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(this.dustPositions, 3));
+    geometry.setAttribute('position', new THREE.BufferAttribute(this.snowPositions, 3));
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 400);
 
-    this.dustMaterial = new THREE.PointsMaterial({
+    this.snowMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      // Untextured points render as hard squares, which reads as glitching
-      // rather than mist. A generated soft dot keeps it in-style without
-      // introducing an image asset.
+      map: softDotTexture(),
+      size: 0.55,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      fog: true,
+    });
+
+    this.snowGeometry = geometry;
+    this.snow = new THREE.Points(geometry, this.snowMaterial);
+    this.snow.frustumCulled = false;
+    this.snow.visible = false;
+    scene.add(this.snow);
+  }
+
+  _buildHaze(scene, count) {
+    this.hazeCount = count;
+    this.hazePositions = new Float32Array(count * 3);
+    this.hazeDrift = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+      this.hazePositions[i * 3] = randomRange(-HAZE_BOX.x, HAZE_BOX.x);
+      this.hazePositions[i * 3 + 1] = randomRange(HAZE_BOX.yMin, HAZE_BOX.yMax);
+      this.hazePositions[i * 3 + 2] = randomRange(HAZE_BOX.zFar, HAZE_BOX.zNear);
+      this.hazeDrift[i * 3] = randomRange(-1.2, 1.2);
+      this.hazeDrift[i * 3 + 1] = randomRange(-0.5, 0.9);
+      this.hazeDrift[i * 3 + 2] = randomRange(-0.8, 0.8);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(this.hazePositions, 3));
+    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 400);
+
+    this.hazeMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
       map: softDotTexture(),
       size: 1,
       sizeAttenuation: true,
@@ -87,17 +120,18 @@ export class Weather {
       fog: true,
     });
 
-    this.dustGeometry = geometry;
-    this.dust = new THREE.Points(geometry, this.dustMaterial);
-    this.dust.frustumCulled = false;
-    this.dust.visible = false;
-    scene.add(this.dust);
+    this.hazeGeometry = geometry;
+    this.haze = new THREE.Points(geometry, this.hazeMaterial);
+    this.haze.frustumCulled = false;
+    this.haze.visible = false;
+    scene.add(this.haze);
   }
 
   update(state) {
     const live = state.live;
     this._updateRain(state, live);
-    this._updateDust(state, live);
+    this._updateSnow(state, live);
+    this._updateHaze(state, live);
   }
 
   _updateRain(state, live) {
@@ -107,73 +141,131 @@ export class Weather {
 
     const active = Math.max(1, Math.round(this.rainCount * Math.min(1, amount)));
     const drop = RAIN_FALL_SPEED * state.dt;
-    // Forward travel smears the streaks out behind the car.
+
+    // Forward travel and crosswind together set the streak angle, so a storm's
+    // rain visibly leans while steady rain falls nearly straight.
     const length = 1.6 + state.speed * 0.045;
+    const wind = live.wind;
+    const dirX = wind * 0.75;
+    const dirY = -1;
+    const dirZ = 0.42;
+    const scale = length / Math.hypot(dirX, dirY, dirZ);
+
     const drift = state.speed * state.dt * 0.55;
+    const sideDrift = wind * 26 * state.dt;
     const height = RAIN_BOX.yMax - RAIN_BOX.yMin;
     const depth = RAIN_BOX.zNear - RAIN_BOX.zFar;
+    const width = RAIN_BOX.x * 2;
 
     for (let i = 0; i < active; i++) {
       const si = i * 3;
+      let x = this.rainSeeds[si] + sideDrift;
       let y = this.rainSeeds[si + 1] - drop;
       let z = this.rainSeeds[si + 2] + drift;
+      if (x > RAIN_BOX.x) x -= width;
+      if (x < -RAIN_BOX.x) x += width;
       if (y < RAIN_BOX.yMin) y += height;
       if (z > RAIN_BOX.zNear) z -= depth;
+      this.rainSeeds[si] = x;
       this.rainSeeds[si + 1] = y;
       this.rainSeeds[si + 2] = z;
 
-      const x = this.rainSeeds[si];
       const pi = i * 6;
       this.rainPositions[pi] = x;
       this.rainPositions[pi + 1] = y;
       this.rainPositions[pi + 2] = z;
-      this.rainPositions[pi + 3] = x + STREAK.x * length;
-      this.rainPositions[pi + 4] = y + STREAK.y * length;
-      this.rainPositions[pi + 5] = z + STREAK.z * length;
+      this.rainPositions[pi + 3] = x + dirX * scale;
+      this.rainPositions[pi + 4] = y + dirY * scale;
+      this.rainPositions[pi + 5] = z + dirZ * scale;
     }
 
     this.rainGeometry.setDrawRange(0, active * 2);
     this.rainGeometry.attributes.position.needsUpdate = true;
-    this.rainMaterial.color.copy(live.rainColor);
-    this.rainMaterial.opacity = Math.min(1, amount) * 0.55;
+    this.rainMaterial.color.copy(live.precipColor);
+    this.rainMaterial.opacity = Math.min(1, amount) * 0.5;
   }
 
-  _updateDust(state, live) {
-    const amount = live.dust;
-    this.dust.visible = amount > 0.01;
-    if (!this.dust.visible) return;
+  _updateSnow(state, live) {
+    const amount = live.snow;
+    this.snow.visible = amount > 0.01;
+    if (!this.snow.visible) return;
 
-    const active = Math.max(1, Math.round(this.dustCount * Math.min(1, amount)));
-    const drift = state.speed * state.dt * 0.35;
-    const height = DUST_BOX.yMax - DUST_BOX.yMin;
-    const depth = DUST_BOX.zNear - DUST_BOX.zFar;
+    const active = Math.max(1, Math.round(this.snowCount * Math.min(1, amount)));
+    const fall = SNOW_FALL_SPEED * state.dt;
+    const drift = state.speed * state.dt * 0.9;
+    const wind = live.wind;
+    const height = SNOW_BOX.yMax - SNOW_BOX.yMin;
+    const depth = SNOW_BOX.zNear - SNOW_BOX.zFar;
+    const width = SNOW_BOX.x * 2;
 
     for (let i = 0; i < active; i++) {
       const pi = i * 3;
-      let x = this.dustPositions[pi] + this.dustDrift[pi] * state.dt;
-      let y = this.dustPositions[pi + 1] + this.dustDrift[pi + 1] * state.dt;
-      let z = this.dustPositions[pi + 2] + this.dustDrift[pi + 2] * state.dt + drift;
+      const phase = this.snowPhase[i * 2];
+      const rate = this.snowPhase[i * 2 + 1];
 
-      if (x > DUST_BOX.x) x -= DUST_BOX.x * 2;
-      if (x < -DUST_BOX.x) x += DUST_BOX.x * 2;
-      if (y > DUST_BOX.yMax) y -= height;
-      if (y < DUST_BOX.yMin) y += height;
-      if (z > DUST_BOX.zNear) z -= depth;
+      // Flakes sway rather than fall straight; that alone is most of what
+      // separates snow from white rain.
+      const sway = Math.sin(state.time * rate + phase) * 0.9 + wind * 9;
+      let x = this.snowPositions[pi] + sway * state.dt;
+      let y = this.snowPositions[pi + 1] - fall;
+      let z =
+        this.snowPositions[pi + 2] +
+        drift +
+        Math.cos(state.time * rate * 0.7 + phase) * 0.4 * state.dt;
 
-      this.dustPositions[pi] = x;
-      this.dustPositions[pi + 1] = y;
-      this.dustPositions[pi + 2] = z;
+      if (x > SNOW_BOX.x) x -= width;
+      if (x < -SNOW_BOX.x) x += width;
+      if (y < SNOW_BOX.yMin) y += height;
+      if (z > SNOW_BOX.zNear) z -= depth;
+
+      this.snowPositions[pi] = x;
+      this.snowPositions[pi + 1] = y;
+      this.snowPositions[pi + 2] = z;
     }
 
-    this.dustGeometry.setDrawRange(0, active);
-    this.dustGeometry.attributes.position.needsUpdate = true;
-    this.dustMaterial.color.copy(live.dustColor);
-    this.dustMaterial.size = live.dustSize;
-    this.dustMaterial.opacity = Math.min(1, amount) * 0.4;
+    this.snowGeometry.setDrawRange(0, active);
+    this.snowGeometry.attributes.position.needsUpdate = true;
+    this.snowMaterial.color.copy(live.precipColor);
+    this.snowMaterial.opacity = Math.min(1, amount) * 0.85;
+  }
+
+  _updateHaze(state, live) {
+    const amount = live.haze;
+    this.haze.visible = amount > 0.01;
+    if (!this.haze.visible) return;
+
+    const active = Math.max(1, Math.round(this.hazeCount * Math.min(1, amount)));
+    const drift = state.speed * state.dt * 0.35;
+    const wind = live.wind * 4;
+    const height = HAZE_BOX.yMax - HAZE_BOX.yMin;
+    const depth = HAZE_BOX.zNear - HAZE_BOX.zFar;
+    const width = HAZE_BOX.x * 2;
+
+    for (let i = 0; i < active; i++) {
+      const pi = i * 3;
+      let x = this.hazePositions[pi] + (this.hazeDrift[pi] + wind) * state.dt;
+      let y = this.hazePositions[pi + 1] + this.hazeDrift[pi + 1] * state.dt;
+      let z = this.hazePositions[pi + 2] + this.hazeDrift[pi + 2] * state.dt + drift;
+
+      if (x > HAZE_BOX.x) x -= width;
+      if (x < -HAZE_BOX.x) x += width;
+      if (y > HAZE_BOX.yMax) y -= height;
+      if (y < HAZE_BOX.yMin) y += height;
+      if (z > HAZE_BOX.zNear) z -= depth;
+
+      this.hazePositions[pi] = x;
+      this.hazePositions[pi + 1] = y;
+      this.hazePositions[pi + 2] = z;
+    }
+
+    this.hazeGeometry.setDrawRange(0, active);
+    this.hazeGeometry.attributes.position.needsUpdate = true;
+    this.hazeMaterial.color.copy(live.hazeColor);
+    this.hazeMaterial.size = live.hazeSize;
+    this.hazeMaterial.opacity = Math.min(1, amount) * 0.4;
   }
 }
 
 function randomRange(min, max) {
   return min + Math.random() * (max - min);
 }
-

@@ -50,7 +50,6 @@ const FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-const RIDGE_SEGMENTS = 96;
 const RIDGE_NEAR_RADIUS = 560;
 const RIDGE_FAR_RADIUS = 700;
 
@@ -60,7 +59,9 @@ const RIDGE_FAR_RADIUS = 700;
  * road heading, so the sky stays world-fixed while the car turns underneath it.
  */
 export class Sky {
-  constructor(scene) {
+  constructor(scene, tier) {
+    this.starCount = tier.stars;
+    this.ridgeSegments = tier.ridgeSegments;
     this.group = new THREE.Group();
     scene.add(this.group);
 
@@ -128,7 +129,7 @@ export class Sky {
   }
 
   _buildStars() {
-    const count = 420;
+    const count = this.starCount;
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
 
@@ -180,12 +181,12 @@ export class Sky {
     ];
 
     for (const layer of layers) {
-      const positions = new Float32Array((RIDGE_SEGMENTS + 1) * 2 * 3);
+      const positions = new Float32Array((this.ridgeSegments + 1) * 2 * 3);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
       const indices = [];
-      for (let i = 0; i < RIDGE_SEGMENTS; i++) {
+      for (let i = 0; i < this.ridgeSegments; i++) {
         const a = i * 2;
         indices.push(a, a + 1, a + 3, a, a + 3, a + 2);
       }
@@ -220,8 +221,8 @@ export class Sky {
       const phase = state.travelled * ridge.drift;
       let p = 0;
 
-      for (let i = 0; i <= RIDGE_SEGMENTS; i++) {
-        const angle = (i / RIDGE_SEGMENTS) * Math.PI * 2;
+      for (let i = 0; i <= this.ridgeSegments; i++) {
+        const angle = (i / this.ridgeSegments) * Math.PI * 2;
         const x = Math.cos(angle) * ridge.radius;
         const z = Math.sin(angle) * ridge.radius;
 

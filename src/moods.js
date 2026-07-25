@@ -1,71 +1,57 @@
 // Mood profiles + mock playback data.
 //
-// Every mood is a *flat* bag of colours and numbers so the crossfade engine can
-// blend two of them generically (see blend.js). The one non-blendable field is
-// `propType`, which the director turns into per-type blend weights instead.
+// Mood is one of three independent environment axes. It owns *light and look*:
+// sky, sun, lamps, lens and colour grade. It does not own landform (see
+// terrains.js) or weather (see climates.js) — those cycle on their own clocks,
+// so any mood can happen in any terrain in any weather.
 //
-// This is the whole art direction in one file: scene colour, lighting, weather,
-// horizon, lens and colour grade. Adding a new blended property means adding it
-// here and to the key lists below — nothing else needs to know about it.
+// Keys ending in `Base` are composed with a climate value before use; see
+// `compose()` in environment.js.
 //
 // Colours are authored as sRGB hex; three.js converts them to the linear
 // working space on assignment.
 
-export const COLOR_KEYS = [
-  // sky + horizon
-  'skyTop',
-  'skyHorizon',
-  'skyBottom',
+export const MOOD_COLOR_KEYS = [
+  // sky
+  'skyTopBase',
+  'skyHorizonBase',
+  'skyBottomBase',
+  'fogColorBase',
   'sunGlowColor',
   'starColor',
-  'ridgeNearColor',
-  'ridgeFarColor',
-  // scene
-  'fogColor',
+  // light
   'ambientColor',
   'sunColor',
   'discColor',
+  // road surface
   'roadColor',
   'lineColor',
   'shoulderColor',
-  'groundColor',
-  'propA',
-  'propB',
   'lampColor',
-  'rainColor',
-  'dustColor',
   // grade
   'shadowTint',
   'highlightTint',
   'accent',
 ];
 
-export const NUMBER_KEYS = [
-  // sky + horizon
+export const MOOD_NUMBER_KEYS = [
+  // sky
   'horizonStrength',
   'horizonWidth',
   'sunGlowStrength',
   'sunGlowPower',
   'starOpacity',
-  'ridgeOpacity',
-  'ridgeHeight',
-  // scene
-  'fogDensity',
-  'ambientIntensity',
-  'sunIntensity',
+  'fogScale', // multiplies the climate's fog density
+  // light
+  'ambientIntensityBase',
+  'sunIntensityBase',
   'sunAzimuth',
   'sunElevation',
   'discSize',
   'discOpacity',
   'discIntensity',
-  'hillHeight',
-  'propDensity',
-  'propScale',
   'lampIntensity',
-  'roadRoughness',
-  'rain',
-  'dust',
-  'dustSize',
+  'headlightBias', // how much the car wants its lights on, beyond the street lamps
   // camera + lens
   'fov',
   'bloomStrength',
@@ -80,18 +66,17 @@ export const NUMBER_KEYS = [
   'aberration',
 ];
 
-export const PROP_TYPES = ['pine', 'round', 'rock', 'building'];
-
 export const MOOD_PROFILES = {
-  // Overcast and cold. Flat light, no shadows to speak of, wet road, the
-  // horizon swallowed by fog — the frame closes in around the car.
+  // Overcast and cold. Flat light, no shadows to speak of, the frame closing
+  // in around the car.
   sad: {
     label: 'sad',
-    propType: 'pine',
 
-    skyTop: 0x36434f,
-    skyHorizon: 0x8f9aa4,
-    skyBottom: 0x717d8a,
+    skyTopBase: 0x36434f,
+    skyHorizonBase: 0x8f9aa4,
+    skyBottomBase: 0x717d8a,
+    fogColorBase: 0x717d8a,
+    fogScale: 1.35,
     horizonStrength: 0.55,
     horizonWidth: 0.18,
     sunGlowColor: 0xb4c0cc,
@@ -99,40 +84,24 @@ export const MOOD_PROFILES = {
     sunGlowPower: 12,
     starColor: 0xffffff,
     starOpacity: 0,
-    ridgeNearColor: 0x5c6975,
-    ridgeFarColor: 0x6d7883,
-    ridgeOpacity: 0.5,
-    ridgeHeight: 0.75,
 
-    fogColor: 0x717d8a,
-    fogDensity: 0.0132,
     ambientColor: 0x8e9aa8,
-    ambientIntensity: 6.4,
+    ambientIntensityBase: 6.4,
     sunColor: 0xa8b4c2,
-    sunIntensity: 2.2,
+    sunIntensityBase: 2.2,
     sunAzimuth: -0.7,
     sunElevation: 0.55,
     discColor: 0xb9c3ce,
     discSize: 30,
     discOpacity: 0.1,
     discIntensity: 1.0,
+
     roadColor: 0x3f444b,
     lineColor: 0x9aa3ad,
     shoulderColor: 0x4a5058,
-    groundColor: 0x6c777a,
-    propA: 0x2f4045,
-    propB: 0x353a3c,
     lampColor: 0xaebccc,
     lampIntensity: 0.16,
-    roadRoughness: 0.4, // wet asphalt
-    rainColor: 0xc3ccd6,
-    rain: 0.6,
-    dustColor: 0x9aa6b2,
-    dust: 0.12,
-    dustSize: 2.4,
-    hillHeight: 5.5,
-    propDensity: 0.55,
-    propScale: 1.0,
+    headlightBias: 0.3,
 
     fov: 60,
     bloomStrength: 0.15,
@@ -150,15 +119,15 @@ export const MOOD_PROFILES = {
     accent: 0x8fa3bb,
   },
 
-  // Golden hour. Long warm light raking across dunes, purple sky above, haze
-  // catching the sun. The warmest and softest of the four.
+  // Golden hour. Long warm light raking across the land, purple sky above.
   chill: {
     label: 'chill',
-    propType: 'rock',
 
-    skyTop: 0x352b5c,
-    skyHorizon: 0xe8a07e,
-    skyBottom: 0xb8828a,
+    skyTopBase: 0x352b5c,
+    skyHorizonBase: 0xe8a07e,
+    skyBottomBase: 0xb8828a,
+    fogColorBase: 0xa4808c,
+    fogScale: 1.0,
     horizonStrength: 0.72,
     horizonWidth: 0.3,
     sunGlowColor: 0xffb072,
@@ -166,40 +135,24 @@ export const MOOD_PROFILES = {
     sunGlowPower: 5,
     starColor: 0xcfd6ff,
     starOpacity: 0.18,
-    ridgeNearColor: 0x6b4a5c,
-    ridgeFarColor: 0x8f6270,
-    ridgeOpacity: 0.85,
-    ridgeHeight: 1.35,
 
-    fogColor: 0xa4808c,
-    fogDensity: 0.0102,
     ambientColor: 0xa08cb4,
-    ambientIntensity: 2.5,
+    ambientIntensityBase: 2.5,
     sunColor: 0xffb37a,
-    sunIntensity: 4.5,
+    sunIntensityBase: 4.5,
     sunAzimuth: 0.42,
     sunElevation: 0.11,
     discColor: 0xffc98e,
     discSize: 52,
     discOpacity: 0.9,
     discIntensity: 1.6,
+
     roadColor: 0x4a3f4c,
     lineColor: 0xd8b8a8,
     shoulderColor: 0x6b5257,
-    groundColor: 0x7c5f66,
-    propA: 0x6c5563,
-    propB: 0x53414e,
     lampColor: 0xffcf9a,
     lampIntensity: 0.35,
-    roadRoughness: 0.78,
-    rainColor: 0xd8c4cc,
-    rain: 0.0,
-    dustColor: 0xd8b6bd,
-    dust: 0.42,
-    dustSize: 3.4,
-    hillHeight: 8.0,
-    propDensity: 0.32,
-    propScale: 1.25,
+    headlightBias: 0.45,
 
     fov: 63,
     bloomStrength: 0.35,
@@ -211,21 +164,21 @@ export const MOOD_PROFILES = {
     shadowTint: 0x8f83c0,
     highlightTint: 0xffd0a8,
     tintStrength: 0.3,
-    vignette: 0.36,
+    vignette: 0.38,
     grain: 0.025,
     aberration: 0.9,
     accent: 0xd08fa8,
   },
 
-  // Clear midday. The widest, brightest, cleanest frame — least lens
-  // character, most saturation, air you can see for miles through.
+  // Clear midday. The widest, brightest, cleanest frame.
   happy: {
     label: 'happy',
-    propType: 'round',
 
-    skyTop: 0x2f86d8,
-    skyHorizon: 0xdff2f8,
-    skyBottom: 0xbfe4f2,
+    skyTopBase: 0x2f86d8,
+    skyHorizonBase: 0xdff2f8,
+    skyBottomBase: 0xbfe4f2,
+    fogColorBase: 0xc4e6f0,
+    fogScale: 0.8,
     horizonStrength: 0.5,
     horizonWidth: 0.16,
     sunGlowColor: 0xfff0c4,
@@ -233,40 +186,24 @@ export const MOOD_PROFILES = {
     sunGlowPower: 8,
     starColor: 0xffffff,
     starOpacity: 0,
-    ridgeNearColor: 0x7fa87c,
-    ridgeFarColor: 0x9ec4d8,
-    ridgeOpacity: 0.55,
-    ridgeHeight: 1.0,
 
-    fogColor: 0xc4e6f0,
-    fogDensity: 0.0056,
     ambientColor: 0xdcefff,
-    ambientIntensity: 2.6,
+    ambientIntensityBase: 2.6,
     sunColor: 0xfff2d0,
-    sunIntensity: 6.0,
+    sunIntensityBase: 6.0,
     sunAzimuth: -0.42,
     sunElevation: 0.5,
     discColor: 0xfff6dc,
     discSize: 26,
     discOpacity: 0.95,
     discIntensity: 2.0,
+
     roadColor: 0x50565e,
     lineColor: 0xf4f0e2,
     shoulderColor: 0x8f8f70,
-    groundColor: 0x86ab5c,
-    propA: 0x5fa346,
-    propB: 0x7a5a3c,
     lampColor: 0xfff0c8,
     lampIntensity: 0.0,
-    roadRoughness: 1.0,
-    rainColor: 0xffffff,
-    rain: 0.0,
-    dustColor: 0xfff0c0,
-    dust: 0.0,
-    dustSize: 1.4,
-    hillHeight: 3.2,
-    propDensity: 0.6,
-    propScale: 1.05,
+    headlightBias: 0.0,
 
     fov: 66,
     bloomStrength: 0.22,
@@ -284,15 +221,16 @@ export const MOOD_PROFILES = {
     accent: 0x64c86e,
   },
 
-  // Deep night, city glow. Hardest contrast, heaviest bloom, most lens
-  // character — everything that emits light gets to bleed.
+  // Deep night. Hardest contrast, heaviest bloom, everything that emits light
+  // gets to bleed.
   hiphop: {
     label: 'hip-hop',
-    propType: 'building',
 
-    skyTop: 0x06070f,
-    skyHorizon: 0x4a2354,
-    skyBottom: 0x2a1c3a,
+    skyTopBase: 0x06070f,
+    skyHorizonBase: 0x4a2354,
+    skyBottomBase: 0x2a1c3a,
+    fogColorBase: 0x1a1426,
+    fogScale: 1.05,
     horizonStrength: 0.62,
     horizonWidth: 0.13,
     sunGlowColor: 0x8a4ad0,
@@ -300,40 +238,24 @@ export const MOOD_PROFILES = {
     sunGlowPower: 9,
     starColor: 0xdce4ff,
     starOpacity: 0.95,
-    ridgeNearColor: 0x140f22,
-    ridgeFarColor: 0x241a38,
-    ridgeOpacity: 0.9,
-    ridgeHeight: 0.85,
 
-    fogColor: 0x1a1426,
-    fogDensity: 0.0094,
     ambientColor: 0x3c2c5a,
-    ambientIntensity: 2.8,
+    ambientIntensityBase: 2.8,
     sunColor: 0xff3fa4,
-    sunIntensity: 1.3,
+    sunIntensityBase: 1.3,
     sunAzimuth: 0.62,
     sunElevation: 0.38,
     discColor: 0xdcdcf0,
     discSize: 18,
     discOpacity: 0.9,
     discIntensity: 1.3,
+
     roadColor: 0x1c1c24,
     lineColor: 0x8f8fb2,
     shoulderColor: 0x232330,
-    groundColor: 0x24263a,
-    propA: 0x20213a,
-    propB: 0x14151f,
     lampColor: 0x46e8ff,
     lampIntensity: 1.0,
-    roadRoughness: 0.75, // slick city asphalt
-    rainColor: 0x8ea8ff,
-    rain: 0.0,
-    dustColor: 0xff8ad4,
-    dust: 0.4,
-    dustSize: 0.9,
-    hillHeight: 1.2,
-    propDensity: 0.75,
-    propScale: 1.0,
+    headlightBias: 1.0,
 
     fov: 61,
     bloomStrength: 0.6,
@@ -363,28 +285,8 @@ export const BLOCK_ORDER = ['sad', 'chill', 'happy', 'hiphop'];
  * to know, since block length is song-count driven rather than timer driven.
  */
 export const MOCK_BLOCKS = [
-  {
-    mood: 'sad',
-    songCount: 4,
-    terrainProfile: 'rolling-pines',
-    weatherProfile: 'light-rain',
-  },
-  {
-    mood: 'chill',
-    songCount: 3,
-    terrainProfile: 'dusk-dunes',
-    weatherProfile: 'mist',
-  },
-  {
-    mood: 'happy',
-    songCount: 4,
-    terrainProfile: 'open-meadow',
-    weatherProfile: 'clear',
-  },
-  {
-    mood: 'hiphop',
-    songCount: 3,
-    terrainProfile: 'night-city',
-    weatherProfile: 'dust',
-  },
+  { mood: 'sad', songCount: 4 },
+  { mood: 'chill', songCount: 3 },
+  { mood: 'happy', songCount: 4 },
+  { mood: 'hiphop', songCount: 3 },
 ];

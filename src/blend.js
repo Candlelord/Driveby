@@ -1,19 +1,25 @@
 import * as THREE from 'three';
-import { COLOR_KEYS, NUMBER_KEYS } from './moods.js';
 
 /**
- * A "live" profile: the same shape as a mood profile, but with persistent
- * THREE.Color instances so blending each frame allocates nothing.
+ * A "live" profile: one flat bag holding the blended value of every key across
+ * every axis, with persistent THREE.Color instances so blending each frame
+ * allocates nothing.
+ *
+ * @param {Array<{colors: string[], numbers: string[]}>} keySets
+ * @param {string[]} derivedColors extra colour slots written by compose()
  */
-export function createLiveProfile() {
+export function createLiveProfile(keySets, derivedColors = []) {
   const live = {};
-  for (const key of COLOR_KEYS) live[key] = new THREE.Color();
-  for (const key of NUMBER_KEYS) live[key] = 0;
+  for (const set of keySets) {
+    for (const key of set.colors) live[key] = new THREE.Color();
+    for (const key of set.numbers) live[key] = 0;
+  }
+  for (const key of derivedColors) live[key] = new THREE.Color();
   return live;
 }
 
 /** Cache of profile hexes -> Color, so we never re-parse hex per frame. */
-const colorCache = new Map();
+const colorCache = new WeakMap();
 
 function colorFor(profile, key) {
   let byKey = colorCache.get(profile);
@@ -35,16 +41,20 @@ export function smoothstep(t) {
   return x * x * (3 - 2 * x);
 }
 
+export function clamp01(x) {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
 /**
- * Blend two mood profiles into `live`. `t` of 0 is all `from`, 1 is all `to`.
- * Colours blend in three's linear working space, which keeps midpoints from
- * going muddy the way naive sRGB lerps do.
+ * Blend two profiles from the same axis into `live`. `t` of 0 is all `from`,
+ * 1 is all `to`. Colours blend in three's linear working space, which keeps
+ * midpoints from going muddy the way naive sRGB lerps do.
  */
-export function blendProfiles(live, from, to, t) {
-  for (const key of COLOR_KEYS) {
+export function blendProfiles(live, from, to, t, keys) {
+  for (const key of keys.colors) {
     live[key].lerpColors(colorFor(from, key), colorFor(to, key), t);
   }
-  for (const key of NUMBER_KEYS) {
+  for (const key of keys.numbers) {
     live[key] = from[key] + (to[key] - from[key]) * t;
   }
   return live;
