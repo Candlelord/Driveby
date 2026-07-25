@@ -3,7 +3,9 @@ import { CONFIG } from '../config.js';
 import { softDotTexture } from './textures.js';
 
 const RAIN_BOX = { x: 42, yMin: -2, yMax: 28, zNear: 22, zFar: -150 };
-const DUST_BOX = { x: 38, yMin: 0, yMax: 16, zNear: 20, zFar: -130 };
+// zNear keeps motes ahead of the camera; drifting past the lens at mist sizes
+// reads as a dirty lens rather than atmosphere.
+const DUST_BOX = { x: 38, yMin: 0, yMax: 16, zNear: -4, zFar: -130 };
 
 const RAIN_FALL_SPEED = 62;
 const STREAK = new THREE.Vector3(0, -1, 0.42).normalize();

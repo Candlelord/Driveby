@@ -35,21 +35,29 @@ body {
 
 #hud {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
-  left: calc(env(safe-area-inset-left, 0px) + 14px);
-  min-width: 168px;
-  padding: 10px 12px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  background: rgba(8, 11, 16, 0.42);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: rgba(255, 255, 255, 0.86);
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  min-width: 176px;
+  padding: 11px 14px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(6, 9, 14, 0.34);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  color: rgba(255, 255, 255, 0.88);
   font-size: 12px;
   line-height: 1.2;
   letter-spacing: 0.04em;
   pointer-events: none;
   user-select: none;
+  animation: hud-in 700ms 200ms ease both;
+}
+
+@keyframes hud-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
 .hud-row {
@@ -59,25 +67,40 @@ body {
 }
 
 .hud-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
+  flex: none;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-  transition: background 120ms linear;
+  box-shadow: 0 0 12px var(--accent);
+}
+
+/* Pulses only while a block is crossfading, so the overlay shows the
+   transition state without needing another line of text. */
+#hud.is-crossfading .hud-dot {
+  animation: hud-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hud-pulse {
+  50% {
+    opacity: 0.3;
+    transform: scale(0.72);
+  }
 }
 
 .hud-mood {
   text-transform: uppercase;
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
 .hud-bar {
-  margin-top: 8px;
-  height: 3px;
+  margin-top: 9px;
+  height: 2px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   overflow: hidden;
 }
 
@@ -86,30 +109,37 @@ body {
   width: 0%;
   border-radius: 2px;
   background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .hud-meta {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 7px;
+  gap: 14px;
+  margin-top: 8px;
   font-size: 10px;
-  opacity: 0.62;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
 }
 
 #hint {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.42);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: lowercase;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   user-select: none;
-  transition: opacity 900ms ease;
+  /* `backwards`, not `both`: a filling animation would outrank the .is-hidden
+     opacity and the hint would never fade out. */
+  animation: hud-in 900ms 600ms ease backwards;
+  transition: opacity 1200ms ease;
 }
 
 #hint.is-hidden {

@@ -7,7 +7,10 @@ import { Ribbon } from './ribbon.js';
 const ROW_STRIDE = 2;
 
 const INNER_EDGE = CONFIG.roadHalfWidth + CONFIG.shoulderWidth;
-const COLUMNS = [-300, -130, -56, -24, -INNER_EDGE, INNER_EDGE, 24, 56, 130, 300];
+const COLUMNS = [
+  -300, -190, -128, -86, -58, -38, -22, -INNER_EDGE,
+  INNER_EDGE, 22, 38, 58, 86, 128, 190, 300,
+];
 
 // Hills flatten out to nothing where they meet the shoulder, so the road never
 // gets swallowed by a ridge.
@@ -47,7 +50,7 @@ export class Terrain {
       columns: COLUMNS,
       rows: this.rows,
       material: this.material,
-      skipQuads: [4], // the road covers this span
+      skipQuads: [7], // the road covers this span
     });
 
     scene.add(this.ribbon.mesh);

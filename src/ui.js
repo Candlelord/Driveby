@@ -12,6 +12,7 @@ export class Ui {
     this.hint = document.getElementById('hint');
 
     this._lastLabel = '';
+    this._wasCrossfading = null;
     this._lastSong = '';
     this._lastMiles = '';
     this._hintHidden = false;
@@ -35,6 +36,11 @@ export class Ui {
     if (miles !== this._lastMiles) {
       this.miles.textContent = miles;
       this._lastMiles = miles;
+    }
+
+    if (director.isTransitioning !== this._wasCrossfading) {
+      this._wasCrossfading = director.isTransitioning;
+      this.root.classList.toggle('is-crossfading', this._wasCrossfading);
     }
 
     this.bar.style.width = `${(director.blockProgress * 100).toFixed(1)}%`;

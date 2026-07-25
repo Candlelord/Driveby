@@ -22,6 +22,15 @@ export const CONFIG = {
   camDistance: 10.5,
   camLag: 6, // exponential smoothing rate
   camLookAhead: 45, // how far up the road the camera aims
+  camRoll: 0.35, // how far the camera banks into a corner
+  camSway: 0.055, // handheld drift, in world units
+
+  // --- rendering ---
+  // 'auto' starts with bloom and drops it if frames get expensive; 'high' and
+  // 'low' pin it on or off.
+  quality: 'auto',
+  bloomDropFrameMs: 26,
+  maxPixelRatio: 2,
 
   // --- mood block clock ---
   // Stand-in for "a song finished playing". Real audio replaces this later.

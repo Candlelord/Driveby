@@ -92,6 +92,11 @@ export class Road {
     this.surfaceMaterial.color.copy(live.roadColor);
     this.lineMaterial.color.copy(live.lineColor);
     this.shoulderMaterial.color.copy(live.shoulderColor);
+
+    // Wet moods drop the roughness so the key light lays a sheen down the
+    // asphalt — the cheapest "it has been raining" cue there is.
+    this.surfaceMaterial.roughness = live.roadRoughness;
+    this.surfaceMaterial.metalness = (1 - live.roadRoughness) * 0.4;
   }
 
   _updateDashes(frame, firstIndex) {
