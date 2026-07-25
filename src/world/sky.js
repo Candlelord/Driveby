@@ -296,9 +296,10 @@ export class Sky {
     this.discMaterial.opacity = live.discOpacity * 0.5;
     this.disc.visible = this.core.visible;
 
+    const stars = live.starOpacityFinal ?? live.starOpacity;
     this.starMaterial.color.copy(live.starColor);
-    this.starMaterial.opacity = live.starOpacity;
-    this.stars.visible = live.starOpacity > 0.01;
+    this.starMaterial.opacity = stars;
+    this.stars.visible = stars > 0.01;
 
     this._updateRidges(state);
   }

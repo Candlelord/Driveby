@@ -46,6 +46,24 @@ export function clamp01(x) {
 }
 
 /**
+ * Lerp `live`'s current values toward a profile, in place.
+ *
+ * Needed for layers that sit on top of an already-blended result — an event's
+ * climate has to pull whatever the terrain set's climate had reached, not
+ * replace one of its endpoints.
+ */
+export function blendLiveToward(live, profile, t, keys) {
+  if (t <= 0) return live;
+  for (const key of keys.colors) {
+    live[key].lerp(colorFor(profile, key), t);
+  }
+  for (const key of keys.numbers) {
+    live[key] += (profile[key] - live[key]) * t;
+  }
+  return live;
+}
+
+/**
  * Blend two profiles from the same axis into `live`. `t` of 0 is all `from`,
  * 1 is all `to`. Colours blend in three's linear working space, which keeps
  * midpoints from going muddy the way naive sRGB lerps do.

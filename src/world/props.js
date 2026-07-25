@@ -1,46 +1,50 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CONFIG } from '../config.js';
 import { hash } from '../path.js';
 import { terrainHeight } from './terrain.js';
+import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
+import { TERRAIN_SETS } from '../terrainSets.js';
 
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 
-// How sharply a prop scales in as the terrain's density crosses its slot threshold.
-const DENSITY_FEATHER = 0.12;
-
 /**
- * Roadside scenery, one InstancedMesh per shape.
+ * Roadside scenery.
  *
- * Every slot along the road has a single position/rotation/size drawn from a
- * hash, and all five prop shapes are drawn at that same spot — scaled by how
- * much of their terrain is currently mixed in. A terrain transition therefore
- * reads as pines shrinking away while boulders grow in their place, rather than
- * as a cut.
+ * Each slot along the road belongs to whichever terrain set was current when
+ * that stretch of road first came into existence — which is well outside the
+ * fog, so scenery swaps are never seen happening. That is much cheaper than
+ * cross-fading every shape against every other, and the spec recommends it.
+ *
+ * One InstancedMesh per kit part, hidden entirely when a set does not use it,
+ * so unused shapes cost nothing.
  */
 export class Props {
   constructor(scene, tier) {
     this.slots = tier.propSlots;
     this.lampSlots = tier.lampSlots;
 
-    this.foliageMaterial = flat(0x2f4045);
-    this.trunkMaterial = flat(0x353a3c);
-    this.rockMaterial = flat(0x6c5563);
-    this.cactusMaterial = flat(0x6f8f52);
-    this.buildingMaterial = flat(0x20213a);
-    this.neonMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
+    this.materialA = flat(0x4d7a48);
+    this.materialB = flat(0x46403a);
+    this.materialE = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
     this.lampPoleMaterial = flat(0x2a2f36);
     this.lampHeadMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
 
-    this.pine = instanced(cone(1.15, 3.8, 2.9), this.foliageMaterial, this.slots);
-    this.round = instanced(blob(1.55, 2.7), this.foliageMaterial, this.slots);
-    this.trunk = instanced(cylinder(0.17, 1.35, 0.68), this.trunkMaterial, this.slots);
-    this.rock = instanced(rock(1.3, 0.45), this.rockMaterial, this.slots);
-    this.cactus = instanced(cactusGeometry(), this.cactusMaterial, this.slots);
-    this.building = instanced(box(1, 1, 1, 0.5), this.buildingMaterial, this.slots);
-    this.neon = instanced(box(1.03, 0.03, 1.03, 0.62), this.neonMaterial, this.slots);
+    const materials = { a: this.materialA, b: this.materialB, e: this.materialE };
+
+    // One entry per prop type, each holding its parts' instanced meshes.
+    this.types = {};
+    for (const name of PROP_NAMES) {
+      const def = PROP_KIT[name];
+      const meshes = def.parts.map((part) => {
+        const mesh = instanced(part.geometry(), materials[part.material], this.slots);
+        mesh.visible = false;
+        scene.add(mesh);
+        return mesh;
+      });
+      this.types[name] = { def, meshes, used: 0 };
+    }
 
     this.lampPole = instanced(cylinder(0.12, 6.4, 3.2), this.lampPoleMaterial, this.lampSlots);
     this.lampHead = instanced(
@@ -48,89 +52,87 @@ export class Props {
       this.lampHeadMaterial,
       this.lampSlots
     );
-
-    this.shapes = [this.pine, this.round, this.trunk, this.rock, this.cactus];
-    this.meshes = [...this.shapes, this.building, this.neon, this.lampPole, this.lampHead];
-    for (const mesh of this.meshes) scene.add(mesh);
+    scene.add(this.lampPole, this.lampHead);
   }
 
-  update(state, frame) {
-    this._updateProps(state, frame);
+  update(state, frame, environment) {
+    this._updateProps(state, frame, environment);
     this._updateLamps(state, frame);
 
     const live = state.live;
-    this.foliageMaterial.color.copy(live.propA);
-    this.cactusMaterial.color.copy(live.propA);
-    this.buildingMaterial.color.copy(live.propA);
-    this.trunkMaterial.color.copy(live.propB);
-    this.rockMaterial.color.copy(live.propB);
+    this.materialA.color.copy(live.propA);
+    this.materialB.color.copy(live.propB);
     // Basic materials have no lighting to dim, so "off" is just a black colour.
-    this.neonMaterial.color.copy(live.lampColor).multiplyScalar(live.lampIntensity);
+    this.materialE.color.copy(live.propE).multiplyScalar(live.propEmissive);
     this.lampHeadMaterial.color.copy(live.lampColor).multiplyScalar(live.lampIntensity);
     this.lampPoleMaterial.color.copy(live.propB);
   }
 
-  _updateProps(state, frame) {
+  _updateProps(state, frame, environment) {
     const { propSpacing, segmentLength, segmentsBehind } = CONFIG;
-    const weights = state.propWeights;
     const live = state.live;
     const behind = segmentsBehind * segmentLength;
     const firstSlot = Math.floor((state.travelled - behind) / propSpacing);
 
-    // Pines and round trees share a trunk; the mix of both drives its scale.
-    const trunkWeight = (weights.pine || 0) + (weights.round || 0);
+    for (const type of Object.values(this.types)) type.used = 0;
 
     for (let i = 0; i < this.slots; i++) {
       const slot = firstSlot + i;
       const s = slot * propSpacing;
 
+      const setId = environment.setAt(s);
+      const set = TERRAIN_SETS[setId];
+
+      // Density is the set's, not the blended value — a slot belongs wholly to
+      // one set, so it should be as sparse or dense as that set wants.
+      if (hash(slot * 5.9) >= set.propDensity) continue;
+
+      const typeName = pickType(set.propMix, hash(slot * 2.3));
+      const type = this.types[typeName];
+      if (!type || type.used >= this.slots) continue;
+
+      const def = type.def;
       const side = hash(slot * 1.7) < 0.5 ? -1 : 1;
-      const distance = 13 + hash(slot * 3.3) * 27;
-      const spread = hash(slot * 5.9);
-      const visibility = clamp01((live.propDensity - spread) / DENSITY_FEATHER);
-
-      if (visibility <= 0) {
-        for (const mesh of this.shapes) mesh.setMatrixAt(i, HIDDEN);
-        this.building.setMatrixAt(i, HIDDEN);
-        this.neon.setMatrixAt(i, HIDDEN);
-        continue;
-      }
-
-      // Sit on the ground, not at road level — the hills move under them as the
-      // terrain profile changes.
+      const distance = def.spread + hash(slot * 3.3) * def.jitter;
       const offset = side * distance;
+
       frame.point(s, offset, terrainHeight(offset, s, live), POSITION);
-      const rotation = hash(slot * 9.3) * Math.PI * 2;
-      const size = (0.75 + hash(slot * 7.1) * 0.8) * live.propScale * visibility;
 
       DUMMY.position.copy(POSITION);
-      DUMMY.rotation.set(0, rotation, 0);
+      // Poles and guardrails face the road; everything else is scattered.
+      const aligned = typeName === 'pole' || typeName === 'guardrail';
+      DUMMY.rotation.set(0, aligned ? (side > 0 ? 0 : Math.PI) : hash(slot * 9.3) * Math.PI * 2, 0);
 
-      this._setUniform(this.pine, i, size * (weights.pine || 0));
-      this._setUniform(this.round, i, size * (weights.round || 0));
-      this._setUniform(this.trunk, i, size * trunkWeight);
-      this._setUniform(this.rock, i, size * (weights.rock || 0) * 0.9);
-      this._setUniform(this.cactus, i, size * (weights.cactus || 0) * 0.85);
+      // Wind bends things over during a tornado.
+      DUMMY.rotation.z = live.propLean * 0.35 * (aligned ? 0.3 : 1);
 
-      // Buildings need their own proportions, not a scaled-up tree.
-      const buildingWeight = weights.building || 0;
-      const footprint = (3.2 + hash(slot * 11.7) * 3.4) * visibility * buildingWeight;
-      const height = (7 + hash(slot * 13.1) * 16) * visibility * buildingWeight;
-      DUMMY.scale.set(footprint, height, footprint);
+      const size = (0.75 + hash(slot * 7.1) * 0.8) * set.propScale;
+      if (def.stretch) {
+        const [fMin, fMax] = def.stretch.footprint;
+        const [hMin, hMax] = def.stretch.height;
+        DUMMY.scale.set(
+          fMin + hash(slot * 11.7) * (fMax - fMin),
+          hMin + hash(slot * 13.1) * (hMax - hMin),
+          fMin + hash(slot * 17.3) * (fMax - fMin)
+        );
+      } else {
+        DUMMY.scale.setScalar(size);
+      }
       DUMMY.updateMatrix();
-      this.building.setMatrixAt(i, DUMMY.matrix);
-      this.neon.setMatrixAt(i, DUMMY.matrix);
+
+      for (const mesh of type.meshes) mesh.setMatrixAt(type.used, DUMMY.matrix);
+      type.used++;
     }
 
-    for (const mesh of this.shapes) mesh.instanceMatrix.needsUpdate = true;
-    this.building.instanceMatrix.needsUpdate = true;
-    this.neon.instanceMatrix.needsUpdate = true;
-  }
-
-  _setUniform(mesh, index, scale) {
-    DUMMY.scale.setScalar(scale);
-    DUMMY.updateMatrix();
-    mesh.setMatrixAt(index, DUMMY.matrix);
+    for (const type of Object.values(this.types)) {
+      const visible = type.used > 0;
+      for (const mesh of type.meshes) {
+        mesh.visible = visible;
+        if (!visible) continue;
+        mesh.count = type.used;
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
   }
 
   _updateLamps(state, frame) {
@@ -140,13 +142,11 @@ export class Props {
     // Scale rather than toggle, so lamps shrink away over a crossfade instead
     // of vanishing the instant the mood's lamp intensity hits zero.
     const on = clamp01(state.live.lampIntensity / 0.14);
+    this.lampPole.visible = on > 0;
+    this.lampHead.visible = on > 0;
+    if (on <= 0) return;
 
     for (let i = 0; i < this.lampSlots; i++) {
-      if (on <= 0) {
-        this.lampPole.setMatrixAt(i, HIDDEN);
-        this.lampHead.setMatrixAt(i, HIDDEN);
-        continue;
-      }
       const slot = firstSlot + i;
       const side = slot % 2 === 0 ? 1 : -1;
       frame.point(slot * lampSpacing, side * (CONFIG.roadHalfWidth + 3.4), 0, POSITION);
@@ -164,40 +164,24 @@ export class Props {
   }
 }
 
-// --- geometry helpers: everything is pre-translated so a single instance
-// --- matrix (ground position + yaw + scale) places the whole shape.
-
-function cone(radius, height, y) {
-  return new THREE.ConeGeometry(radius, height, 6).translate(0, y, 0);
-}
-
-function blob(radius, y) {
-  return new THREE.IcosahedronGeometry(radius, 0).translate(0, y, 0);
+/** Roll one type out of a set's weighted mix, deterministically per slot. */
+function pickType(mix, roll) {
+  let total = 0;
+  for (const entry of mix) total += entry[1];
+  let target = roll * total;
+  for (const [name, weight] of mix) {
+    target -= weight;
+    if (target <= 0) return name;
+  }
+  return mix[mix.length - 1][0];
 }
 
 function cylinder(radius, height, y) {
   return new THREE.CylinderGeometry(radius, radius * 1.15, height, 6).translate(0, y, 0);
 }
 
-function rock(radius, y) {
-  return new THREE.DodecahedronGeometry(radius, 0).translate(0, y, 0);
-}
-
 function box(w, h, d, y, x = 0) {
   return new THREE.BoxGeometry(w, h, d).translate(x, y, 0);
-}
-
-/** Saguaro: a trunk and two arms, merged so it instances as one shape. */
-function cactusGeometry() {
-  const parts = [new THREE.CylinderGeometry(0.42, 0.5, 4.2, 7).translate(0, 2.1, 0)];
-  for (const [x, y, height] of [
-    [-0.95, 2.5, 1.5],
-    [0.95, 3.1, 1.2],
-  ]) {
-    parts.push(new THREE.CylinderGeometry(0.26, 0.26, 1.5, 6).rotateZ(Math.PI / 2).translate(x * 0.55, y, 0));
-    parts.push(new THREE.CylinderGeometry(0.26, 0.3, height, 6).translate(x, y + height / 2, 0));
-  }
-  return mergeGeometries(parts);
 }
 
 function instanced(geometry, material, count) {

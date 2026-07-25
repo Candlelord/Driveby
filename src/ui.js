@@ -11,6 +11,8 @@ export class Ui {
     this.miles = document.getElementById('hud-miles');
     this.terrain = document.getElementById('hud-terrain');
     this.climate = document.getElementById('hud-climate');
+    this.event = document.getElementById('hud-event');
+    this.flash = document.getElementById('flash');
     this.hint = document.getElementById('hint');
 
     this._lastLabel = '';
@@ -19,7 +21,16 @@ export class Ui {
     this._lastMiles = '';
     this._lastTerrain = '';
     this._lastClimate = '';
+    this._lastEvent = null;
+    this._lastFlash = -1;
     this._hintHidden = false;
+  }
+
+  /** Debug: briefly name a force-triggered event even before its label lands. */
+  flashEvent(name) {
+    this.event.textContent = name;
+    this.event.classList.add('is-live');
+    this._lastEvent = undefined;
   }
 
   update(environment, state) {
@@ -29,13 +40,26 @@ export class Ui {
       this.mood.textContent = labels.mood;
       this._lastLabel = labels.mood;
     }
-    if (labels.terrain !== this._lastTerrain) {
-      this.terrain.textContent = labels.terrain;
-      this._lastTerrain = labels.terrain;
+    if (labels.set !== this._lastTerrain) {
+      this.terrain.textContent = labels.set;
+      this._lastTerrain = labels.set;
     }
     if (labels.climate !== this._lastClimate) {
       this.climate.textContent = labels.climate;
       this._lastClimate = labels.climate;
+    }
+
+    if (labels.event !== this._lastEvent) {
+      this._lastEvent = labels.event;
+      this.event.textContent = labels.event ?? '';
+      this.event.classList.toggle('is-live', Boolean(labels.event));
+    }
+
+    // Drive the lightning wash straight off the flash value.
+    const flash = state.live.screenFlash ?? 0;
+    if (Math.abs(flash - this._lastFlash) > 0.01) {
+      this.flash.style.opacity = (flash * 0.85).toFixed(3);
+      this._lastFlash = flash;
     }
 
     const block = environment.currentBlock;

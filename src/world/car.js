@@ -129,10 +129,9 @@ export class Car {
     frame.point(state.travelled, state.lateral, 0, HERE);
     const pitch = Math.atan2(AHEAD.y - HERE.y, 6);
 
-    const bob = Math.sin(state.time * 6.1) * 0.012 + Math.sin(state.time * 11.3) * 0.006;
-
-    this.group.position.set(state.lateral, HERE.y + bob, 0);
-    this.group.rotation.set(pitch, -state.steer * 0.1, -state.steer * 0.055);
+    // Suspension bob and body roll both come from the physics model now.
+    this.group.position.set(state.lateral, HERE.y + state.bob, 0);
+    this.group.rotation.set(pitch, -state.steer * 0.1, state.roll);
 
     this.spin -= (state.speed / WHEEL_RADIUS) * state.dt;
     for (const wheel of this.wheels) {

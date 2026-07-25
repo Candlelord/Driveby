@@ -1,0 +1,304 @@
+import * as THREE from 'three';
+import { CONFIG } from '../config.js';
+import { hash } from '../path.js';
+import { softDotTexture } from './textures.js';
+
+const POSITION = new THREE.Vector3();
+const DUMMY = new THREE.Object3D();
+const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
+
+/**
+ * The per-set extras: water, god-rays, a distant skyline, overpass arches and
+ * pooled ground fog. Each is driven by a single number on the blended profile,
+ * so a set turns one on simply by having a non-zero value and it fades in and
+ * out with everything else.
+ */
+export class Features {
+  constructor(scene, tier) {
+    this._buildWater(scene);
+    this._buildShafts(scene);
+    this._buildSkyline(scene, tier);
+    this._buildOverpasses(scene);
+    this._buildGroundFog(scene);
+  }
+
+  /**
+   * Two large quads flanking the road, dropped to the set's water level. Flat
+   * shaded and unlit, coloured from the set — a real reflection would cost a
+   * second render pass and would not match the low-poly look anyway.
+   */
+  _buildWater(scene) {
+    this.waterMaterial = new THREE.MeshStandardMaterial({
+      color: 0x35505e,
+      roughness: 0.12,
+      metalness: 0.5,
+      transparent: true,
+      opacity: 0,
+      flatShading: true,
+    });
+
+    this.water = new THREE.Group();
+    for (const side of [-1, 1]) {
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(420, 900, 1, 1), this.waterMaterial);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.set(side * 235, 0, -320);
+      plane.userData.side = side;
+      this.water.add(plane);
+    }
+    this.water.visible = false;
+    scene.add(this.water);
+  }
+
+  /**
+   * God-rays: a handful of long thin angled quads with additive blending,
+   * drifting slowly. Cheap, and in a fogged forest they do most of the work.
+   */
+  _buildShafts(scene) {
+    this.shaftMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffe9b8,
+      map: softDotTexture(),
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+    });
+
+    this.shafts = new THREE.Group();
+    for (let i = 0; i < 7; i++) {
+      const shaft = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.shaftMaterial);
+      shaft.userData.seed = i;
+      shaft.scale.set(4 + (i % 3) * 2.5, 46, 1);
+      shaft.rotation.z = 0.42 + (i % 4) * 0.06;
+      shaft.renderOrder = 2;
+      this.shafts.add(shaft);
+    }
+    this.shafts.visible = false;
+    scene.add(this.shafts);
+  }
+
+  /** A band of emissive boxes far away — the city on the horizon. */
+  _buildSkyline(scene, tier) {
+    const count = Math.round(tier.propSlots * 1.4);
+    this.skylineCount = count;
+
+    this.skylineMaterial = new THREE.MeshBasicMaterial({
+      color: 0x11121c,
+      transparent: true,
+      opacity: 0,
+      fog: false,
+    });
+    this.skylineLitMaterial = new THREE.MeshBasicMaterial({
+      color: 0x2a3350,
+      transparent: true,
+      opacity: 0,
+      fog: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const geometry = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+    this.skyline = instanced(geometry, this.skylineMaterial, count);
+    this.skylineLit = instanced(
+      new THREE.BoxGeometry(1.02, 1, 0.4).translate(0, 0.5, 0),
+      this.skylineLitMaterial,
+      count
+    );
+    this.skyline.visible = false;
+    this.skylineLit.visible = false;
+    scene.add(this.skyline, this.skylineLit);
+  }
+
+  /** Arches the road passes under, for the neon underpass run. */
+  _buildOverpasses(scene) {
+    this.archCount = 6;
+    this.archMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1b24,
+      roughness: 1,
+      metalness: 0,
+      flatShading: true,
+    });
+    this.archNeonMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
+
+    const deck = new THREE.BoxGeometry(38, 2.4, 5).translate(0, 9.4, 0);
+    const legs = new THREE.BoxGeometry(2.6, 9, 4.4);
+    const arch = mergeArch(deck, legs);
+    this.arches = instanced(arch, this.archMaterial, this.archCount);
+    this.archNeon = instanced(
+      new THREE.BoxGeometry(34, 0.32, 0.3).translate(0, 8.1, -2.4),
+      this.archNeonMaterial,
+      this.archCount
+    );
+    this.arches.visible = false;
+    this.archNeon.visible = false;
+    scene.add(this.arches, this.archNeon);
+  }
+
+  /** A low band of haze sitting on the road, for forest and valley sets. */
+  _buildGroundFog(scene) {
+    this.groundFogMaterial = new THREE.MeshBasicMaterial({
+      color: 0xd8e2e8,
+      map: softDotTexture(),
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      fog: false,
+    });
+
+    this.groundFog = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const patch = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.groundFogMaterial);
+      patch.rotation.x = -Math.PI / 2;
+      patch.scale.set(120, 90, 1);
+      patch.position.set(0, 1.2 + i * 0.5, -40 - i * 55);
+      patch.userData.seed = i;
+      this.groundFog.add(patch);
+    }
+    this.groundFog.visible = false;
+    scene.add(this.groundFog);
+  }
+
+  update(state, frame) {
+    const live = state.live;
+    this._updateWater(state, frame);
+    this._updateShafts(state);
+    this._updateSkyline(state, frame);
+    this._updateOverpasses(state, frame);
+    this._updateGroundFog(state, live);
+  }
+
+  _updateWater(state, frame) {
+    const live = state.live;
+    const amount = live.water;
+    this.water.visible = amount > 0.02;
+    if (!this.water.visible) return;
+
+    this.waterMaterial.color.copy(live.waterColor);
+    this.waterMaterial.opacity = Math.min(1, amount);
+
+    const side = live.waterSide;
+    for (const plane of this.water.children) {
+      // waterSide of 0 means water on both sides (a flooded plain).
+      plane.visible = Math.abs(side) < 0.35 || Math.sign(side) === plane.userData.side;
+      plane.position.y = live.waterLevel;
+    }
+  }
+
+  _updateShafts(state) {
+    const live = state.live;
+    const amount = live.shafts;
+    this.shafts.visible = amount > 0.02;
+    if (!this.shafts.visible) return;
+
+    this.shaftMaterial.color.copy(live.shaftColor);
+    this.shaftMaterial.opacity = amount * 0.16;
+
+    for (const shaft of this.shafts.children) {
+      const seed = shaft.userData.seed;
+      // Scroll toward the camera and recycle, so they read as fixed in the world.
+      const span = 170;
+      const z = -((state.travelled * 0.6 + seed * 43) % span) - 12;
+      shaft.position.set(Math.sin(seed * 2.3) * 22, 16, z);
+    }
+  }
+
+  _updateSkyline(state, frame) {
+    const live = state.live;
+    const amount = live.skyline;
+    const visible = amount > 0.02;
+    this.skyline.visible = visible;
+    this.skylineLit.visible = visible;
+    if (!visible) return;
+
+    this.skylineMaterial.opacity = Math.min(1, amount);
+    this.skylineLitMaterial.opacity = Math.min(1, amount) * live.propEmissive * 0.5;
+    this.skylineLitMaterial.color.copy(live.propE).multiplyScalar(0.25);
+
+    // A static band far out to the sides, scrolling with distance.
+    const spacing = 46;
+    const first = Math.floor(state.travelled / spacing);
+    for (let i = 0; i < this.skylineCount; i++) {
+      const slot = first + i - 4;
+      const s = slot * spacing;
+      const side = hash(slot * 1.31) < 0.5 ? -1 : 1;
+      const distance = 150 + hash(slot * 4.7) * 260;
+      frame.point(s, side * distance, -live.causeway * 0.5, POSITION);
+
+      DUMMY.position.copy(POSITION);
+      DUMMY.rotation.set(0, hash(slot * 7.9) * 0.6, 0);
+      const width = 14 + hash(slot * 2.9) * 24;
+      DUMMY.scale.set(width, 30 + hash(slot * 5.3) * 120, width * 0.8);
+      DUMMY.updateMatrix();
+      this.skyline.setMatrixAt(i, DUMMY.matrix);
+      this.skylineLit.setMatrixAt(i, DUMMY.matrix);
+    }
+    this.skyline.instanceMatrix.needsUpdate = true;
+    this.skylineLit.instanceMatrix.needsUpdate = true;
+  }
+
+  _updateOverpasses(state, frame) {
+    const live = state.live;
+    const amount = live.overpasses;
+    const visible = amount > 0.02;
+    this.arches.visible = visible;
+    this.archNeon.visible = visible;
+    if (!visible) return;
+
+    this.archNeonMaterial.color.copy(live.propE).multiplyScalar(live.propEmissive * 1.4);
+
+    const spacing = 78;
+    const first = Math.floor((state.travelled - 40) / spacing);
+    for (let i = 0; i < this.archCount; i++) {
+      const slot = first + i;
+      frame.point(slot * spacing, 0, 0, POSITION);
+      DUMMY.position.copy(POSITION);
+      DUMMY.rotation.set(0, 0, 0);
+      DUMMY.scale.setScalar(1);
+      DUMMY.updateMatrix();
+      this.arches.setMatrixAt(i, DUMMY.matrix);
+      this.archNeon.setMatrixAt(i, DUMMY.matrix);
+    }
+    this.arches.instanceMatrix.needsUpdate = true;
+    this.archNeon.instanceMatrix.needsUpdate = true;
+  }
+
+  _updateGroundFog(state, live) {
+    const amount = live.groundFogAmount;
+    this.groundFog.visible = amount > 0.02;
+    if (!this.groundFog.visible) return;
+
+    this.groundFogMaterial.color.copy(live.fogColor);
+    this.groundFogMaterial.opacity = amount * 0.3;
+    for (const patch of this.groundFog.children) {
+      const seed = patch.userData.seed;
+      patch.position.x = Math.sin(state.time * 0.09 + seed) * 14;
+    }
+  }
+}
+
+function mergeArch(deck, legs) {
+  const left = legs.clone().translate(-17, 4.5, 0);
+  const right = legs.clone().translate(17, 4.5, 0);
+  const merged = new THREE.BufferGeometry();
+  const parts = [deck, left, right];
+  // Small enough to merge by hand without pulling in the utils module.
+  const positions = [];
+  const normals = [];
+  for (const part of parts) {
+    const nonIndexed = part.index ? part.toNonIndexed() : part;
+    positions.push(...nonIndexed.attributes.position.array);
+    normals.push(...nonIndexed.attributes.normal.array);
+  }
+  merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  return merged;
+}
+
+function instanced(geometry, material, count) {
+  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  for (let i = 0; i < count; i++) mesh.setMatrixAt(i, HIDDEN);
+  return mesh;
+}

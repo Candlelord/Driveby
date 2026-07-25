@@ -167,7 +167,7 @@ export class Post {
     normalisedTint(live.shadowTint, u.uShadowTint.value);
     normalisedTint(live.highlightTint, u.uHighlightTint.value);
 
-    this.bloom.strength = live.bloomStrength;
+    this.bloom.strength = live.bloomStrengthFinal ?? live.bloomStrength;
     this.bloom.threshold = live.bloomThreshold;
     this.bloom.radius = live.bloomRadius;
 

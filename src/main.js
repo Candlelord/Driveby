@@ -5,9 +5,13 @@ import { CONFIG, applyTier } from './config.js';
 import { detectTier, tierFromQuery } from './quality.js';
 import { PathFrame, heading } from './path.js';
 import { Environment } from './environment.js';
+import { CarPhysics } from './physics.js';
 import { MOOD_PROFILES } from './moods.js';
-import { TERRAIN_PROFILES } from './terrains.js';
+import { TERRAIN_SETS, TERRAIN_POOLS } from './terrainSets.js';
 import { CLIMATE_PROFILES } from './climates.js';
+import { EVENT_NAMES } from './events.js';
+import { Session } from './session.js';
+import { Sfx } from './audio/sfx.js';
 import { Input } from './input.js';
 import { Ui } from './ui.js';
 import { Post } from './post.js';
@@ -18,6 +22,8 @@ import { Props } from './world/props.js';
 import { Car } from './world/car.js';
 import { Traffic } from './world/traffic.js';
 import { Weather } from './world/weather.js';
+import { Features } from './world/features.js';
+import { EventVisuals } from './world/eventVisuals.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -49,12 +55,15 @@ sun.position.set(60, 90, -40);
 scene.add(sun, sun.target);
 
 const environment = new Environment();
+const physics = new CarPhysics();
 const frame = new PathFrame();
 
 const sky = new Sky(scene, tier);
 const terrain = new Terrain(scene, tier);
 const road = new Road(scene);
 const props = new Props(scene, tier);
+const features = new Features(scene, tier);
+const eventVisuals = new EventVisuals(scene, tier);
 const traffic = new Traffic(scene, tier);
 const car = new Car(scene);
 const weather = new Weather(scene, tier);
@@ -64,18 +73,36 @@ const input = new Input(renderer.domElement, {
 });
 const ui = new Ui();
 const post = new Post(renderer, scene, camera, tier);
+const sfx = new Sfx();
+const session = new Session(environment);
+
+// Audio cannot start until the browser has seen a gesture, so the first real
+// input is what opens the context.
+const startAudio = () => {
+  sfx.start();
+  window.removeEventListener('pointerdown', startAudio);
+  window.removeEventListener('keydown', startAudio);
+};
+window.addEventListener('pointerdown', startAudio);
+window.addEventListener('keydown', startAudio);
+
+// Real track ends replace the mock song timer once a library is connected.
+session.player.onTrackEnd(() => environment.songFinished(state.travelled));
+session.begin();
 
 const state = {
   travelled: 0,
   lateral: 0,
   steer: 0,
-  speed: CONFIG.speed,
+  speed: 0,
+  roll: 0,
+  bob: 0,
+  edgePressure: 0,
   heading: 0,
   time: 0,
   dt: 0,
   hasInput: false,
   live: environment.live,
-  propWeights: environment.propWeights,
 };
 
 const lookTarget = new THREE.Vector3(0, 1.8, -20);
@@ -134,28 +161,32 @@ function tick() {
 
   terrain.update(state, frame);
   road.update(state, frame);
-  props.update(state, frame);
+  features.update(state, frame);
+  props.update(state, frame, environment);
   traffic.update(state, frame);
   car.update(state, frame);
   weather.update(state);
+  eventVisuals.update(state, camera);
 
   ui.update(environment, state);
   post.update(state);
+  sfx.update(state, state.live, session.player);
+  session.update();
 
   post.render();
   requestAnimationFrame(tick);
 }
 
 function updateDriving(dt) {
-  // Smooth the raw input so taps feel like steering rather than teleporting.
-  const target = input.value;
-  state.steer += (target - state.steer) * (1 - Math.exp(-CONFIG.steerResponse * dt));
+  physics.update(dt, input.value, state.live, state.live.shake);
 
-  state.lateral += state.steer * CONFIG.steerRate * dt;
-  state.lateral = Math.max(-CONFIG.maxLateral, Math.min(CONFIG.maxLateral, state.lateral));
-
-  // No fail state: the car simply never leaves the road.
-  state.travelled += state.speed * dt;
+  state.travelled = physics.travelled;
+  state.lateral = physics.lateral;
+  state.steer = physics.steer;
+  state.speed = physics.speed;
+  state.roll = physics.roll;
+  state.bob = physics.bob;
+  state.edgePressure = physics.edgePressure;
 }
 
 function applyLighting() {
@@ -183,7 +214,16 @@ function updateCamera(dt) {
   const swayX = Math.sin(state.time * 0.63) * Math.sin(state.time * 0.29) * CONFIG.camSway;
   const swayY = Math.sin(state.time * 0.47 + 1.3) * CONFIG.camSway * 0.6;
 
-  camTarget.set(state.lateral * 0.45 + swayX, CONFIG.camHeight + swayY, CONFIG.camDistance);
+  // Extreme weather adds an irregular shake on top of the handheld drift.
+  const shake = state.live.shake;
+  const shakeX = shake > 0 ? Math.sin(state.time * 27.3) * Math.sin(state.time * 11.1) * shake * 0.5 : 0;
+  const shakeY = shake > 0 ? Math.sin(state.time * 33.7 + 2.1) * shake * 0.35 : 0;
+
+  camTarget.set(
+    state.lateral * 0.45 + swayX + shakeX,
+    CONFIG.camHeight + swayY + shakeY,
+    CONFIG.camDistance
+  );
   camera.position.lerp(camTarget, lag);
 
   // Aim at a point up the road so corners lead the car instead of trailing it.
@@ -200,7 +240,7 @@ function updateCamera(dt) {
   // player's steering, so the horizon tilts with the bend, not with a tap.
   const curvature = heading(state.travelled + 55) - state.heading;
   cameraRoll += (curvature * CONFIG.camRoll - cameraRoll) * (1 - Math.exp(-2.4 * dt));
-  camera.rotateZ(cameraRoll);
+  camera.rotateZ(cameraRoll + (physics.shakeRoll ?? 0));
 
   // Field of view is part of each mood: wide and open for happy, tighter and
   // more closed-in for sad.
@@ -211,6 +251,23 @@ function updateCamera(dt) {
     camera.updateProjectionMatrix();
   }
 }
+
+// Debug: force an extreme weather event. The spec asks for manual triggers so
+// the events can be validated without waiting for their random schedule.
+const EVENT_KEYS = { 1: 'tornado', 2: 'lightning', 3: 'snow', 4: 'sandstorm', 5: 'aurora' };
+window.addEventListener('keydown', (event) => {
+  const name = EVENT_KEYS[event.key];
+  if (name) {
+    environment.events.force(name);
+    ui.flashEvent(name);
+  } else if (event.key === '0') {
+    environment.events.stop();
+  } else if (event.key === 'm' || event.key === 'M') {
+    sfx.setMuted(!sfx.muted);
+  } else if (event.key === 'r' || event.key === 'R') {
+    session.showReview();
+  }
+});
 
 tick();
 
@@ -226,8 +283,14 @@ if (import.meta.env.DEV) {
     post,
     tier,
     CONFIG,
+    physics,
+    features,
+    eventVisuals,
+    sfx,
+    session,
     MOOD_PROFILES,
-    TERRAIN_PROFILES,
+    TERRAIN_SETS,
+    TERRAIN_POOLS,
     CLIMATE_PROFILES,
   };
 }

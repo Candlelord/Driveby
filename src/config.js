@@ -14,10 +14,17 @@ export const CONFIG = {
   shoulderWidth: 2.8,
 
   // --- driving ---
-  speed: 34, // constant forward speed, world units/sec
-  maxLateral: 4.6, // how far off centre the car may drift before clamping
-  steerResponse: 3.4, // how fast raw input is smoothed into steering
+  speed: 34, // base cruise, world units/sec; terrain sets scale it
+  accelRate: 0.85, // how hard the car pulls toward its target speed
+  brakeRate: 2.2, // easing off is quicker than getting up to speed
+  maxLateral: 4.6, // road edge
+  edgeSoftness: 0.9, // how far past the edge the car can stray
+  edgeReturn: 5.5, // how firmly the verge pushes back
+  steerResponse: 3.4, // wheel follows the finger
+  steerFollow: 6.5, // car follows the wheel
   steerRate: 7.2, // lateral units/sec at full lock
+  bodyRoll: 0.075, // radians of lean at full lock
+  rollFollow: 4.5,
 
   // --- chase camera ---
   camHeight: 4.6,
@@ -28,14 +35,16 @@ export const CONFIG = {
   camSway: 0.055, // handheld drift, in world units
 
   // --- environment clocks ---
-  // The three axes deliberately do not share a schedule.
   songSeconds: 14, // stand-in for "a song finished"; real audio replaces this
   crossfadeSeconds: 4, // mood: spec asks for 3-5s
-  terrainRunLength: 2600, // world units of one landform before it changes
-  terrainCrossfadeSeconds: 9, // land should morph slowly
-  climateRunSeconds: 70,
-  climateCrossfadeSeconds: 11, // weather rolls in slower still
+  setCrossfadeSeconds: 5, // terrain set colours and landform
+  propSwapDistance: 330, // scenery swaps this far ahead, i.e. outside the fog
   lightningInterval: 7,
+
+  // --- extreme weather events ---
+  eventFirstDelay: 150, // seconds before the first one can fire
+  eventCooldown: 190, // average gap between attempts
+  eventChance: 0.55, // chance an attempt actually starts something
 
   // --- scenery ---
   propSpacing: 11,

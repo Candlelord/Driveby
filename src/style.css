@@ -130,6 +130,32 @@ body {
   opacity: 0.4;
 }
 
+.hud-event {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+.hud-event.is-live {
+  opacity: 1;
+  animation: hud-pulse 1.8s ease-in-out infinite;
+}
+
+/* Lightning: a full-screen white wash is cheaper and crisper as a DOM layer
+   than as a plane inside the scene, and it lands above the colour grade. */
+#flash {
+  position: fixed;
+  inset: 0;
+  background: #eef4ff;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 .hud-meta {
   display: flex;
   justify-content: space-between;
@@ -180,4 +206,172 @@ body {
 
 #tilt-btn[hidden] {
   display: none;
+}
+
+/* --- connect / review screens ------------------------------------------- */
+
+#screens {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 6, 10, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+#screens.is-open {
+  display: flex;
+}
+
+#screens .panel {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px 24px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(10, 13, 19, 0.86);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#screens .panel.wide {
+  max-width: 620px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#screens h1 {
+  margin: 0 0 10px;
+  font-size: 19px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#screens .lede {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  opacity: 0.72;
+}
+
+#screens .note,
+#screens .fineprint {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  opacity: 0.5;
+}
+
+#screens .error {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #ff8a8a;
+}
+
+#screens button {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+#screens button.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #06080c;
+  font-weight: 600;
+}
+
+#screens .progress {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+#screens .progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+
+#screens .tallies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+#screens .rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -6px 14px;
+  padding: 0 6px;
+  list-style: none;
+}
+
+#screens .row {
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+#screens .row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+#screens .title {
+  font-size: 13px;
+}
+
+#screens .artist {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+#screens .why {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.42;
+}
+
+#screens .choices {
+  display: flex;
+  gap: 6px;
+}
+
+#screens .chip {
+  width: auto;
+  flex: 1;
+  margin: 0;
+  padding: 7px 4px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+}
+
+#screens .chip.is-on {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--accent);
 }

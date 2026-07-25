@@ -1,14 +1,20 @@
-// Climate types — the air you are driving through.
+// Climate — the air you are driving through.
 //
-// The third independent axis. Climate owns precipitation, visibility and how
-// much it dims and veils whatever the mood is doing, so a storm reads as a
-// storm at midday or at midnight without either mood knowing about it.
+// A terrain set names the climate it wants, so the mood's "shared" weather
+// (Sad is rainy, Chill is misty, Happy is clear, Hip-Hop is dry but wet-roaded)
+// falls out of its pool rather than being stated twice. Extreme weather is not
+// here — that is the event layer, which overrides on top (see events.js).
+//
+// Falling particles are one parameterised system rather than several: `drift`
+// covers snow and ash, which differ only in colour, fall speed and how much
+// they sway.
 
 export const CLIMATE_COLOR_KEYS = [
   'veilColor', // sky and fog get pulled toward this
   'precipColor',
+  'driftColor',
   'hazeColor',
-  'groundTint', // snow whitens whatever terrain is underneath
+  'groundTint',
 ];
 
 export const CLIMATE_NUMBER_KEYS = [
@@ -17,48 +23,72 @@ export const CLIMATE_NUMBER_KEYS = [
   'lightDamp', // multiplies the mood's key light
   'ambientScale', // multiplies the mood's fill
   'rain',
-  'snow',
+  'drift', // snow, ash — anything that falls slowly
+  'driftSize',
+  'driftFall',
+  'driftSway',
   'haze',
   'hazeSize',
-  'wind', // lateral push on precipitation, and streak slant
-  'roadRoughness',
+  'wind', // lateral push, and how far the rain leans
+  'roadRoughness', // low = wet and reflective
   'groundTintStrength',
-  'lightning', // 0 or 1: whether flashes happen at all
 ];
 
-export const CLIMATE_PROFILES = {
-  // The baseline. Long sight lines, dry road, nothing in the air.
-  clear: {
-    label: 'clear',
-    veilColor: 0xc8dcea,
-    veilStrength: 0.0,
-    fogDensityBase: 0.0055,
-    lightDamp: 1.0,
-    ambientScale: 1.0,
-    precipColor: 0xffffff,
-    rain: 0,
-    snow: 0,
-    hazeColor: 0xfff0c0,
-    haze: 0.05,
-    hazeSize: 1.6,
-    wind: 0.1,
-    roadRoughness: 1.0,
-    groundTint: 0xffffff,
-    groundTintStrength: 0,
-    lightning: 0,
-  },
+const BASE = {
+  veilColor: 0xc8dcea,
+  veilStrength: 0,
+  fogDensityBase: 0.0055,
+  lightDamp: 1,
+  ambientScale: 1,
+  precipColor: 0xffffff,
+  rain: 0,
+  driftColor: 0xffffff,
+  drift: 0,
+  driftSize: 0.55,
+  driftFall: 5.5,
+  driftSway: 1,
+  hazeColor: 0xfff0c0,
+  haze: 0.05,
+  hazeSize: 1.6,
+  wind: 0.1,
+  roadRoughness: 1,
+  groundTint: 0xffffff,
+  groundTintStrength: 0,
+};
 
-  // Visibility collapses. The most claustrophobic of the five.
-  mist: {
+const climate = (values) => ({ ...BASE, ...values });
+
+export const CLIMATE_PROFILES = {
+  clear: climate({ label: 'clear' }),
+
+  // Dry, but the road holds a sheen — the hip-hop look without rain.
+  clearNight: climate({
+    label: 'clear',
+    fogDensityBase: 0.0085,
+    roadRoughness: 0.62,
+    haze: 0.18,
+    hazeSize: 1.2,
+  }),
+
+  wetNight: climate({
+    label: 'wet',
+    fogDensityBase: 0.0094,
+    roadRoughness: 0.3,
+    haze: 0.3,
+    hazeSize: 1.4,
+    hazeColor: 0xff8ad4,
+    groundTint: 0x2a2c3a,
+    groundTintStrength: 0.15,
+  }),
+
+  // Visibility collapses. The most claustrophobic climate.
+  mist: climate({
     label: 'mist',
     veilColor: 0xb9c2c8,
     veilStrength: 0.55,
-    fogDensityBase: 0.026,
+    fogDensityBase: 0.024,
     lightDamp: 0.3,
     ambientScale: 1.25,
-    precipColor: 0xd8e0e6,
-    rain: 0,
-    snow: 0,
     hazeColor: 0xd2dade,
     haze: 0.6,
     hazeSize: 2.6,
@@ -66,11 +96,9 @@ export const CLIMATE_PROFILES = {
     roadRoughness: 0.62,
     groundTint: 0xb9c2c8,
     groundTintStrength: 0.35,
-    lightning: 0,
-  },
+  }),
 
-  // Steady rain, wet road, mid visibility.
-  rain: {
+  rain: climate({
     label: 'rain',
     veilColor: 0x9aa6b0,
     veilStrength: 0.38,
@@ -79,7 +107,6 @@ export const CLIMATE_PROFILES = {
     ambientScale: 1.05,
     precipColor: 0xc3ccd6,
     rain: 0.62,
-    snow: 0,
     hazeColor: 0xaab6c0,
     haze: 0.28,
     hazeSize: 2.2,
@@ -87,41 +114,43 @@ export const CLIMATE_PROFILES = {
     roadRoughness: 0.34,
     groundTint: 0x8a9298,
     groundTintStrength: 0.18,
-    lightning: 0,
-  },
+  }),
 
-  // Hard rain thrown sideways, near-black sky, lightning.
-  storm: {
-    label: 'storm',
-    veilColor: 0x4a525c,
-    veilStrength: 0.6,
-    fogDensityBase: 0.019,
-    lightDamp: 0.18,
-    ambientScale: 0.75,
-    precipColor: 0xb4c0cc,
-    rain: 1.0,
-    snow: 0,
-    hazeColor: 0x7d868f,
-    haze: 0.45,
-    hazeSize: 2.4,
-    wind: 0.95,
-    roadRoughness: 0.26,
-    groundTint: 0x5c646c,
-    groundTintStrength: 0.3,
-    lightning: 1,
-  },
+  // Burned-forest air: grey-orange flakes falling slower than snow, barely
+  // swaying, with the sky pushed warm.
+  ash: climate({
+    label: 'ash',
+    veilColor: 0xa08068,
+    veilStrength: 0.35,
+    fogDensityBase: 0.0155,
+    lightDamp: 0.45,
+    ambientScale: 1.1,
+    driftColor: 0xd8b89a,
+    drift: 0.55,
+    driftSize: 0.42,
+    driftFall: 3.4,
+    driftSway: 0.45,
+    hazeColor: 0xc0a084,
+    haze: 0.4,
+    hazeSize: 2.8,
+    wind: 0.2,
+    roadRoughness: 0.9,
+    groundTint: 0x8a7460,
+    groundTintStrength: 0.22,
+  }),
 
-  // Slow, quiet, and it turns every terrain white.
-  snow: {
+  snow: climate({
     label: 'snow',
     veilColor: 0xdfe6ec,
     veilStrength: 0.5,
     fogDensityBase: 0.016,
     lightDamp: 0.5,
     ambientScale: 1.35,
-    precipColor: 0xffffff,
-    rain: 0,
-    snow: 0.85,
+    driftColor: 0xffffff,
+    drift: 0.85,
+    driftSize: 0.55,
+    driftFall: 5.5,
+    driftSway: 1,
     hazeColor: 0xe8eef2,
     haze: 0.4,
     hazeSize: 2.4,
@@ -129,8 +158,26 @@ export const CLIMATE_PROFILES = {
     roadRoughness: 0.72,
     groundTint: 0xeef3f7,
     groundTintStrength: 0.82,
-    lightning: 0,
-  },
+  }),
+
+  // Only ever reached through the storm event.
+  storm: climate({
+    label: 'storm',
+    veilColor: 0x4a525c,
+    veilStrength: 0.6,
+    fogDensityBase: 0.019,
+    lightDamp: 0.18,
+    ambientScale: 0.75,
+    precipColor: 0xb4c0cc,
+    rain: 1,
+    hazeColor: 0x7d868f,
+    haze: 0.45,
+    hazeSize: 2.4,
+    wind: 0.95,
+    roadRoughness: 0.26,
+    groundTint: 0x5c646c,
+    groundTintStrength: 0.3,
+  }),
 };
 
-export const CLIMATE_ORDER = ['clear', 'rain', 'mist', 'snow', 'storm'];
+export const CLIMATE_NAMES = Object.keys(CLIMATE_PROFILES);
