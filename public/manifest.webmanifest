@@ -1,0 +1,19 @@
+{
+  "name": "Endless Road Trip",
+  "short_name": "Road Trip",
+  "description": "An endless drive, scored by your own music.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0b0e13",
+  "theme_color": "#12171f",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

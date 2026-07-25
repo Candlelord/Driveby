@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#12171f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <title>Endless Road Trip — v0.1</title>
+  </head>
+  <body>
+    <div id="scene"></div>
+
+    <!-- Debug/testing overlay only. Not a real UI yet. -->
+    <div id="hud" aria-hidden="true">
+      <div class="hud-row">
+        <span class="hud-dot" id="hud-dot"></span>
+        <span class="hud-mood" id="hud-mood">—</span>
+      </div>
+      <div class="hud-bar"><div class="hud-bar-fill" id="hud-bar"></div></div>
+      <div class="hud-meta">
+        <span id="hud-song">song 0/0</span>
+        <span id="hud-miles">0.0 mi</span>
+      </div>
+    </div>
+
+    <div id="hint">arrow keys / a-d &middot; drag to steer</div>
+    <button id="tilt-btn" type="button" hidden>enable tilt steering</button>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
