@@ -19,6 +19,8 @@ export const MOOD_COLOR_KEYS = [
   'fogColorBase',
   'sunGlowColor',
   'starColor',
+  'cloudColor',
+  'cloudLitColor',
   // light
   'ambientColor',
   'sunColor',
@@ -41,6 +43,8 @@ export const MOOD_NUMBER_KEYS = [
   'sunGlowStrength',
   'sunGlowPower',
   'starOpacity',
+  'cloudAmount',
+  'cloudSharpness',
   'fogScale', // multiplies the climate's fog density
   // light
   'ambientIntensityBase',
@@ -83,6 +87,10 @@ export const MOOD_PROFILES = {
     sunGlowStrength: 0.16,
     sunGlowPower: 12,
     starColor: 0xffffff,
+    cloudColor: 0x9aa4ae,
+    cloudLitColor: 0xc4ccd4,
+    cloudAmount: 0.95,
+    cloudSharpness: 0.5,
     starOpacity: 0,
 
     ambientColor: 0x8e9aa8,
@@ -134,6 +142,10 @@ export const MOOD_PROFILES = {
     sunGlowStrength: 0.85,
     sunGlowPower: 5,
     starColor: 0xcfd6ff,
+    cloudColor: 0x8a6a86,
+    cloudLitColor: 0xffc79a,
+    cloudAmount: 0.55,
+    cloudSharpness: 0.16,
     starOpacity: 0.18,
 
     ambientColor: 0xa08cb4,
@@ -185,6 +197,10 @@ export const MOOD_PROFILES = {
     sunGlowStrength: 0.35,
     sunGlowPower: 8,
     starColor: 0xffffff,
+    cloudColor: 0xf4fbff,
+    cloudLitColor: 0xffffff,
+    cloudAmount: 0.42,
+    cloudSharpness: 0.1,
     starOpacity: 0,
 
     ambientColor: 0xdcefff,
@@ -237,6 +253,10 @@ export const MOOD_PROFILES = {
     sunGlowStrength: 0.22,
     sunGlowPower: 9,
     starColor: 0xdce4ff,
+    cloudColor: 0x1a1830,
+    cloudLitColor: 0x4a3a68,
+    cloudAmount: 0.5,
+    cloudSharpness: 0.2,
     starOpacity: 0.95,
 
     ambientColor: 0x3c2c5a,

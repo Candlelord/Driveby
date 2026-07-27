@@ -12,7 +12,7 @@ const SCRATCH = new THREE.Vector3();
  * drop the zero-width quads between duplicated columns that give crisp edges.
  */
 export class Ribbon {
-  constructor({ columns, rows, material, skipQuads = [] }) {
+  constructor({ columns, rows, material, skipQuads = [], vertexColors = false }) {
     this.columns = columns;
     this.rows = rows;
 
@@ -27,6 +27,11 @@ export class Ribbon {
     const normals = new Float32Array(vertexCount * 3);
     for (let i = 1; i < normals.length; i += 3) normals[i] = 1;
     geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+
+    if (vertexColors) {
+      this.colors = new Float32Array(vertexCount * 3);
+      geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
+    }
 
     const skip = new Set(skipQuads);
     const indices = [];
@@ -54,22 +59,31 @@ export class Ribbon {
    * @param {PathFrame} frame anchored at the car's distance
    * @param {(row:number) => number} distanceForRow
    * @param {(w:number, s:number, row:number) => number} heightForColumn
+   * @param {(w:number, s:number, height:number) => THREE.Color} [colorForColumn]
    */
-  update(frame, distanceForRow, heightForColumn) {
-    const { columns, positions } = this;
+  update(frame, distanceForRow, heightForColumn, colorForColumn) {
+    const { columns, positions, colors } = this;
     let p = 0;
     for (let r = 0; r < this.rows; r++) {
       const s = distanceForRow(r);
       frame.setRow(s);
       for (let c = 0; c < columns.length; c++) {
         const w = columns[c];
-        frame.column(w, heightForColumn(w, s, r), SCRATCH);
+        const height = heightForColumn(w, s, r);
+        frame.column(w, height, SCRATCH);
+        if (colors && colorForColumn) {
+          const color = colorForColumn(w, s, height);
+          colors[p] = color.r;
+          colors[p + 1] = color.g;
+          colors[p + 2] = color.b;
+        }
         positions[p++] = SCRATCH.x;
         positions[p++] = SCRATCH.y;
         positions[p++] = SCRATCH.z;
       }
     }
     this.geometry.attributes.position.needsUpdate = true;
+    if (colors) this.geometry.attributes.color.needsUpdate = true;
   }
 
   dispose() {

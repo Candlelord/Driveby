@@ -24,12 +24,45 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 bottomColor;
   uniform vec3 sunDirection;
   uniform vec3 sunGlowColor;
+  uniform vec3 cloudColor;
+  uniform vec3 cloudLitColor;
   uniform float sunGlowStrength;
   uniform float sunGlowPower;
   uniform float horizonStrength;
   uniform float horizonWidth;
+  uniform float cloudAmount;
+  uniform float cloudSharpness;
+  uniform float time;
+  uniform float drift;
 
   varying vec3 vDirection;
+
+  // --- value noise + fbm, enough for a cloud deck and cheap enough for mobile
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+
+  float fbm(vec2 p) {
+    float total = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 4; i++) {
+      total += noise(p) * amplitude;
+      p *= 2.03;
+      amplitude *= 0.5;
+    }
+    return total;
+  }
 
   void main() {
     vec3 direction = normalize(vDirection);
@@ -40,6 +73,30 @@ const FRAGMENT_SHADER = /* glsl */ `
     // Glow band centred on the horizon line.
     float band = exp(-abs(height) / max(horizonWidth, 0.001));
     sky = mix(sky, horizonColor, band * horizonStrength);
+
+    // --- cloud deck.
+    //
+    // Projected onto a flat plane above the camera rather than onto the sphere,
+    // so cells stretch toward the horizon the way real cloud cover does instead
+    // of ringing the dome evenly. Two layers at different speeds give depth.
+    if (cloudAmount > 0.001 && height > 0.005) {
+      vec2 plane = direction.xz / max(height, 0.02);
+      vec2 scroll = vec2(drift * 0.03, drift * 0.012 + time * 0.004);
+
+      float base = fbm(plane * 0.55 + scroll);
+      float detail = fbm(plane * 1.7 - scroll * 1.9);
+      float density = base * 0.72 + detail * 0.28;
+
+      // Sharpness turns the same field from haze into distinct cumulus.
+      float cover = smoothstep(0.62 - cloudAmount * 0.36, 0.62 - cloudAmount * 0.36 + cloudSharpness, density);
+      // Fade the deck out at the horizon so it does not form a hard ring.
+      cover *= smoothstep(0.0, 0.22, height);
+
+      // Light the tops from the sun side.
+      float toSunFlat = max(dot(normalize(direction), normalize(sunDirection)), 0.0);
+      vec3 cloud = mix(cloudColor, cloudLitColor, pow(toSunFlat, 2.0) * 0.85 + detail * 0.25);
+      sky = mix(sky, cloud, cover * cloudAmount);
+    }
 
     // Scattering around the sun, strongest when looking straight at it.
     float toSun = max(dot(direction, normalize(sunDirection)), 0.0);
@@ -76,6 +133,12 @@ export class Sky {
         sunGlowPower: { value: 8 },
         horizonStrength: { value: 0 },
         horizonWidth: { value: 0.2 },
+        cloudColor: { value: new THREE.Color() },
+        cloudLitColor: { value: new THREE.Color() },
+        cloudAmount: { value: 0 },
+        cloudSharpness: { value: 0.22 },
+        time: { value: 0 },
+        drift: { value: 0 },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -266,6 +329,14 @@ export class Sky {
     uniforms.sunGlowPower.value = live.sunGlowPower;
     uniforms.horizonStrength.value = live.horizonStrength;
     uniforms.horizonWidth.value = live.horizonWidth;
+    uniforms.cloudColor.value.copy(live.cloudColor);
+    uniforms.cloudLitColor.value.copy(live.cloudLitColor);
+    uniforms.cloudAmount.value = live.cloudAmount;
+    uniforms.cloudSharpness.value = live.cloudSharpness;
+    uniforms.time.value = state.time;
+    // Clouds drift with distance travelled, not just time, so they slide past
+    // as you drive rather than only churning in place.
+    uniforms.drift.value = state.travelled * 0.0006;
 
     // Ride with the camera, counter-rotate with the road so the sky is world-fixed.
     this.group.position.copy(camera.position);
@@ -296,7 +367,10 @@ export class Sky {
     this.discMaterial.opacity = live.discOpacity * 0.5;
     this.disc.visible = this.core.visible;
 
-    const stars = live.starOpacityFinal ?? live.starOpacity;
+    // A slow collective shimmer. Per-star twinkle would need a custom shader;
+    // this reads as atmosphere for one multiply.
+    const twinkle = 0.92 + 0.08 * Math.sin(state.time * 2.3);
+    const stars = (live.starOpacityFinal ?? live.starOpacity) * twinkle;
     this.starMaterial.color.copy(live.starColor);
     this.starMaterial.opacity = stars;
     this.stars.visible = stars > 0.01;

@@ -358,6 +358,11 @@ for (const [axis, id] of [[e.mood,'hiphop'], [e.terrain,'city'], [e.climate,'sno
 }
 ```
 
+## Graphics
+
+See [GRAPHICS.md](GRAPHICS.md) for the full 50-item improvement list and what
+is built versus specified.
+
 ## Performance
 
 Draw calls scale with what a set actually uses: unused prop shapes and features

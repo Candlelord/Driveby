@@ -25,6 +25,7 @@ import { Weather } from './world/weather.js';
 import { Features } from './world/features.js';
 import { Landmarks } from './world/landmarks.js';
 import { EventVisuals } from './world/eventVisuals.js';
+import { Atmosphere } from './world/atmosphere.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -66,6 +67,7 @@ const props = new Props(scene, tier);
 const features = new Features(scene, tier);
 const landmarks = new Landmarks(scene, CONFIG);
 const eventVisuals = new EventVisuals(scene, tier);
+const atmosphere = new Atmosphere(scene, tier);
 const traffic = new Traffic(scene, tier);
 const car = new Car(scene);
 const weather = new Weather(scene, tier);
@@ -170,6 +172,7 @@ function tick() {
   car.update(state, frame);
   weather.update(state);
   eventVisuals.update(state, camera);
+  atmosphere.update(state);
 
   ui.update(environment, state, landmarks.label);
   post.update(state);
@@ -293,6 +296,7 @@ if (import.meta.env.DEV) {
     features,
     landmarks,
     eventVisuals,
+    atmosphere,
     sfx,
     session,
     MOOD_PROFILES,

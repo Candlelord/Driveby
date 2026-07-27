@@ -8,6 +8,17 @@ import { TERRAIN_SETS } from '../terrainSets.js';
 // Distance at which ~15% of an object still shows through clear-weather fog.
 const REFERENCE_REACH = 180;
 
+// Types that face the road rather than scattering, and types that move in wind.
+const ALIGNED = new Set([
+  'pole', 'guardrail', 'sign', 'mileMarker', 'billboard', 'fence', 'wall',
+  'barrier', 'cone', 'mailbox', 'busShelter', 'hedge', 'pierPost',
+]);
+const SWAYS = new Set([
+  'grass', 'reeds', 'lavender', 'flowers', 'shrub', 'glowPlant', 'birch',
+  'round', 'palm', 'hedge',
+]);
+
+const TINT = new THREE.Color();
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -43,6 +54,10 @@ export class Props {
       const meshes = def.parts.map((part) => {
         const mesh = instanced(part.geometry(), materials[part.material], this.slots);
         mesh.visible = false;
+        // Per-instance colour: identical props in a row is the single biggest
+        // tell that a scene is instanced. A small deterministic jitter around
+        // the set's colour breaks it up for one attribute.
+        mesh.userData.tint = part.material;
         scene.add(mesh);
         return mesh;
       });
@@ -82,6 +97,7 @@ export class Props {
     // reads as equally populated whatever weather it is found in — measured
     // against a clear-day reach rather than guessed at per set.
     const fogBoost = clamp(REFERENCE_REACH * live.fogDensity, 1, 3.6);
+    const farEdge = CONFIG.segmentsAhead * CONFIG.segmentLength;
 
     for (const type of Object.values(this.types)) type.used = 0;
 
@@ -113,28 +129,51 @@ export class Props {
       frame.point(s, offset, terrainHeight(offset, s, live), POSITION);
 
       DUMMY.position.copy(POSITION);
-      // Poles and guardrails face the road; everything else is scattered.
-      const aligned = typeName === 'pole' || typeName === 'guardrail';
+      // Poles, rails and furniture face the road; everything else is scattered.
+      const aligned = ALIGNED.has(typeName);
       DUMMY.rotation.set(0, aligned ? (side > 0 ? 0 : Math.PI) : hash(slot * 9.3) * Math.PI * 2, 0);
 
-      // Wind bends things over during a tornado.
-      DUMMY.rotation.z = live.propLean * 0.35 * (aligned ? 0.3 : 1);
+      // Wind. A tornado bends everything hard; ordinary weather just breathes
+      // through the vegetation, each prop on its own phase so it is not a
+      // synchronised wave.
+      const sway = SWAYS.has(typeName)
+        ? Math.sin(state.time * (1.1 + hash(slot * 4.1) * 0.9) + slot) * live.wind * 0.055
+        : 0;
+      DUMMY.rotation.z = live.propLean * 0.35 * (aligned ? 0.3 : 1) + sway;
 
-      const size = (0.75 + hash(slot * 7.1) * 0.8) * set.propScale;
+      // Fade in with distance rather than popping at the spawn boundary: the
+      // furthest slots scale up over their last stretch of approach.
+      const ahead = s - state.travelled;
+      const fade = clamp((farEdge - ahead) / 55, 0, 1);
+      if (fade <= 0.01) continue;
+
+      // Big structures take a fixed damper as well as the set's scale, so a
+      // water tower thirty units away does not end up the size of a hill.
+      const size = (0.75 + hash(slot * 7.1) * 0.8) * set.propScale * (def.scale ?? 1) * fade;
       if (def.stretch) {
         const [fMin, fMax] = def.stretch.footprint;
         const [hMin, hMax] = def.stretch.height;
         DUMMY.scale.set(
-          fMin + hash(slot * 11.7) * (fMax - fMin),
-          hMin + hash(slot * 13.1) * (hMax - hMin),
-          fMin + hash(slot * 17.3) * (fMax - fMin)
+          (fMin + hash(slot * 11.7) * (fMax - fMin)) * fade,
+          (hMin + hash(slot * 13.1) * (hMax - hMin)) * fade,
+          (fMin + hash(slot * 17.3) * (fMax - fMin)) * fade
         );
       } else {
-        DUMMY.scale.setScalar(size);
+        // Slight non-uniform scale, so even one shape does not read as cloned.
+        DUMMY.scale.set(size * (0.94 + hash(slot * 19.1) * 0.12), size, size * (0.94 + hash(slot * 23.3) * 0.12));
       }
       DUMMY.updateMatrix();
 
-      for (const mesh of type.meshes) mesh.setMatrixAt(type.used, DUMMY.matrix);
+      const jitter = 0.82 + hash(slot * 29.7) * 0.36;
+      for (const mesh of type.meshes) {
+        mesh.setMatrixAt(type.used, DUMMY.matrix);
+        // Emissive props keep their exact colour — a flickering neon sign that
+        // is a different orange every instance reads as a bug, not variety.
+        if (mesh.userData.tint !== 'e') {
+          TINT.setScalar(jitter);
+          mesh.setColorAt(type.used, TINT);
+        }
+      }
       type.used++;
     }
 
@@ -145,6 +184,7 @@ export class Props {
         if (!visible) continue;
         mesh.count = type.used;
         mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       }
     }
   }

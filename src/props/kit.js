@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { EXTRA_KIT } from './extras.js';
 
 /**
  * The roadside prop kit.
@@ -231,7 +232,7 @@ function barnRoof() {
  * `jitter` how much that varies, so palms can hug a beach while skyline towers
  * stay back.
  */
-export const PROP_KIT = {
+const CORE_KIT = {
   round: {
     parts: [
       { geometry: () => broadleaf(1), material: 'a' },
@@ -410,5 +411,8 @@ export const PROP_KIT = {
     jitter: 22,
   },
 };
+
+/** Trees and landforms in kit.js, everything smaller in extras.js. */
+export const PROP_KIT = { ...CORE_KIT, ...EXTRA_KIT };
 
 export const PROP_NAMES = Object.keys(PROP_KIT);

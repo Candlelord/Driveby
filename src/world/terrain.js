@@ -61,10 +61,11 @@ export class Terrain {
     this.rows = Math.ceil((CONFIG.segmentsBehind + CONFIG.segmentsAhead) / this.rowStride) + 1;
 
     this.material = new THREE.MeshStandardMaterial({
-      color: 0x525f63,
+      color: 0xffffff,
       roughness: 1,
       metalness: 0,
       flatShading: true,
+      vertexColors: true,
     });
 
     const columns = buildColumns(tier.terrainColumns);
@@ -73,6 +74,7 @@ export class Terrain {
       rows: this.rows,
       material: this.material,
       skipQuads: [columns.length / 2 - 1], // the road covers this span
+      vertexColors: true,
     });
 
     scene.add(this.ribbon.mesh);
@@ -89,11 +91,39 @@ export class Terrain {
     this.ribbon.update(
       frame,
       (r) => (firstIndex + r) * step,
-      (w, s) => terrainHeight(w, s, this.live)
+      (w, s) => terrainHeight(w, s, this.live),
+      (w, s, height) => this._shade(w, s, height, state.live)
     );
-
-    this.material.color.copy(state.live.groundColor);
   }
+}
+
+/**
+ * Per-vertex colour.
+ *
+ * Flat ground in one colour is the flattest-looking thing in the scene, so the
+ * ribbon is tinted by height: hollows sit toward the set's accent, ridges catch
+ * the sky's light, and anything genuinely high picks up a pale cap. All three
+ * ride on the same blended profile, so it works in any weather.
+ */
+Terrain.prototype._shade = function shade(w, s, height, live) {
+  const relative = height / Math.max(4, live.hillHeight * 2.4);
+  const t = clamp(relative * 0.5 + 0.5, 0, 1);
+
+  SHADE.copy(live.groundAccent).lerp(live.groundColor, smoothstep01(t * 1.25));
+  // High ground catches light and, in cold weather, snow.
+  const cap = clamp((relative - 0.45) * 1.7, 0, 1);
+  if (cap > 0) SHADE.lerp(live.groundTint, cap * (0.25 + live.groundTintStrength * 0.6));
+  return SHADE;
+};
+
+const SHADE = new THREE.Color();
+
+function clamp(x, min, max) {
+  return x < min ? min : x > max ? max : x;
+}
+function smoothstep01(x) {
+  const t = clamp(x, 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 /**

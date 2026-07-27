@@ -94,7 +94,7 @@ export const TERRAIN_SETS = {
   floodedPlain: set({
     label: 'flooded plain',
     climate: 'rain',
-    propMix: [['deadTree', 0.85], ['pole', 0.15]],
+    propMix: [['deadTree', 0.5], ['pole', 0.14], ['reeds', 0.24], ['pierPost', 0.08], ['buoy', 0.04]],
     groundColorBase: 0x5c6668,
     groundAccent: 0x4a5456,
     propA: 0x3a3f40,
@@ -117,7 +117,7 @@ export const TERRAIN_SETS = {
   cliffCoast: set({
     label: 'cliff coast',
     climate: 'rain',
-    propMix: [['boulder', 0.55], ['deadTree', 0.25], ['guardrail', 0.2]],
+    propMix: [['boulder', 0.36], ['deadTree', 0.16], ['guardrail', 0.2], ['shrub', 0.16], ['buoy', 0.06], ['sign', 0.06]],
     groundColorBase: 0x4e565c,
     groundAccent: 0x3d444a,
     propA: 0x525a60,
@@ -141,7 +141,7 @@ export const TERRAIN_SETS = {
   burnedForest: set({
     label: 'burned forest',
     climate: 'ash',
-    propMix: [['deadTree', 0.92], ['rock', 0.08]],
+    propMix: [['deadTree', 0.72], ['rock', 0.08], ['shrub', 0.12], ['sign', 0.04], ['barrier', 0.04]],
     groundColorBase: 0x4a423c,
     groundAccent: 0x3a3430,
     propA: 0x2a2522,
@@ -162,7 +162,7 @@ export const TERRAIN_SETS = {
   ruralCrossroads: set({
     label: 'rural crossroads',
     climate: 'rain',
-    propMix: [['pole', 0.45], ['silo', 0.2], ['barn', 0.2], ['deadTree', 0.15]],
+    propMix: [['pole', 0.26], ['silo', 0.1], ['barn', 0.1], ['deadTree', 0.1], ['fence', 0.16], ['mailbox', 0.08], ['hayBale', 0.1], ['scarecrow', 0.05], ['sign', 0.05]],
     groundColorBase: 0x59604f,
     groundAccent: 0x474d3f,
     propA: 0x5a5148,
@@ -182,7 +182,7 @@ export const TERRAIN_SETS = {
   pineForest: set({
     label: 'pine forest',
     climate: 'mist',
-    propMix: [['pine', 0.88], ['rock', 0.12]],
+    propMix: [['pine', 0.66], ['rock', 0.08], ['shrub', 0.14], ['fence', 0.06], ['picnicTable', 0.03], ['sign', 0.03]],
     groundColorBase: 0x3f5a3c,
     groundAccent: 0x33492f,
     propA: 0x2c4a33,
@@ -203,7 +203,7 @@ export const TERRAIN_SETS = {
   mistyLake: set({
     label: 'misty lake',
     climate: 'mist',
-    propMix: [['pine', 0.6], ['rock', 0.25], ['grass', 0.15]],
+    propMix: [['pine', 0.4], ['rock', 0.16], ['grass', 0.1], ['reeds', 0.16], ['pierPost', 0.1], ['tent', 0.04], ['campfire', 0.04]],
     groundColorBase: 0x4c5a55,
     groundAccent: 0x3f4d49,
     propA: 0x35503f,
@@ -224,7 +224,7 @@ export const TERRAIN_SETS = {
   redwoodCorridor: set({
     label: 'redwood corridor',
     climate: 'mist',
-    propMix: [['redwood', 0.8], ['pine', 0.2]],
+    propMix: [['redwood', 0.62], ['pine', 0.16], ['shrub', 0.14], ['sign', 0.04], ['picnicTable', 0.04]],
     groundColorBase: 0x4a4636,
     groundAccent: 0x3b382c,
     propA: 0x2f4433,
@@ -243,7 +243,7 @@ export const TERRAIN_SETS = {
   terracedValley: set({
     label: 'terraced valley',
     climate: 'clear',
-    propMix: [['farmhouse', 0.3], ['round', 0.45], ['grass', 0.25]],
+    propMix: [['farmhouse', 0.18], ['round', 0.3], ['grass', 0.16], ['hedge', 0.16], ['fence', 0.1], ['cattle', 0.1]],
     groundColorBase: 0x6b6a4a,
     groundAccent: 0x585840,
     propA: 0x6f6a52,
@@ -267,7 +267,7 @@ export const TERRAIN_SETS = {
   wheatFields: set({
     label: 'wheat fields',
     climate: 'clear',
-    propMix: [['grass', 0.6], ['windmill', 0.15], ['silo', 0.25]],
+    propMix: [['grass', 0.38], ['windmill', 0.08], ['silo', 0.12], ['hayBale', 0.18], ['fence', 0.1], ['scarecrow', 0.06], ['waterTower', 0.04], ['windTurbine', 0.04]],
     groundColorBase: 0xd8b45c,
     groundAccent: 0xc09c48,
     propA: 0xe8c86a,
@@ -284,7 +284,7 @@ export const TERRAIN_SETS = {
   palmHighway: set({
     label: 'palm highway',
     climate: 'clear',
-    propMix: [['palm', 0.8], ['grass', 0.2]],
+    propMix: [['palm', 0.56], ['grass', 0.12], ['shrub', 0.1], ['busShelter', 0.06], ['sign', 0.06], ['pierPost', 0.06], ['buoy', 0.04]],
     groundColorBase: 0xe0d2a8,
     groundAccent: 0xcabb90,
     propA: 0x4e9a52,
@@ -303,7 +303,7 @@ export const TERRAIN_SETS = {
   desertBloom: set({
     label: 'desert bloom',
     climate: 'clear',
-    propMix: [['cactus', 0.35], ['rock', 0.3], ['flowers', 0.35]],
+    propMix: [['cactus', 0.26], ['rock', 0.22], ['flowers', 0.24], ['shrub', 0.12], ['sign', 0.08], ['billboard', 0.04], ['barrel', 0.04]],
     groundColorBase: 0xc4794a,
     groundAccent: 0xa8623a,
     propA: 0x7a9a52,
@@ -324,7 +324,7 @@ export const TERRAIN_SETS = {
   orchardHills: set({
     label: 'orchard hills',
     climate: 'clear',
-    propMix: [['round', 0.75], ['farmhouse', 0.12], ['grass', 0.13]],
+    propMix: [['round', 0.5], ['farmhouse', 0.08], ['grass', 0.08], ['hedge', 0.14], ['fence', 0.1], ['cattle', 0.06], ['hayBale', 0.04]],
     groundColorBase: 0x8cb055,
     groundAccent: 0x749443,
     propA: 0x5a9a42,
@@ -343,7 +343,7 @@ export const TERRAIN_SETS = {
   skylineDrive: set({
     label: 'skyline drive',
     climate: 'wetNight',
-    propMix: [['building', 0.65], ['tower', 0.35]],
+    propMix: [['building', 0.44], ['tower', 0.24], ['billboard', 0.1], ['antenna', 0.08], ['dish', 0.06], ['sign', 0.04], ['barrier', 0.04]],
     groundColorBase: 0x1d1f2a,
     groundAccent: 0x16171f,
     propA: 0x20213a,
@@ -362,7 +362,7 @@ export const TERRAIN_SETS = {
   neonUnderpass: set({
     label: 'neon underpass',
     climate: 'wetNight',
-    propMix: [['warehouse', 0.6], ['building', 0.4]],
+    propMix: [['warehouse', 0.38], ['building', 0.24], ['barrier', 0.12], ['cone', 0.1], ['crates', 0.08], ['billboard', 0.08]],
     groundColorBase: 0x1a1a24,
     groundAccent: 0x131319,
     propA: 0x1e1f2c,
@@ -380,7 +380,7 @@ export const TERRAIN_SETS = {
   rooftopSkybridge: set({
     label: 'rooftop skybridge',
     climate: 'wetNight',
-    propMix: [['warehouse', 0.5], ['building', 0.3], ['glowPlant', 0.2]],
+    propMix: [['warehouse', 0.34], ['building', 0.2], ['glowPlant', 0.14], ['dish', 0.12], ['antenna', 0.1], ['crates', 0.1]],
     groundColorBase: 0x14161f,
     groundAccent: 0x0f1016,
     propA: 0x1b1d29,
@@ -399,7 +399,7 @@ export const TERRAIN_SETS = {
   warehouseDistrict: set({
     label: 'warehouse district',
     climate: 'wetNight',
-    propMix: [['warehouse', 0.62], ['pole', 0.38]],
+    propMix: [['warehouse', 0.4], ['pole', 0.2], ['crates', 0.14], ['barrel', 0.12], ['dish', 0.08], ['billboard', 0.06]],
     groundColorBase: 0x232630,
     groundAccent: 0x1a1c24,
     propA: 0x2a2c36,
@@ -422,7 +422,7 @@ export const TERRAIN_SETS = {
   tunnelRun: set({
     label: 'tunnel run',
     climate: 'clearNight',
-    propMix: [['warehouse', 0.5], ['pole', 0.5]],
+    propMix: [['warehouse', 0.32], ['pole', 0.3], ['barrier', 0.16], ['cone', 0.12], ['sign', 0.1]],
     groundColorBase: 0x3a3c44,
     groundAccent: 0x2c2e35,
     propA: 0x33353f,
@@ -444,7 +444,7 @@ export const TERRAIN_SETS = {
   riverCrossing: set({
     label: 'river crossing',
     climate: 'clear',
-    propMix: [['guardrail', 0.75], ['grass', 0.25]],
+    propMix: [['guardrail', 0.46], ['grass', 0.16], ['reeds', 0.16], ['pierPost', 0.12], ['sign', 0.06], ['buoy', 0.04]],
     groundColorBase: 0x5e6d55,
     groundAccent: 0x4c5945,
     propA: 0x6a7360,
@@ -467,7 +467,7 @@ export const TERRAIN_SETS = {
   saltFlats: set({
     label: 'salt flats',
     climate: 'clear',
-    propMix: [['pole', 0.6], ['rock', 0.4]],
+    propMix: [['pole', 0.36], ['rock', 0.24], ['mileMarker', 0.2], ['sign', 0.12], ['billboard', 0.08]],
     groundColorBase: 0xd8d6cc,
     groundAccent: 0xc2c0b6,
     propA: 0xb0aea4,
@@ -487,7 +487,7 @@ export const TERRAIN_SETS = {
   autumnBirches: set({
     label: 'autumn birches',
     climate: 'leaffall',
-    propMix: [['birch', 0.82], ['grass', 0.18]],
+    propMix: [['birch', 0.56], ['grass', 0.12], ['shrub', 0.14], ['fence', 0.1], ['picnicTable', 0.04], ['mailbox', 0.04]],
     groundColorBase: 0x7c6a44,
     groundAccent: 0x655538,
     propA: 0xd8963a,
@@ -506,7 +506,7 @@ export const TERRAIN_SETS = {
   highlandMoor: set({
     label: 'highland moor',
     climate: 'mist',
-    propMix: [['wall', 0.4], ['grass', 0.45], ['rock', 0.15]],
+    propMix: [['wall', 0.3], ['grass', 0.28], ['rock', 0.12], ['shrub', 0.14], ['cattle', 0.1], ['mileMarker', 0.06]],
     groundColorBase: 0x6a6250,
     groundAccent: 0x554e40,
     propA: 0x7a6a72, // heather
@@ -527,7 +527,7 @@ export const TERRAIN_SETS = {
   lavenderFields: set({
     label: 'lavender fields',
     climate: 'clear',
-    propMix: [['lavender', 0.78], ['farmhouse', 0.1], ['round', 0.12]],
+    propMix: [['lavender', 0.54], ['farmhouse', 0.08], ['round', 0.1], ['hedge', 0.12], ['fence', 0.1], ['hayBale', 0.06]],
     groundColorBase: 0x9a8f6a,
     groundAccent: 0x847a58,
     propA: 0x8f6fc4,
@@ -547,7 +547,7 @@ export const TERRAIN_SETS = {
   refineryCoast: set({
     label: 'refinery coast',
     climate: 'wetNight',
-    propMix: [['tank', 0.4], ['flare', 0.2], ['warehouse', 0.4]],
+    propMix: [['tank', 0.28], ['flare', 0.12], ['warehouse', 0.24], ['barrel', 0.14], ['antenna', 0.08], ['crates', 0.08], ['pierPost', 0.06]],
     groundColorBase: 0x252831,
     groundAccent: 0x1b1e25,
     propA: 0x343843,
@@ -570,7 +570,7 @@ export const TERRAIN_SETS = {
   canyonRoad: set({
     label: 'canyon road',
     climate: 'clear',
-    propMix: [['rock', 0.6], ['boulder', 0.3], ['cactus', 0.1]],
+    propMix: [['rock', 0.42], ['boulder', 0.22], ['cactus', 0.1], ['shrub', 0.12], ['guardrail', 0.08], ['sign', 0.06]],
     groundColorBase: 0xa8552f,
     groundAccent: 0x8a4426,
     propA: 0x9a5030,
@@ -593,7 +593,7 @@ export const TERRAIN_SETS = {
   iceRoad: set({
     label: 'ice road',
     climate: 'frozen',
-    propMix: [['pole', 0.4], ['deadTree', 0.35], ['rock', 0.25]],
+    propMix: [['pole', 0.28], ['deadTree', 0.24], ['rock', 0.18], ['mileMarker', 0.14], ['sign', 0.1], ['barrier', 0.06]],
     groundColorBase: 0xc8d4dc,
     groundAccent: 0xaebac4,
     propA: 0x8fa0ac,
@@ -612,7 +612,7 @@ export const TERRAIN_SETS = {
   blossomAvenue: set({
     label: 'blossom avenue',
     climate: 'petals',
-    propMix: [['round', 0.85], ['lavender', 0.15]],
+    propMix: [['round', 0.6], ['lavender', 0.1], ['hedge', 0.12], ['shrub', 0.1], ['picnicTable', 0.04], ['mailbox', 0.04]],
     groundColorBase: 0x8aa862,
     groundAccent: 0x74904f,
     propA: 0xf5b4c8, // the canopy is the whole point
@@ -634,7 +634,7 @@ export const TERRAIN_SETS = {
   mountainPass: set({
     label: 'mountain pass',
     climate: 'mist',
-    propMix: [['guardrail', 0.4], ['rock', 0.35], ['pine', 0.25]],
+    propMix: [['guardrail', 0.3], ['rock', 0.26], ['pine', 0.2], ['shrub', 0.12], ['sign', 0.06], ['barrier', 0.06]],
     groundColorBase: 0x6a6c68,
     groundAccent: 0x525550,
     propA: 0x35503f,
@@ -658,7 +658,7 @@ export const TERRAIN_SETS = {
   bioluminescentValley: set({
     label: 'bioluminescent valley',
     climate: 'clearNight',
-    propMix: [['glowPlant', 0.55], ['pine', 0.25], ['rock', 0.2]],
+    propMix: [['glowPlant', 0.42], ['pine', 0.18], ['rock', 0.14], ['reeds', 0.14], ['shrub', 0.08], ['campfire', 0.04]],
     groundColorBase: 0x141c22,
     groundAccent: 0x0e151a,
     propA: 0x1b3038,

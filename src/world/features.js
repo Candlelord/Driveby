@@ -136,7 +136,9 @@ export class Features {
 
     this.water = new THREE.Group();
     for (const side of [-1, 1]) {
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(420, 900, 1, 1), this.waterMaterial);
+      // Segmented now, so the surface can actually be displaced into waves.
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(420, 900, 14, 30), this.waterMaterial);
+      plane.geometry.userData.rest = Float32Array.from(plane.geometry.attributes.position.array);
       plane.rotation.x = -Math.PI / 2;
       plane.position.set(side * 235, 0, -320);
       plane.userData.side = side;
@@ -280,7 +282,33 @@ export class Features {
       // waterSide of 0 means water on both sides (a flooded plain).
       plane.visible = Math.abs(side) < 0.35 || Math.sign(side) === plane.userData.side;
       plane.position.y = live.waterLevel;
+      if (plane.visible) this._ripple(plane, state);
     }
+  }
+
+  /**
+   * Displace the water grid with two crossed sine trains. Cheap, and against a
+   * flat-shaded scene a genuinely moving surface does more than any amount of
+   * shader trickery on a static plane.
+   */
+  _ripple(plane, state) {
+    const geometry = plane.geometry;
+    const rest = geometry.userData.rest;
+    const position = geometry.attributes.position;
+    const t = state.time;
+    // Wind whips the surface up; still air leaves it near-flat.
+    const amp = 0.35 + state.live.wind * 1.5;
+
+    for (let i = 0; i < position.count; i++) {
+      const x = rest[i * 3];
+      const y = rest[i * 3 + 1];
+      position.setZ(
+        i,
+        (Math.sin(x * 0.035 + t * 1.1) + Math.sin(y * 0.051 - t * 0.8) * 0.7) * amp
+      );
+    }
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
   }
 
   _updateShafts(state) {
