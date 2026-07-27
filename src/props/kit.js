@@ -21,6 +21,17 @@ function at(geometry, x, y, z) {
   return geometry.translate(x, y, z);
 }
 
+/**
+ * Merge parts, normalising indexing first.
+ *
+ * Box and cylinder geometries are indexed; polyhedra (icosahedron,
+ * dodecahedron) are not. mergeGeometries refuses a mixture, and a prop that
+ * combines the two — a stone wall with rubble on top — hits that immediately.
+ */
+function merge(parts) {
+  return mergeGeometries(parts.map((part) => (part.index ? part.toNonIndexed() : part)));
+}
+
 /** A thin limb from one point to another — the basis of bare trees. */
 function limb(x0, y0, z0, x1, y1, z1, radius) {
   const dx = x1 - x0;
@@ -48,7 +59,7 @@ function deadTreeGeometry() {
   for (const [x0, y0, z0, x1, y1, z1] of branches) {
     parts.push(limb(x0, y0, z0, x1, y1, z1, 0.09));
   }
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function palmFronds() {
@@ -60,7 +71,7 @@ function palmFronds() {
     frond.rotateY(angle);
     parts.push(frond.translate(0, 5.4, 0));
   }
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function windmillBlades() {
@@ -70,7 +81,7 @@ function windmillBlades() {
     blade.rotateZ((i / 4) * Math.PI * 2);
     parts.push(blade);
   }
-  return mergeGeometries(parts).translate(0, 6.2, -0.5);
+  return merge(parts).translate(0, 6.2, -0.5);
 }
 
 function guardrailGeometry() {
@@ -79,7 +90,7 @@ function guardrailGeometry() {
     box(0.14, 1.0, 0.14).translate(1.6, 0.5, 0),
     box(3.6, 0.24, 0.1).translate(0, 0.85, 0),
   ];
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function grassTuft() {
@@ -90,7 +101,7 @@ function grassTuft() {
     blade.rotateY(i * 1.3);
     parts.push(blade.translate((i - 2) * 0.12, 0, (i % 2) * 0.1));
   }
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function flowerCluster() {
@@ -105,7 +116,7 @@ function flowerCluster() {
       )
     );
   }
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function glowPlant() {
@@ -115,7 +126,7 @@ function glowPlant() {
     blade.rotateZ((i - 1.5) * 0.22);
     parts.push(blade.translate(0, 0, (i - 1.5) * 0.09));
   }
-  return mergeGeometries(parts);
+  return merge(parts);
 }
 
 function cactusGeometry() {
@@ -127,7 +138,37 @@ function cactusGeometry() {
     parts.push(cyl(0.26, 0.26, 1.5, 6).rotateZ(Math.PI / 2).translate(x * 0.55, y, 0));
     parts.push(cyl(0.26, 0.3, height, 6).translate(x, y + height / 2, 0));
   }
-  return mergeGeometries(parts);
+  return merge(parts);
+}
+
+function lavenderClump() {
+  const parts = [];
+  for (let i = 0; i < 4; i++) {
+    const stalk = box(0.5, 0.7, 0.22).translate((i - 1.5) * 0.34, 0.35, 0);
+    parts.push(stalk);
+  }
+  return merge(parts);
+}
+
+/** A dry stone wall: a low run with an uneven cap, so it is not a plain box. */
+function stoneWall() {
+  const parts = [box(5.2, 0.72, 0.5).translate(0, 0.36, 0)];
+  for (let i = 0; i < 6; i++) {
+    parts.push(
+      new THREE.DodecahedronGeometry(0.24, 0).translate((i - 2.5) * 0.85, 0.76, (i % 2) * 0.06)
+    );
+  }
+  return merge(parts);
+}
+
+/** Refinery flare stack: a lattice tower with a burning tip. */
+function flareTower() {
+  const parts = [cyl(0.3, 0.5, 16, 6).translate(0, 8, 0)];
+  for (let i = 0; i < 3; i++) {
+    parts.push(box(1.4, 0.14, 0.14).translate(0, 3 + i * 4, 0));
+    parts.push(box(0.14, 0.14, 1.4).translate(0, 3 + i * 4, 0));
+  }
+  return merge(parts);
 }
 
 function barnRoof() {
@@ -177,6 +218,40 @@ export const PROP_KIT = {
     ],
     spread: 12,
     jitter: 14,
+  },
+  birch: {
+    parts: [
+      { geometry: () => at(new THREE.IcosahedronGeometry(1.25, 0), 0, 5.2, 0), material: 'a' },
+      { geometry: () => at(cyl(0.13, 0.19, 6.4, 5), 0, 3.2, 0), material: 'b' },
+    ],
+    spread: 12,
+    jitter: 22,
+  },
+  lavender: {
+    parts: [{ geometry: lavenderClump, material: 'a' }],
+    spread: 11,
+    jitter: 30,
+  },
+  wall: {
+    parts: [{ geometry: stoneWall, material: 'b' }],
+    spread: 12.5,
+    jitter: 3,
+  },
+  flare: {
+    parts: [
+      { geometry: flareTower, material: 'b' },
+      { geometry: () => at(new THREE.IcosahedronGeometry(0.9, 0), 0, 16.6, 0), material: 'e' },
+    ],
+    spread: 34,
+    jitter: 44,
+  },
+  tank: {
+    parts: [
+      { geometry: () => at(cyl(3.2, 3.2, 4.6, 12), 0, 2.3, 0), material: 'a' },
+      { geometry: () => at(cyl(3.35, 3.35, 0.35, 12), 0, 4.7, 0), material: 'b' },
+    ],
+    spread: 26,
+    jitter: 30,
   },
   cactus: {
     parts: [{ geometry: cactusGeometry, material: 'a' }],

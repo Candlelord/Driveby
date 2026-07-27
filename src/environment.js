@@ -4,6 +4,7 @@ import { MOOD_PROFILES, MOOD_COLOR_KEYS, MOOD_NUMBER_KEYS, BLOCK_ORDER, MOCK_BLO
 import { TERRAIN_SETS, TERRAIN_POOLS, SET_COLOR_KEYS, SET_NUMBER_KEYS } from './terrainSets.js';
 import { CLIMATE_PROFILES, CLIMATE_COLOR_KEYS, CLIMATE_NUMBER_KEYS } from './climates.js';
 import { EventDirector } from './events.js';
+import { tunnelAt } from './world/features.js';
 import { createLiveProfile, blendProfiles, blendLiveToward, smoothstep, clamp01 } from './blend.js';
 
 const MOOD_KEYS = { colors: MOOD_COLOR_KEYS, numbers: MOOD_NUMBER_KEYS };
@@ -164,6 +165,7 @@ export class Environment {
   }
 
   update(dt, travelled) {
+    this.travelled = travelled;
     this._updateMood(dt, travelled);
 
     this.mood.step(dt, CONFIG.crossfadeSeconds);
@@ -323,18 +325,53 @@ export class Environment {
 
     live.fogDensity = live.fogDensityBase * fogScale;
 
+    // --- tunnels.
+    //
+    // Driven by the same coverage function the geometry is built from, so the
+    // lamps come up exactly as the mouth swallows the car. This has to run
+    // *before* the light section, because the sky values it suppresses are read
+    // there to produce the final ones.
+    //
+    // Stars and the sun disc draw with depthTest off so they sit at infinity —
+    // which means they punch straight through a tunnel ceiling. Under a roof
+    // there is no sky, so take it away rather than rely on occlusion.
+    const cov = (live.tunnelCoverage = tunnelAt(this.travelled ?? 0, live.tunnel));
+    if (cov > 0) {
+      live.lampIntensity = Math.max(live.lampIntensity, cov);
+      live.starOpacity *= 1 - cov;
+      live.sunGlowStrength *= 1 - cov;
+      live.discOpacity *= 1 - cov;
+    }
+
     // --- light
     const flash = this.flash;
     const nightDim = 1 - clearNight * 0.72;
     live.ambientIntensity = live.ambientIntensityBase * live.ambientScale * nightDim + flash * 9;
     live.sunIntensity = live.sunIntensityBase * lightDamp * nightDim;
+
+    if (cov > 0) {
+      // A tunnel is *lit*, just not by the sky — so the fill is replaced by the
+      // tunnel's own lamps rather than merely turned down. Dimming alone left
+      // the walls rendering black against a black background.
+      live.sunIntensity *= 1 - cov * 0.95;
+      live.ambientIntensity += (3.4 - live.ambientIntensity) * cov;
+      live.ambientColor.lerp(live.propE, cov * 0.55);
+    }
+
     live.exposureFinal = live.exposure * (1 + flash * 0.35);
     live.starOpacityFinal = clamp01(live.starOpacity + (ov.starBoost ?? 0) * 0.9);
     live.bloomStrengthFinal = live.bloomStrength + (ov.bloomBoost ?? 0);
 
     // --- car and world flags read straight off the overrides
     live.headlights = clamp01(
-      Math.max(live.headlightBias, live.lampIntensity, veil * 0.8, live.rain, live.drift * 0.7)
+      Math.max(
+        live.headlightBias,
+        live.lampIntensity,
+        veil * 0.8,
+        live.rain,
+        live.drift * 0.7,
+        live.tunnelCoverage
+      )
     );
     live.beamStrength = clamp01(live.headlights * (0.25 + live.fogDensity * 26));
 

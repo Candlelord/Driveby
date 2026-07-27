@@ -160,6 +160,68 @@ export const CLIMATE_PROFILES = {
     groundTintStrength: 0.82,
   }),
 
+  // Autumn: gold leaves, drifting far more sideways than they fall.
+  leaffall: climate({
+    label: 'leaf fall',
+    veilColor: 0xd0a468,
+    veilStrength: 0.2,
+    fogDensityBase: 0.0105,
+    lightDamp: 0.75,
+    ambientScale: 1.05,
+    driftColor: 0xd8913c,
+    drift: 0.6,
+    driftSize: 0.5,
+    driftFall: 4.2,
+    driftSway: 2.4,
+    hazeColor: 0xd8b884,
+    haze: 0.16,
+    hazeSize: 1.8,
+    wind: 0.45,
+    roadRoughness: 0.86,
+    groundTint: 0xb08a52,
+    groundTintStrength: 0.15,
+  }),
+
+  // Blossom: the same system, slowed right down and paled out.
+  petals: climate({
+    label: 'petals',
+    veilColor: 0xf0d0dc,
+    veilStrength: 0.22,
+    fogDensityBase: 0.0082,
+    lightDamp: 0.9,
+    ambientScale: 1.1,
+    driftColor: 0xffd8e4,
+    drift: 0.7,
+    driftSize: 0.4,
+    driftFall: 2.4,
+    driftSway: 3.0,
+    hazeColor: 0xffe0ea,
+    haze: 0.2,
+    hazeSize: 2.0,
+    wind: 0.3,
+    roadRoughness: 0.95,
+    groundTint: 0xf0d4dc,
+    groundTintStrength: 0.12,
+  }),
+
+  // Hard cold and no precipitation. What sells it is the road: black ice is
+  // the most reflective surface in the game.
+  frozen: climate({
+    label: 'frozen',
+    veilColor: 0xc4d4e0,
+    veilStrength: 0.3,
+    fogDensityBase: 0.011,
+    lightDamp: 0.65,
+    ambientScale: 1.25,
+    hazeColor: 0xd8e6f0,
+    haze: 0.22,
+    hazeSize: 2.0,
+    wind: 0.35,
+    roadRoughness: 0.16,
+    groundTint: 0xdfeaf2,
+    groundTintStrength: 0.7,
+  }),
+
   // Only ever reached through the storm event.
   storm: climate({
     label: 'storm',

@@ -63,27 +63,34 @@ over any place in any mood, without either of them knowing sandstorms exist.
 
 ### Terrain sets
 
-18 of them, pooled per mood. A block start draws one at random from the
+28 of them, pooled per mood. A block start draws one at random from the
 incoming mood's pool, so a Sad block might be a flooded plain or a burned forest
-or a cliff coast, and you don't know which until you're in it.
+or an ice road, and you don't know which until you're in it.
 
 | Mood | Pool |
 |---|---|
-| Sad | flooded plain, cliff coast, burned forest, rural crossroads, *mountain pass* |
-| Chill | pine forest, misty lake, redwood corridor, terraced valley, *mountain pass*, *bioluminescent valley* |
-| Happy | wheat fields, palm highway, desert bloom, orchard hills |
-| Hip-Hop | skyline drive, neon underpass, rooftop skybridge, warehouse district, *bioluminescent valley* |
+| Sad (8) | flooded plain, cliff coast, burned forest, rural crossroads, highland moor, ice road, *mountain pass*, *salt flats* |
+| Chill (10) | pine forest, misty lake, redwood corridor, terraced valley, autumn birches, *river crossing*, *blossom avenue*, *highland moor*, *mountain pass*, *bioluminescent valley* |
+| Happy (9) | wheat fields, palm highway, desert bloom, orchard hills, lavender fields, canyon road, *river crossing*, *blossom avenue*, *salt flats* |
+| Hip-Hop (7) | skyline drive, neon underpass, rooftop skybridge, warehouse district, refinery coast, tunnel run, *bioluminescent valley* |
 
-*The two bonus sets sit in two pools each and read differently depending on
+*Italicised sets sit in more than one pool and read differently depending on
 which mood's light is falling on them.*
 
 Landform comes from four controls in `terrain.js`: `hillHeight` (amplitude),
 `hillScale` (how big the forms are), `hillSharpness` (bends the noise — above 1
 for jagged peaks, below 1 for wind-rounded dunes), and `causeway` / `cliffSide`
 for raised banks and cliff walls. Features — water planes, god-rays, distant
-skylines, overpass arches, ground fog — are each one number on the profile, so a
-set turns one on simply by having a non-zero value and it fades with everything
-else.
+skylines, overpass arches, tunnels, ground fog — are each one number on the
+profile, so a set turns one on simply by having a non-zero value and it fades
+with everything else.
+
+**Tunnels** are the one feature with reach outside the renderer. `tunnelAt()`
+returns how enclosed the road is at a given distance, and three systems read the
+same function: the geometry places segments where it is non-zero, the lighting
+swaps the sky's fill for the tunnel's own lamps, and the audio drops the wind
+while swelling the road noise and closing the bus filter. Tunnels run in
+stretches, not continuously — the interesting part is the mouth.
 
 Scenery does **not** cross-fade between sets. Each slot along the road belongs
 to whichever set was current when that stretch first came into existence, which
@@ -93,9 +100,14 @@ colour and landform *do* crossfade, over ~5s.
 
 ### Climates
 
-clear, clear night, wet night, mist, rain, ash, snow, storm. A terrain set names
-the one it wants, so each mood's characteristic weather falls out of its pool
-rather than being stated twice.
+clear, clear night, wet night, mist, rain, ash, leaf fall, petals, frozen, snow,
+storm. A terrain set names the one it wants, so each mood's characteristic
+weather falls out of its pool rather than being stated twice.
+
+Falling particles are one parameterised system, not several: snow, ash, autumn
+leaves and blossom petals differ only in colour, fall speed and how much they
+sway. `frozen` has no precipitation at all — what sells it is black ice, the
+most reflective road surface in the game.
 
 ### Events
 

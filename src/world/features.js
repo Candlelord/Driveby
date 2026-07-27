@@ -7,9 +7,30 @@ const POSITION = new THREE.Vector3();
 const DUMMY = new THREE.Object3D();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 
+// Tunnels run in stretches rather than continuously — the interesting part is
+// the mouth and the return to daylight, not the middle.
+const TUNNEL_PERIOD = 460;
+const TUNNEL_LENGTH = 250;
+const TUNNEL_SPACING = 8; // segment depth; segments butt together into a tube
+
 /**
- * The per-set extras: water, god-rays, a distant skyline, overpass arches and
- * pooled ground fog. Each is driven by a single number on the blended profile,
+ * How enclosed the road is at a given distance, 0..1. Shared with the lighting
+ * so the lamps come up as the mouth swallows the car, rather than at some
+ * unrelated moment.
+ */
+export function tunnelAt(distance, amount) {
+  if (amount <= 0.01) return 0;
+  const phase = ((distance % TUNNEL_PERIOD) + TUNNEL_PERIOD) % TUNNEL_PERIOD;
+  if (phase > TUNNEL_LENGTH) return 0;
+  // Ramp at both mouths so the transition is not a step.
+  const inFade = Math.min(1, phase / 26);
+  const outFade = Math.min(1, (TUNNEL_LENGTH - phase) / 26);
+  return Math.min(inFade, outFade) * amount;
+}
+
+/**
+ * The per-set extras: water, god-rays, a distant skyline, overpass arches,
+ * tunnels and pooled ground fog. Each is driven by a single number on the blended profile,
  * so a set turns one on simply by having a non-zero value and it fades in and
  * out with everything else.
  */
@@ -19,7 +40,83 @@ export class Features {
     this._buildShafts(scene);
     this._buildSkyline(scene, tier);
     this._buildOverpasses(scene);
+    this._buildTunnel(scene);
     this._buildGroundFog(scene);
+  }
+
+  /**
+   * A tube built from butted-together segments rather than a single swept mesh,
+   * so it follows the road's curve for free and needs no geometry rebuild.
+   */
+  _buildTunnel(scene) {
+    this.tunnelCount = 40;
+
+    this.tunnelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x40444e,
+      roughness: 1,
+      metalness: 0,
+      flatShading: true,
+      // FrontSide, not BackSide: the shell is three solid slabs, so the faces
+      // you see from the road are their outward-facing ones. BackSide culled
+      // exactly the surfaces the tunnel is made of.
+      side: THREE.FrontSide,
+    });
+    this.tunnelLampMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
+
+    const shell = mergeBoxes([
+      // ceiling, then the two walls
+      [24, 1.2, TUNNEL_SPACING, 0, 9.6, 0],
+      [1.4, 10, TUNNEL_SPACING, -11.6, 5, 0],
+      [1.4, 10, TUNNEL_SPACING, 11.6, 5, 0],
+    ]);
+    this.tunnel = instanced(shell, this.tunnelMaterial, this.tunnelCount);
+
+    this.tunnelLamps = instanced(
+      new THREE.BoxGeometry(3.4, 0.22, 0.5).translate(0, 8.7, 0),
+      this.tunnelLampMaterial,
+      this.tunnelCount
+    );
+    this.tunnel.visible = false;
+    this.tunnelLamps.visible = false;
+    scene.add(this.tunnel, this.tunnelLamps);
+  }
+
+  _updateTunnel(state, frame) {
+    const live = state.live;
+    const amount = live.tunnel;
+    const visible = amount > 0.02;
+    this.tunnel.visible = visible;
+    this.tunnelLamps.visible = visible;
+    if (!visible) return;
+
+    this.tunnelLampMaterial.color.copy(live.propE).multiplyScalar(Math.max(0.6, live.propEmissive));
+
+    const first = Math.floor((state.travelled - 40) / TUNNEL_SPACING);
+    let used = 0;
+    let lamps = 0;
+
+    for (let i = 0; i < this.tunnelCount; i++) {
+      const s = (first + i) * TUNNEL_SPACING;
+      // Only build where the road is actually enclosed.
+      if (tunnelAt(s, 1) <= 0) continue;
+
+      frame.point(s, 0, 0, POSITION);
+      DUMMY.position.copy(POSITION);
+      DUMMY.rotation.set(0, 0, 0);
+      DUMMY.scale.setScalar(1);
+      DUMMY.updateMatrix();
+      this.tunnel.setMatrixAt(used++, DUMMY.matrix);
+
+      // A lamp every third segment, so they strobe past rather than blur.
+      if ((first + i) % 3 === 0) this.tunnelLamps.setMatrixAt(lamps++, DUMMY.matrix);
+    }
+
+    this.tunnel.count = used;
+    this.tunnelLamps.count = lamps;
+    this.tunnel.visible = used > 0;
+    this.tunnelLamps.visible = lamps > 0;
+    this.tunnel.instanceMatrix.needsUpdate = true;
+    this.tunnelLamps.instanceMatrix.needsUpdate = true;
   }
 
   /**
@@ -165,6 +262,7 @@ export class Features {
     this._updateShafts(state);
     this._updateSkyline(state, frame);
     this._updateOverpasses(state, frame);
+    this._updateTunnel(state, frame);
     this._updateGroundFog(state, live);
   }
 
@@ -275,6 +373,21 @@ export class Features {
       patch.position.x = Math.sin(state.time * 0.09 + seed) * 14;
     }
   }
+}
+
+/** Merge a list of [w, h, d, x, y, z] boxes into one geometry. */
+function mergeBoxes(specs) {
+  const positions = [];
+  const normals = [];
+  for (const [w, h, d, x, y, z] of specs) {
+    const part = new THREE.BoxGeometry(w, h, d).translate(x, y, z).toNonIndexed();
+    positions.push(...part.attributes.position.array);
+    normals.push(...part.attributes.normal.array);
+  }
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  return merged;
 }
 
 function mergeArch(deck, legs) {

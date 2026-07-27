@@ -163,11 +163,13 @@ export class Sfx {
     this.engineGain.gain.setTargetAtTime(0.1 + speed * 0.13, t, 0.2);
 
     // --- wind and road, both speed-driven
-    this.wind.gain.gain.setTargetAtTime(Math.max(0, speed - 0.15) * 0.14, t, 0.25);
+    const tunnelDuck = 1 - (live.tunnelCoverage ?? 0) * 0.7;
+    this.wind.gain.gain.setTargetAtTime(Math.max(0, speed - 0.15) * 0.14 * tunnelDuck, t, 0.25);
     this.windFilter.frequency.setTargetAtTime(520 + speed * 700, t, 0.25);
 
     const roughness = live.roughness ?? 1;
-    this.road.gain.gain.setTargetAtTime(speed * 0.16 * roughness, t, 0.2);
+    const boxed = 1 + (live.tunnelCoverage ?? 0) * 0.8;
+    this.road.gain.gain.setTargetAtTime(speed * 0.16 * roughness * boxed, t, 0.2);
     this.roadFilter.frequency.setTargetAtTime(420 + speed * 900 * roughness, t, 0.2);
 
     // --- weather layers straight off the climate
@@ -183,7 +185,10 @@ export class Sfx {
       1,
       live.rain * 0.5 + live.drift * 0.4 + Math.max(0, live.wind - 0.3) * 0.7 + live.fogDensity * 18
     );
-    const cutoff = 18000 - severity * 15800;
+    // A tunnel does the opposite of weather: it strips the wind but boxes the
+    // sound in, so the cutoff drops and the road layer swells.
+    const tunnel = live.tunnelCoverage ?? 0;
+    const cutoff = (18000 - severity * 15800) * (1 - tunnel * 0.72);
     this.lowpass.frequency.setTargetAtTime(Math.max(500, cutoff), t, 0.6);
 
     // --- rumble strip when the car leans on the verge
