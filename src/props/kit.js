@@ -62,12 +62,62 @@ function deadTreeGeometry() {
   return merge(parts);
 }
 
+/**
+ * A conifer as stacked, shrinking tiers rather than one cone.
+ *
+ * The single-cone tree is the thing that most gives a low-poly scene away —
+ * three tiers cost eight more triangles and read as an actual species.
+ */
+function conifer() {
+  const parts = [];
+  for (const [radius, height, y] of [
+    [1.5, 2.1, 1.6],
+    [1.16, 1.95, 2.65],
+    [0.82, 1.8, 3.75],
+  ]) {
+    parts.push(new THREE.ConeGeometry(radius, height, 7).translate(0, y, 0));
+  }
+  return merge(parts);
+}
+
+/**
+ * A broadleaf canopy as overlapping lobes at different heights. One sphere is
+ * a lollipop; four offset lobes have a silhouette.
+ */
+function broadleaf(scale = 1) {
+  const lobes = [
+    [1.32, 0, 2.95, 0],
+    [0.94, 0.98, 2.42, 0.36],
+    [0.86, -0.82, 2.58, -0.48],
+    [0.72, 0.18, 3.62, -0.55],
+    [0.66, -0.5, 3.3, 0.62],
+  ];
+  return merge(
+    lobes.map(([r, x, y, z]) =>
+      new THREE.IcosahedronGeometry(r * scale, 0).translate(x * scale, y * scale, z * scale)
+    )
+  );
+}
+
+/** A trunk that forks, rather than a plain post under a ball of leaves. */
+function forkedTrunk(height = 1.9, radius = 0.19) {
+  const parts = [cyl(radius * 0.8, radius * 1.25, height, 6).translate(0, height / 2, 0)];
+  parts.push(limb(0, height * 0.72, 0, 0.42, height * 1.5, 0.16, 0.1));
+  parts.push(limb(0, height * 0.8, 0, -0.36, height * 1.55, -0.2, 0.09));
+  return merge(parts);
+}
+
 function palmFronds() {
   const parts = [];
   for (let i = 0; i < 7; i++) {
     const angle = (i / 7) * Math.PI * 2;
-    const frond = box(0.28, 0.07, 2.3).translate(0, 0, -1.15);
-    frond.rotateX(-0.45);
+    // Two segments per frond, the outer one angled down, so they arch over.
+    const inner = box(0.3, 0.08, 1.3).translate(0, 0, -0.65);
+    inner.rotateX(-0.3);
+    const outer = box(0.22, 0.07, 1.3).translate(0, 0, -0.65);
+    outer.rotateX(0.42);
+    outer.translate(0, -0.38, -1.24);
+    const frond = merge([inner, outer]);
     frond.rotateY(angle);
     parts.push(frond.translate(0, 5.4, 0));
   }
@@ -184,19 +234,19 @@ function barnRoof() {
 export const PROP_KIT = {
   round: {
     parts: [
-      { geometry: () => at(new THREE.IcosahedronGeometry(1.55, 0), 0, 2.7, 0), material: 'a' },
-      { geometry: () => at(cyl(0.17, 0.2, 1.35), 0, 0.68, 0), material: 'b' },
+      { geometry: () => broadleaf(1), material: 'a' },
+      { geometry: () => forkedTrunk(1.9, 0.19), material: 'b' },
     ],
-    spread: 16,
-    jitter: 24,
+    spread: 15,
+    jitter: 26,
   },
   pine: {
     parts: [
-      { geometry: () => at(new THREE.ConeGeometry(1.15, 3.8, 6), 0, 2.9, 0), material: 'a' },
-      { geometry: () => at(cyl(0.17, 0.2, 1.35), 0, 0.68, 0), material: 'b' },
+      { geometry: conifer, material: 'a' },
+      { geometry: () => at(cyl(0.15, 0.24, 1.7, 6), 0, 0.85, 0), material: 'b' },
     ],
-    spread: 13,
-    jitter: 22,
+    spread: 12,
+    jitter: 24,
   },
   deadTree: {
     parts: [{ geometry: deadTreeGeometry, material: 'b' }],
@@ -221,11 +271,12 @@ export const PROP_KIT = {
   },
   birch: {
     parts: [
-      { geometry: () => at(new THREE.IcosahedronGeometry(1.25, 0), 0, 5.2, 0), material: 'a' },
-      { geometry: () => at(cyl(0.13, 0.19, 6.4, 5), 0, 3.2, 0), material: 'b' },
+      // Slimmer and higher than the broadleaf — birches carry their crown up top.
+      { geometry: () => broadleaf(0.78).translate(0, 3.1, 0), material: 'a' },
+      { geometry: () => at(cyl(0.11, 0.17, 6.8, 5), 0, 3.4, 0), material: 'b' },
     ],
     spread: 12,
-    jitter: 22,
+    jitter: 24,
   },
   lavender: {
     parts: [{ geometry: lavenderClump, material: 'a' }],

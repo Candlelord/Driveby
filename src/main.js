@@ -23,6 +23,7 @@ import { Car } from './world/car.js';
 import { Traffic } from './world/traffic.js';
 import { Weather } from './world/weather.js';
 import { Features } from './world/features.js';
+import { Landmarks } from './world/landmarks.js';
 import { EventVisuals } from './world/eventVisuals.js';
 
 const tier = tierFromQuery() ?? detectTier();
@@ -63,6 +64,7 @@ const terrain = new Terrain(scene, tier);
 const road = new Road(scene);
 const props = new Props(scene, tier);
 const features = new Features(scene, tier);
+const landmarks = new Landmarks(scene, CONFIG);
 const eventVisuals = new EventVisuals(scene, tier);
 const traffic = new Traffic(scene, tier);
 const car = new Car(scene);
@@ -162,13 +164,14 @@ function tick() {
   terrain.update(state, frame);
   road.update(state, frame);
   features.update(state, frame);
+  landmarks.update(state, frame);
   props.update(state, frame, environment);
   traffic.update(state, frame);
   car.update(state, frame);
   weather.update(state);
   eventVisuals.update(state, camera);
 
-  ui.update(environment, state);
+  ui.update(environment, state, landmarks.label);
   post.update(state);
   sfx.update(state, state.live, session.player);
   session.update();
@@ -266,6 +269,8 @@ window.addEventListener('keydown', (event) => {
     sfx.setMuted(!sfx.muted);
   } else if (event.key === 'r' || event.key === 'R') {
     session.showReview();
+  } else if (event.key === 'l' || event.key === 'L') {
+    landmarks.force((landmarks.activeIndex + 1) % 6, state.travelled);
   }
 });
 
@@ -284,7 +289,9 @@ if (import.meta.env.DEV) {
     tier,
     CONFIG,
     physics,
+    props,
     features,
+    landmarks,
     eventVisuals,
     sfx,
     session,

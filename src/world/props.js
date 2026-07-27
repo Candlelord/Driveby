@@ -5,6 +5,9 @@ import { terrainHeight } from './terrain.js';
 import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 
+// Distance at which ~15% of an object still shows through clear-weather fog.
+const REFERENCE_REACH = 180;
+
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -74,6 +77,12 @@ export class Props {
     const behind = segmentsBehind * segmentLength;
     const firstSlot = Math.floor((state.travelled - behind) / propSpacing);
 
+    // Thick air hides most of the scatter: a misty forest can place forty trees
+    // and show three. Scale density by how far you can actually see, so a set
+    // reads as equally populated whatever weather it is found in — measured
+    // against a clear-day reach rather than guessed at per set.
+    const fogBoost = clamp(REFERENCE_REACH * live.fogDensity, 1, 3.6);
+
     for (const type of Object.values(this.types)) type.used = 0;
 
     for (let i = 0; i < this.slots; i++) {
@@ -85,7 +94,12 @@ export class Props {
 
       // Density is the set's, not the blended value — a slot belongs wholly to
       // one set, so it should be as sparse or dense as that set wants.
-      if (hash(slot * 5.9) >= set.propDensity) continue;
+      //
+      // Clumping matters as much as the average: a uniform scatter at high
+      // density reads as a hedge, so two slow waves push it into thickets and
+      // clearings while leaving the mean roughly where the set asked for it.
+      const clump = 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(s * 0.0082) * Math.cos(s * 0.0031 + 1.3));
+      if (hash(slot * 5.9) >= set.propDensity * clump * fogBoost) continue;
 
       const typeName = pickType(set.propMix, hash(slot * 2.3));
       const type = this.types[typeName];
@@ -203,4 +217,8 @@ function flat(color) {
 
 function clamp01(x) {
   return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
+function clamp(x, min, max) {
+  return x < min ? min : x > max ? max : x;
 }

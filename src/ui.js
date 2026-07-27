@@ -21,7 +21,7 @@ export class Ui {
     this._lastMiles = '';
     this._lastTerrain = '';
     this._lastClimate = '';
-    this._lastEvent = null;
+    this._lastBanner = null;
     this._lastFlash = -1;
     this._hintHidden = false;
   }
@@ -33,7 +33,7 @@ export class Ui {
     this._lastEvent = undefined;
   }
 
-  update(environment, state) {
+  update(environment, state, landmark) {
     const labels = environment.labels;
 
     if (labels.mood !== this._lastLabel) {
@@ -49,10 +49,13 @@ export class Ui {
       this._lastClimate = labels.climate;
     }
 
-    if (labels.event !== this._lastEvent) {
-      this._lastEvent = labels.event;
-      this.event.textContent = labels.event ?? '';
-      this.event.classList.toggle('is-live', Boolean(labels.event));
+    // One banner line, shared. A landmark takes precedence over an event —
+    // if you are driving past the Great Wall in a storm, the wall is the news.
+    const banner = landmark ?? labels.event;
+    if (banner !== this._lastBanner) {
+      this._lastBanner = banner;
+      this.event.textContent = banner ?? '';
+      this.event.classList.toggle('is-live', Boolean(banner));
     }
 
     // Drive the lightning wash straight off the flash value.

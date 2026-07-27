@@ -46,8 +46,14 @@ export const CONFIG = {
   eventCooldown: 190, // average gap between attempts
   eventChance: 0.55, // chance an attempt actually starts something
 
+  // --- landmarks ---
+  landmarkFirstAt: 1800, // world units before the first one
+  landmarkSpacing: 5200, // average gap between them
+  landmarkApproach: 520, // built and visible this far out
+  landmarkExit: 220, // retired once this far behind
+
   // --- scenery ---
-  propSpacing: 11,
+  propSpacing: 4.5, // candidate slot every 4.5 units, alternating sides
   lampSpacing: 34,
 
   // --- rendering ---

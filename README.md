@@ -44,6 +44,7 @@ still run against a stand-in library.
 | `0` | Stop the running event |
 | `M` | Mute audio |
 | `R` | Reopen the mood review screen |
+| `L` | Cycle to the next landmark |
 
 The car drives itself forward at a constant speed. Steering only moves it across
 the road, and it clamps at the lane edges — there is nothing to crash into.
@@ -92,11 +93,32 @@ swaps the sky's fill for the tunnel's own lamps, and the audio drops the wind
 while swelling the road noise and closing the bus filter. Tunnels run in
 stretches, not continuously — the interesting part is the mouth.
 
+Scatter density is tied to visibility, not set by hand: thick air hides most of
+the props, so a misty forest can place forty trees and show three. Effective
+density scales with fog reach, measured against a clear-day baseline, so a set
+reads as equally populated whatever weather it is found in. Two slow waves clump
+the scatter into thickets and clearings so a high average does not read as a
+hedge.
+
 Scenery does **not** cross-fade between sets. Each slot along the road belongs
 to whichever set was current when that stretch first came into existence, which
 is ~330 units ahead — well outside the fog. The swap is never seen happening,
 and it is far cheaper than blending every shape against every other. Ground
 colour and landform *do* crossfade, over ~5s.
+
+### Landmarks
+
+Six one-off structures that appear rarely — roughly every 5,000 units — and are
+deliberately *not* tied to a terrain set or a mood. Coming over a rise in a
+rainstorm and finding the Great Wall there is the point.
+
+**the Great Wall · the standing stones · the stone heads · the pyramids · the
+torii gates · the great bridge**
+
+Each is built once as merged geometry and parked at a scheduled distance,
+placed through the same path transform as everything else so it sits correctly
+on a curve. Two sample the ground they stand on; two straddle the road and you
+drive through them. The HUD names one when it comes into sight.
 
 ### Climates
 
