@@ -199,7 +199,7 @@ function tick() {
   terrain.update(state, frame);
   road.update(state, frame);
   features.update(state, frame);
-  landmarks.update(state, frame);
+  landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
   traffic.update(state, frame);
   car.update(state, frame);

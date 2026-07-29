@@ -57,6 +57,11 @@ export const CONFIG = {
   landmarkFirstAt: 1800, // world units before the first one
   landmarkSpacing: 5200, // average gap between them
   landmarkApproach: 520, // built and visible this far out
+  // How far ahead of a landmark its country takes over. At the base cruise
+  // this is close to a minute of driving, and the scenery swap lands about
+  // forty seconds out — long enough that the place registers as somewhere you
+  // are travelling through rather than as dressing around the monument.
+  landmarkRegionLead: 1750,
   landmarkExit: 220, // retired once this far behind
 
   // --- scenery ---

@@ -64,6 +64,7 @@ function greatWall() {
 
   return {
     label: 'the Great Wall',
+    region: 'terracedValley',
     parts: [
       { geometry: merge(wall), material: 'stone' },
       { geometry: merge(merlons), material: 'stoneDark' },
@@ -108,6 +109,7 @@ function stonehenge() {
 
   return {
     label: 'the standing stones',
+    region: 'highlandMoor',
     parts: [
       { geometry: merge(uprights), material: 'stone' },
       { geometry: merge(lintels), material: 'stoneDark' },
@@ -146,6 +148,7 @@ function moai() {
 
   return {
     label: 'the stone heads',
+    region: 'cliffCoast',
     parts: [
       { geometry: merge(bodies), material: 'stoneDark' },
       { geometry: merge(heads), material: 'stone' },
@@ -176,6 +179,7 @@ function pyramids() {
 
   return {
     label: 'the pyramids',
+    region: 'desertBloom',
     parts: [
       { geometry: merge(steps), material: 'stone' },
       { geometry: merge(caps), material: 'stoneDark' },
@@ -203,6 +207,7 @@ function torii() {
 
   return {
     label: 'the torii gates',
+    region: 'blossomAvenue',
     parts: [
       { geometry: merge(posts), material: 'accent' },
       { geometry: merge(beams), material: 'accentDark' },
@@ -243,6 +248,7 @@ function suspensionBridge() {
 
   return {
     label: 'the great bridge',
+    region: 'riverCrossing',
     parts: [
       { geometry: merge(towers), material: 'accent' },
       { geometry: merge(cables), material: 'accentDark' },
@@ -285,6 +291,7 @@ export class Landmarks {
     this.activeIndex = -1;
     this.nextAt = config.landmarkFirstAt;
     this.label = null;
+    this.regionHeld = false;
   }
 
   /** Debug/manual: put a specific landmark just up the road. */
@@ -294,18 +301,19 @@ export class Landmarks {
     this._hideAll();
     this.activeIndex = ((index % this.groups.length) + this.groups.length) % this.groups.length;
     this.nextAt = travelled + 260;
+    this.regionHeld = false;
   }
 
   _hideAll() {
     for (const group of this.groups) group.visible = false;
   }
 
-  update(state, frame) {
+  update(state, frame, environment) {
     const travelled = state.travelled;
 
-    // Schedule the next one well before it is due, so it is already built when
-    // it comes into view.
-    if (this.activeIndex < 0 && travelled > this.nextAt - this.config.landmarkApproach) {
+    // Pick the next one much earlier than it is needed, because the country it
+    // belongs to has to arrive first — see the region hold below.
+    if (this.activeIndex < 0 && travelled > this.nextAt - this.config.landmarkRegionLead) {
       this._hideAll();
       this.activeIndex = Math.floor(Math.random() * this.groups.length);
     }
@@ -319,17 +327,30 @@ export class Landmarks {
     const spec = group.userData;
     const gap = this.nextAt - travelled;
 
+    // Hold this landmark's country for the whole approach, so you drive
+    // through Egypt for the best part of a minute before the pyramids are on
+    // the horizon rather than meeting them in whatever field came up next.
+    if (!this.regionHeld && spec.region && environment) {
+      environment.enterRegion(spec.region, travelled);
+      this.regionHeld = true;
+    }
+
     // Retire it once it is comfortably behind, and book the next.
     if (gap < -this.config.landmarkExit) {
       group.visible = false;
       this.activeIndex = -1;
       this.label = null;
+      if (this.regionHeld) {
+        environment?.leaveRegion(travelled);
+        this.regionHeld = false;
+      }
       this.nextAt =
         travelled + this.config.landmarkSpacing * (0.65 + Math.random() * 0.7);
       return;
     }
 
-    group.visible = true;
+    // The structure itself only builds once it is close enough to be seen.
+    group.visible = gap < this.config.landmarkApproach;
     // Announce it only once it is genuinely in sight.
     this.label = gap < this.config.landmarkApproach * 0.6 && gap > -40 ? spec.label : null;
 

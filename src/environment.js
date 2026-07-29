@@ -106,6 +106,9 @@ export class Environment {
     // set that was current when the boundary was laid down.
     this.setSegments = [{ from: -Infinity, setId: startSet }];
 
+    // Set while a landmark's country is being held; see enterRegion().
+    this.regionSet = null;
+
     this.events = new EventDirector(CONFIG);
     this.flash = 0;
     this.nextStrikeIn = 2;
@@ -224,17 +227,46 @@ export class Environment {
     const mood = this.order[this.blockIndex];
     this.mood.advanceTo(mood);
 
+    // A landmark region holds the country until the landmark is behind you.
+    // The mood still turns over with the music — only the place is pinned.
+    if (this.regionSet) return;
+    this._applySet(this._pickSet(mood), travelled);
+  }
+
+  _pickSet(mood) {
     const pool = TERRAIN_POOLS[mood];
     const options = pool.filter((id) => id !== this.set.toId);
-    const nextSet = options.length
-      ? options[Math.floor(Math.random() * options.length)]
-      : pool[0];
+    return options.length ? options[Math.floor(Math.random() * options.length)] : pool[0];
+  }
 
-    if (this.set.advanceTo(nextSet)) {
-      this.climate.advanceTo(TERRAIN_SETS[nextSet].climate);
-      // New scenery starts beyond the fog, so the swap itself is never seen.
-      this.setSegments.push({ from: travelled + CONFIG.propSwapDistance, setId: nextSet });
-    }
+  _applySet(setId, travelled) {
+    if (!this.set.advanceTo(setId)) return;
+    this.climate.advanceTo(TERRAIN_SETS[setId].climate);
+    // New scenery starts beyond the fog, so the swap itself is never seen.
+    this.setSegments.push({ from: travelled + CONFIG.propSwapDistance, setId });
+  }
+
+  /**
+   * Hold a particular place for a while, because a landmark is coming.
+   *
+   * A pyramid alone in whatever field the playlist happened to produce is a
+   * prop. The country arriving first — the sand, the light, the scrub, for a
+   * good half-minute before anything is on the horizon — is what makes it a
+   * place you are driving *to*. So the landmark schedule reaches back up the
+   * road and pins the terrain set well ahead of itself, and the scenery swap
+   * still happens outside the fog, so the handover is never seen.
+   */
+  enterRegion(setId, travelled) {
+    if (this.regionSet === setId) return;
+    this.regionSet = setId;
+    this._applySet(setId, travelled);
+  }
+
+  /** Release the hold and let the playlist choose a place again. */
+  leaveRegion(travelled) {
+    if (!this.regionSet) return;
+    this.regionSet = null;
+    this._applySet(this._pickSet(this.mood.toId), travelled);
   }
 
   _pruneSegments(travelled) {
