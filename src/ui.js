@@ -44,9 +44,12 @@ export class Ui {
       this.terrain.textContent = labels.set;
       this._lastTerrain = labels.set;
     }
-    if (labels.climate !== this._lastClimate) {
-      this.climate.textContent = labels.climate;
-      this._lastClimate = labels.climate;
+    // Terrain, weather and time of year share one line — the season belongs
+    // next to the climate, since between them they say what it is like outside.
+    const conditions = `${labels.climate} \u00b7 ${labels.season}`;
+    if (conditions !== this._lastClimate) {
+      this.climate.textContent = conditions;
+      this._lastClimate = conditions;
     }
 
     // One banner line, shared. A landmark takes precedence over an event —

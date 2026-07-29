@@ -4,6 +4,7 @@ import { MOOD_PROFILES, MOOD_COLOR_KEYS, MOOD_NUMBER_KEYS, BLOCK_ORDER, MOCK_BLO
 import { TERRAIN_SETS, TERRAIN_POOLS, SET_COLOR_KEYS, SET_NUMBER_KEYS } from './terrainSets.js';
 import { CLIMATE_PROFILES, CLIMATE_COLOR_KEYS, CLIMATE_NUMBER_KEYS } from './climates.js';
 import { EventDirector } from './events.js';
+import { SEASON_KEYS, seasonAt, writeSeason } from './seasons.js';
 import { tunnelAt } from './world/features.js';
 import { createLiveProfile, blendProfiles, blendLiveToward, smoothstep, clamp01 } from './blend.js';
 
@@ -13,6 +14,11 @@ const CLIMATE_KEYS = { colors: CLIMATE_COLOR_KEYS, numbers: CLIMATE_NUMBER_KEYS 
 
 // Written by compose() from two or more layers.
 const DERIVED_COLORS = ['skyTop', 'skyHorizon', 'skyBottom', 'fogColor', 'groundColor'];
+
+// Where the season pulls the light. Autumn and high summer warm it; winter
+// takes it toward an overcast blue.
+const SEASON_WARM = new THREE.Color(0xffc98a);
+const SEASON_COOL = new THREE.Color(0x9fc4ff);
 
 // Aurora forces a clear night whatever the mood was doing.
 const CLEAR_NIGHT = {
@@ -105,7 +111,7 @@ export class Environment {
     this.nextStrikeIn = 2;
     this._strikesActive = false;
 
-    this.live = createLiveProfile([MOOD_KEYS, SET_KEYS, CLIMATE_KEYS], DERIVED_COLORS);
+    this.live = createLiveProfile([MOOD_KEYS, SET_KEYS, CLIMATE_KEYS, SEASON_KEYS], DERIVED_COLORS);
     this.overrides = {};
     this.update(0, 0);
   }
@@ -153,6 +159,7 @@ export class Environment {
       mood: this.mood.label,
       set: this.set.label,
       climate: this.climate.label,
+      season: seasonAt(this.travelled, CONFIG.seasonLength).label,
       event: this.events.label,
     };
   }
@@ -180,6 +187,9 @@ export class Environment {
     this.mood.writeInto(this.live);
     this.set.writeInto(this.live);
     this.climate.writeInto(this.live);
+    // The year turns with distance rather than with the playlist: a season is
+    // where you are, not what is playing.
+    writeSeason(this.live, travelled, CONFIG.seasonLength);
 
     this.overrides = this.events.update(dt, this.mood.toId);
     this._updateLightning(dt);
@@ -261,6 +271,46 @@ export class Environment {
     // --- climate rather than replacing one of its endpoints.
     if (ov.climate && ov.climateBlend > 0) {
       blendLiveToward(live, CLIMATE_PROFILES[ov.climate], clamp01(ov.climateBlend), CLIMATE_KEYS);
+    }
+
+    // --- season
+    //
+    // Applied to the *set's* colours before anything else reads them, so the
+    // season is something the place is wearing rather than a wash laid over
+    // the finished frame. Foliage takes the strongest pull because that is
+    // where a viewer looks for the time of year; the ground follows at about
+    // three-quarters, and the road furniture barely moves at all — a crash
+    // barrier is the same colour in April and October.
+    const foliagePull = clamp01(live.foliageStrength) * live.seasonReach;
+    if (foliagePull > 0) {
+      live.propA.lerp(live.foliage, foliagePull);
+      live.propB.lerp(live.foliage, foliagePull * 0.18);
+      live.groundColorBase.lerp(live.seasonGround, clamp01(live.seasonGroundStrength) * live.seasonReach);
+      live.groundAccent.lerp(live.seasonGround, clamp01(live.seasonGroundStrength) * live.seasonReach * 0.8);
+    }
+
+    // Warmth is a property of the light, not a filter over the frame: a
+    // February afternoon is genuinely bluer and flatter than an October one,
+    // so it moves the key and the fill rather than tinting the finished image.
+    const warmth = live.seasonWarmth * live.seasonReach;
+    if (warmth !== 0) {
+      const target = warmth > 0 ? SEASON_WARM : SEASON_COOL;
+      const pull = Math.abs(warmth);
+      live.sunColor.lerp(target, pull * 0.3);
+      live.ambientColor.lerp(target, pull * 0.22);
+    }
+    live.saturation *= 1 - clamp01(live.seasonDry) * live.seasonReach * 0.3;
+
+    // Autumn's leaves ride the climate layer's drift system, which already
+    // knows how to make things fall sideways. `max` so a season never cancels
+    // a set's own weather — leaves and rain together is a real autumn.
+    const leaves = live.leafFall * live.seasonReach;
+    if (leaves > live.drift) {
+      live.drift = leaves;
+      live.driftColor.copy(live.leafColor);
+      live.driftSize = 0.78; // a leaf is a much bigger thing than a snowflake
+      live.driftFall = 4.2;
+      live.driftSway = 2.4; // leaves travel far more sideways than they fall
     }
 
     // --- straight numeric overrides

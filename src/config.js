@@ -41,6 +41,13 @@ export const CONFIG = {
   propSwapDistance: 330, // scenery swaps this far ahead, i.e. outside the fog
   lightningInterval: 7,
 
+  // --- season wheel ---
+  // World units per season, so a full year is four times this. At the base
+  // cruise that puts a season at roughly a minute and a half and a year at
+  // about six minutes — long enough that the change is something you notice
+  // having happened rather than something you watch happen.
+  seasonLength: 3100,
+
   // --- extreme weather events ---
   eventFirstDelay: 150, // seconds before the first one can fire
   eventCooldown: 190, // average gap between attempts

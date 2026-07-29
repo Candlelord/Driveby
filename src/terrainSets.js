@@ -49,6 +49,10 @@ export const SET_NUMBER_KEYS = [
   'speedScale', // soft speed cap multiplier
   'ridgeOpacity',
   'ridgeHeight',
+  // How much of the year this place shows. A deciduous valley swings through
+  // the full wheel; a desert, a salt flat or a neon city barely register it,
+  // and forcing autumn on them would only make every set look the same.
+  'seasonReach',
 ];
 
 /** Defaults, so a set only has to state what makes it different. */
@@ -85,6 +89,7 @@ const BASE = {
   speedScale: 1,
   ridgeOpacity: 0.7,
   ridgeHeight: 1,
+  seasonReach: 1,
 };
 
 const set = (values) => ({ ...BASE, ...values });
@@ -92,6 +97,7 @@ const set = (values) => ({ ...BASE, ...values });
 export const TERRAIN_SETS = {
   // ---------------------------------------------------------------- SAD
   floodedPlain: set({
+    seasonReach: 0.5,
     label: 'flooded plain',
     climate: 'rain',
     propMix: [['deadTree', 0.5], ['pole', 0.14], ['reeds', 0.24], ['pierPost', 0.08], ['buoy', 0.04]],
@@ -115,6 +121,7 @@ export const TERRAIN_SETS = {
   }),
 
   cliffCoast: set({
+    seasonReach: 0.5,
     label: 'cliff coast',
     climate: 'rain',
     propMix: [['boulder', 0.36], ['deadTree', 0.16], ['guardrail', 0.2], ['shrub', 0.16], ['buoy', 0.06], ['sign', 0.06]],
@@ -139,6 +146,7 @@ export const TERRAIN_SETS = {
   }),
 
   burnedForest: set({
+    seasonReach: 0.3,
     label: 'burned forest',
     climate: 'ash',
     propMix: [['deadTree', 0.72], ['rock', 0.08], ['shrub', 0.12], ['sign', 0.04], ['barrier', 0.04]],
@@ -282,6 +290,7 @@ export const TERRAIN_SETS = {
   }),
 
   palmHighway: set({
+    seasonReach: 0.25,
     label: 'palm highway',
     climate: 'clear',
     propMix: [['palm', 0.56], ['grass', 0.12], ['shrub', 0.1], ['busShelter', 0.06], ['sign', 0.06], ['pierPost', 0.06], ['buoy', 0.04]],
@@ -301,6 +310,7 @@ export const TERRAIN_SETS = {
   }),
 
   desertBloom: set({
+    seasonReach: 0.2,
     label: 'desert bloom',
     climate: 'clear',
     propMix: [['cactus', 0.26], ['rock', 0.22], ['flowers', 0.24], ['shrub', 0.12], ['sign', 0.08], ['billboard', 0.04], ['barrel', 0.04]],
@@ -341,6 +351,7 @@ export const TERRAIN_SETS = {
 
   // ------------------------------------------------------------ HIP-HOP
   skylineDrive: set({
+    seasonReach: 0.3,
     label: 'skyline drive',
     climate: 'wetNight',
     propMix: [['building', 0.44], ['tower', 0.24], ['billboard', 0.1], ['antenna', 0.08], ['dish', 0.06], ['sign', 0.04], ['barrier', 0.04]],
@@ -360,6 +371,7 @@ export const TERRAIN_SETS = {
   }),
 
   neonUnderpass: set({
+    seasonReach: 0.15,
     label: 'neon underpass',
     climate: 'wetNight',
     propMix: [['warehouse', 0.38], ['building', 0.24], ['barrier', 0.12], ['cone', 0.1], ['crates', 0.08], ['billboard', 0.08]],
@@ -378,6 +390,7 @@ export const TERRAIN_SETS = {
   }),
 
   rooftopSkybridge: set({
+    seasonReach: 0.15,
     label: 'rooftop skybridge',
     climate: 'wetNight',
     propMix: [['warehouse', 0.34], ['building', 0.2], ['glowPlant', 0.14], ['dish', 0.12], ['antenna', 0.1], ['crates', 0.1]],
@@ -397,6 +410,7 @@ export const TERRAIN_SETS = {
   }),
 
   warehouseDistrict: set({
+    seasonReach: 0.35,
     label: 'warehouse district',
     climate: 'wetNight',
     propMix: [['warehouse', 0.4], ['pole', 0.2], ['crates', 0.14], ['barrel', 0.12], ['dish', 0.08], ['billboard', 0.06]],
@@ -422,6 +436,7 @@ export const TERRAIN_SETS = {
   // out on the headland. Ground colour splits by the height banding — the
   // accent keeps the verge green while the climbing hillside dries to tan.
   coastalHighway: set({
+    seasonReach: 0.55,
     label: 'coastal highway',
     climate: 'clear',
     propMix: [['shrub', 0.3], ['rock', 0.18], ['grass', 0.14], ['seaStack', 0.12], ['guardrail', 0.12], ['sign', 0.06], ['lighthouse', 0.04], ['buoy', 0.04]],
@@ -452,6 +467,7 @@ export const TERRAIN_SETS = {
   // Long enclosed stretches with daylight at either end. The audio layer keys
   // off the same coverage function, so the wind drops as the mouth swallows you.
   tunnelRun: set({
+    seasonReach: 0.1,
     label: 'tunnel run',
     climate: 'clearNight',
     propMix: [['warehouse', 0.32], ['pole', 0.3], ['barrier', 0.16], ['cone', 0.12], ['sign', 0.1]],
@@ -497,6 +513,7 @@ export const TERRAIN_SETS = {
   // The emptiest set in the game: a mirror-flat pan, almost nothing on it, and
   // as much sky as the camera can hold.
   saltFlats: set({
+    seasonReach: 0.05,
     label: 'salt flats',
     climate: 'clear',
     propMix: [['pole', 0.36], ['rock', 0.24], ['mileMarker', 0.2], ['sign', 0.12], ['billboard', 0.08]],
@@ -517,6 +534,7 @@ export const TERRAIN_SETS = {
   }),
 
   autumnBirches: set({
+    seasonReach: 0.25,
     label: 'autumn birches',
     climate: 'leaffall',
     propMix: [['birch', 0.56], ['grass', 0.12], ['shrub', 0.14], ['fence', 0.1], ['picnicTable', 0.04], ['mailbox', 0.04]],
@@ -536,6 +554,7 @@ export const TERRAIN_SETS = {
   }),
 
   highlandMoor: set({
+    seasonReach: 0.6,
     label: 'highland moor',
     climate: 'mist',
     propMix: [['wall', 0.3], ['grass', 0.28], ['rock', 0.12], ['shrub', 0.14], ['cattle', 0.1], ['mileMarker', 0.06]],
@@ -577,6 +596,7 @@ export const TERRAIN_SETS = {
   }),
 
   refineryCoast: set({
+    seasonReach: 0.3,
     label: 'refinery coast',
     climate: 'wetNight',
     propMix: [['tank', 0.28], ['flare', 0.12], ['warehouse', 0.24], ['barrel', 0.14], ['antenna', 0.08], ['crates', 0.08], ['pierPost', 0.06]],
@@ -600,6 +620,7 @@ export const TERRAIN_SETS = {
   }),
 
   canyonRoad: set({
+    seasonReach: 0.25,
     label: 'canyon road',
     climate: 'clear',
     propMix: [['rock', 0.42], ['boulder', 0.22], ['cactus', 0.1], ['shrub', 0.12], ['guardrail', 0.08], ['sign', 0.06]],
@@ -623,6 +644,7 @@ export const TERRAIN_SETS = {
   }),
 
   iceRoad: set({
+    seasonReach: 0.1,
     label: 'ice road',
     climate: 'frozen',
     propMix: [['pole', 0.28], ['deadTree', 0.24], ['rock', 0.18], ['mileMarker', 0.14], ['sign', 0.1], ['barrier', 0.06]],
@@ -642,6 +664,7 @@ export const TERRAIN_SETS = {
   }),
 
   blossomAvenue: set({
+    seasonReach: 0.25,
     label: 'blossom avenue',
     climate: 'petals',
     propMix: [['round', 0.6], ['lavender', 0.1], ['hedge', 0.12], ['shrub', 0.1], ['picnicTable', 0.04], ['mailbox', 0.04]],
@@ -664,6 +687,7 @@ export const TERRAIN_SETS = {
   // Both of these sit in two pools, and read differently depending on which
   // mood's light is falling on them.
   mountainPass: set({
+    seasonReach: 0.55,
     label: 'mountain pass',
     climate: 'mist',
     propMix: [['guardrail', 0.3], ['rock', 0.26], ['pine', 0.2], ['shrub', 0.12], ['sign', 0.06], ['barrier', 0.06]],
@@ -688,6 +712,7 @@ export const TERRAIN_SETS = {
   }),
 
   bioluminescentValley: set({
+    seasonReach: 0.2,
     label: 'bioluminescent valley',
     climate: 'clearNight',
     propMix: [['glowPlant', 0.42], ['pine', 0.18], ['rock', 0.14], ['reeds', 0.14], ['shrub', 0.08], ['campfire', 0.04]],

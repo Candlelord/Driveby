@@ -8,7 +8,6 @@ const SNOW_BOX = { x: 40, yMin: -1, yMax: 24, zNear: 14, zFar: -130 };
 const HAZE_BOX = { x: 38, yMin: 0, yMax: 16, zNear: -4, zFar: -130 };
 
 const RAIN_FALL_SPEED = 62;
-const SNOW_FALL_SPEED = 5.5;
 
 /**
  * Precipitation and haze, all living in car-local space (the car never actually
@@ -185,15 +184,25 @@ export class Weather {
     this.rainMaterial.opacity = Math.min(1, amount) * 0.5;
   }
 
+  /**
+   * Snow, ash, autumn leaves and blossom, all on one system.
+   *
+   * They differ only in colour, size, how fast they fall and how far they
+   * wander sideways on the way down — so the climate and season layers set
+   * those four and nothing here knows which of them is falling.
+   */
   _updateSnow(state, live) {
-    const amount = live.snow;
+    const amount = live.drift;
     this.snow.visible = amount > 0.01;
     if (!this.snow.visible) return;
 
     const active = Math.max(1, Math.round(this.snowCount * Math.min(1, amount)));
-    const fall = SNOW_FALL_SPEED * state.dt;
+    const fall = live.driftFall * state.dt;
     const drift = state.speed * state.dt * 0.9;
     const wind = live.wind;
+    // A leaf sways several times as far as a snowflake, which is most of what
+    // tells the two apart once they are in the air.
+    const swayScale = live.driftSway;
     const height = SNOW_BOX.yMax - SNOW_BOX.yMin;
     const depth = SNOW_BOX.zNear - SNOW_BOX.zFar;
     const width = SNOW_BOX.x * 2;
@@ -205,7 +214,7 @@ export class Weather {
 
       // Flakes sway rather than fall straight; that alone is most of what
       // separates snow from white rain.
-      const sway = Math.sin(state.time * rate + phase) * 0.9 + wind * 9;
+      const sway = Math.sin(state.time * rate + phase) * 0.9 * swayScale + wind * 9;
       let x = this.snowPositions[pi] + sway * state.dt;
       let y = this.snowPositions[pi + 1] - fall;
       let z =
@@ -225,7 +234,8 @@ export class Weather {
 
     this.snowGeometry.setDrawRange(0, active);
     this.snowGeometry.attributes.position.needsUpdate = true;
-    this.snowMaterial.color.copy(live.precipColor);
+    this.snowMaterial.color.copy(live.driftColor);
+    this.snowMaterial.size = live.driftSize;
     this.snowMaterial.opacity = Math.min(1, amount) * 0.85;
   }
 
