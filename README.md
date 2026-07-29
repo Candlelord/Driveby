@@ -369,6 +369,28 @@ for (const [axis, id] of [[e.mood,'hiphop'], [e.terrain,'city'], [e.climate,'sno
 }
 ```
 
+## Art direction
+
+The target is a drivable animated film — Ghibli / Shinkai / BotW territory —
+and the build approaches it through light rather than texture, because that is
+what actually distinguishes those frames:
+
+- **Painterly light falloff** (`style/painterly.js`): the shared lighting chunk
+  is rewritten once at startup so every standard material's diffuse term wraps
+  (shade stays coloured instead of going to black) and banks (most of the
+  transition lives in a soft band at the terminator — the two-tone read of a
+  cel ramp without the hard step). Specular is untouched, so wet roads keep
+  their PBR sheen: painted light on physical materials.
+- **Bounced colour instead of grey ambient**: the fill is a hemisphere — sky
+  colour from above, ground colour from below — so the underside of everything
+  carries the terrain's hue. The cheapest convincing fake of global
+  illumination.
+- **Shadows are never black**: the grade lifts the darkest values toward the
+  mood's shadow hue, hardest where the frame is darkest.
+
+Real GI, SSR, TAA and depth of field are deliberately absent — at this budget
+they would cost the frame rate that the whole calm of the game depends on.
+
 ## Graphics
 
 See [GRAPHICS.md](GRAPHICS.md) for the full 50-item improvement list and what

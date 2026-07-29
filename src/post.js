@@ -25,6 +25,7 @@ const GradeShader = {
     uHighlightTint: { value: new THREE.Vector3(1, 1, 1) },
     uTintStrength: { value: 0 },
     uVignette: { value: 0 },
+    uShadowLift: { value: new THREE.Vector3(0, 0, 0) },
     uGrain: { value: 0 },
     uAberration: { value: 0 },
   },
@@ -47,6 +48,7 @@ const GradeShader = {
     uniform vec3 uHighlightTint;
     uniform float uTintStrength;
     uniform float uVignette;
+    uniform vec3 uShadowLift;
     uniform float uGrain;
     uniform float uAberration;
 
@@ -77,6 +79,12 @@ const GradeShader = {
       // most of what separates a "coloured" frame from a tinted one.
       vec3 tint = mix(uShadowTint, uHighlightTint, smoothstep(0.05, 0.95, luma));
       color = mix(color, color * tint, uTintStrength);
+
+      // Painted shadows are never black: lift the darkest values toward the
+      // mood's shadow hue, hardest where the frame is darkest. This is the
+      // "colourful shadows" of the art direction in one line.
+      float darkness = pow(1.0 - smoothstep(0.0, 0.4, luma), 2.0);
+      color += uShadowLift * darkness;
 
       color *= 1.0 - uVignette * smoothstep(0.32, 0.92, radius);
 
@@ -166,6 +174,13 @@ export class Post {
     // darken the image as well as tint it.
     normalisedTint(live.shadowTint, u.uShadowTint.value);
     normalisedTint(live.highlightTint, u.uHighlightTint.value);
+
+    // Shadow lift rides the same mood hue as the split-tone, scaled well down.
+    u.uShadowLift.value.set(
+      live.shadowTint.r * 0.055,
+      live.shadowTint.g * 0.055,
+      live.shadowTint.b * 0.055
+    );
 
     this.bloom.strength = live.bloomStrengthFinal ?? live.bloomStrength;
     this.bloom.threshold = live.bloomThreshold;

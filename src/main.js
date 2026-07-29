@@ -4,6 +4,7 @@ import './style.css';
 import { CONFIG, applyTier } from './config.js';
 import { detectTier, tierFromQuery } from './quality.js';
 import { setDetail } from './props/detail.js';
+import { applyPainterlyShading } from './style/painterly.js';
 import { PathFrame, heading } from './path.js';
 import { Environment } from './environment.js';
 import { CarPhysics } from './physics.js';
@@ -32,6 +33,9 @@ const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
 // Must run before any geometry is constructed.
 setDetail(tier.detail ?? 1);
+// And this before the first material compiles: it rewrites the shared lighting
+// chunk so every standard material gets the painterly falloff.
+applyPainterlyShading();
 
 const container = document.getElementById('scene');
 
@@ -52,7 +56,11 @@ scene.fog = new THREE.FogExp2(0x000000, 0.01);
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1500);
 camera.position.set(0, CONFIG.camHeight, CONFIG.camDistance);
 
-const ambient = new THREE.AmbientLight(0xffffff, 1);
+// A hemisphere in place of flat ambient is the cheapest fake GI there is: the
+// fill comes from the sky above and from light bounced off the ground below,
+// so the underside of everything carries the ground's colour instead of grey.
+// This is most of what "soft bounced light" means in the art brief.
+const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1);
 scene.add(ambient);
 
 const sun = new THREE.DirectionalLight(0xffffff, 1);
@@ -207,6 +215,9 @@ function applyLighting() {
   scene.fog.density = live.fogDensity;
 
   ambient.color.copy(live.ambientColor);
+  // Bounce is the ground colour pulled toward the sky's, so it always agrees
+  // with whatever terrain and weather are underneath.
+  ambient.groundColor.copy(live.groundColor).lerp(live.ambientColor, 0.35);
   ambient.intensity = live.ambientIntensity;
 
   sun.color.copy(live.sunColor);
