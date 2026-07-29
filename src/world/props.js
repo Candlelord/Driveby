@@ -8,11 +8,22 @@ import { TERRAIN_SETS } from '../terrainSets.js';
 // Distance at which ~15% of an object still shows through clear-weather fog.
 const REFERENCE_REACH = 180;
 
-// Types that face the road rather than scattering, and types that move in wind.
-const ALIGNED = new Set([
-  'pole', 'guardrail', 'sign', 'mileMarker', 'billboard', 'fence', 'wall',
-  'barrier', 'cone', 'mailbox', 'busShelter', 'hedge', 'pierPost',
+// Two different jobs that used to share one flag.
+//
+// FACING props turn to look at the road — a sign is useless side-on. Their
+// geometry is built facing +Z, so a yaw of 0 or PI is right.
+//
+// ALONG props are linear and must run *parallel* to the road: fences, walls,
+// crash barriers, hedges. Their geometry is built along local X, so they need a
+// quarter turn, and they only line up into a run if their lateral offset and
+// size are fixed rather than jittered per slot.
+const FACING = new Set([
+  'pole', 'sign', 'mileMarker', 'billboard', 'cone', 'mailbox', 'busShelter', 'pierPost',
 ]);
+const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier']);
+
+// How many slots a linear run covers before the type is rolled again.
+const RUN_BLOCK = 26;
 const SWAYS = new Set([
   'grass', 'reeds', 'lavender', 'flowers', 'shrub', 'glowPlant', 'birch',
   'round', 'palm', 'hedge',
@@ -115,23 +126,50 @@ export class Props {
       // density reads as a hedge, so two slow waves push it into thickets and
       // clearings while leaving the mean roughly where the set asked for it.
       const clump = 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(s * 0.0082) * Math.cos(s * 0.0031 + 1.3));
-      if (hash(slot * 5.9) >= set.propDensity * clump * fogBoost) continue;
+      // A fence is a run, not a scatter. Rolling the type per slot means
+      // consecutive slots almost never both land on 'fence', so what should be
+      // a hundred metres of fenced boundary came out as isolated sections.
+      // Linear types are chosen once per block of road instead, and excluded
+      // from the per-slot roll so they never appear alone.
+      const block = Math.floor(slot / RUN_BLOCK);
+      const blockType = pickType(set.propMix, hash(block * 7.7));
+      const inRun = ALONG.has(blockType);
 
-      const typeName = pickType(set.propMix, hash(slot * 2.3));
+      const typeName = inRun ? blockType : pickScatterType(set.propMix, hash(slot * 2.3));
+      if (!typeName) continue;
+
       const type = this.types[typeName];
       if (!type || type.used >= this.slots) continue;
 
       const def = type.def;
+      const runsAlong = inRun;
+
+      // A run keeps going unless the density roll is very unlucky; a broken
+      // fence should read as a gate, not as neglect.
+      const density = set.propDensity * clump * fogBoost * (runsAlong ? 2.2 : 1);
+      if (hash(slot * 5.9) >= density) continue;
+
+      // A run of fence only reads as a fence if consecutive sections abut, so
+      // linear props sit on their own stride rather than wherever the scatter
+      // put them, and take no lateral jitter.
+      if (runsAlong && slot % (def.stride ?? 2) !== 0) continue;
+
       const side = hash(slot * 1.7) < 0.5 ? -1 : 1;
-      const distance = def.spread + hash(slot * 3.3) * def.jitter;
+      const distance = runsAlong ? def.spread : def.spread + hash(slot * 3.3) * def.jitter;
       const offset = side * distance;
 
       frame.point(s, offset, terrainHeight(offset, s, live), POSITION);
 
       DUMMY.position.copy(POSITION);
-      // Poles, rails and furniture face the road; everything else is scattered.
-      const aligned = ALIGNED.has(typeName);
-      DUMMY.rotation.set(0, aligned ? (side > 0 ? 0 : Math.PI) : hash(slot * 9.3) * Math.PI * 2, 0);
+      // A quarter turn maps a prop's local +X onto the road's forward axis.
+      const yaw = runsAlong
+        ? Math.PI / 2
+        : FACING.has(typeName)
+          ? side > 0
+            ? 0
+            : Math.PI
+          : hash(slot * 9.3) * Math.PI * 2;
+      DUMMY.rotation.set(0, yaw, 0);
 
       // Wind. A tornado bends everything hard; ordinary weather just breathes
       // through the vegetation, each prop on its own phase so it is not a
@@ -139,7 +177,7 @@ export class Props {
       const sway = SWAYS.has(typeName)
         ? Math.sin(state.time * (1.1 + hash(slot * 4.1) * 0.9) + slot) * live.wind * 0.055
         : 0;
-      DUMMY.rotation.z = live.propLean * 0.35 * (aligned ? 0.3 : 1) + sway;
+      DUMMY.rotation.z = live.propLean * 0.35 * (runsAlong || FACING.has(typeName) ? 0.3 : 1) + sway;
 
       // Fade in with distance rather than popping at the spawn boundary: the
       // furthest slots scale up over their last stretch of approach.
@@ -149,7 +187,10 @@ export class Props {
 
       // Big structures take a fixed damper as well as the set's scale, so a
       // water tower thirty units away does not end up the size of a hill.
-      const size = (0.75 + hash(slot * 7.1) * 0.8) * set.propScale * (def.scale ?? 1) * fade;
+      // Linear props take no size jitter either — mismatched section heights
+      // are as obvious as mismatched angles.
+      const jitterScale = runsAlong ? 1 : 0.75 + hash(slot * 7.1) * 0.8;
+      const size = jitterScale * set.propScale * (def.scale ?? 1) * fade;
       if (def.stretch) {
         const [fMin, fMax] = def.stretch.footprint;
         const [hMin, hMax] = def.stretch.height;
@@ -158,6 +199,8 @@ export class Props {
           (hMin + hash(slot * 13.1) * (hMax - hMin)) * fade,
           (fMin + hash(slot * 17.3) * (fMax - fMin)) * fade
         );
+      } else if (runsAlong) {
+        DUMMY.scale.setScalar(size);
       } else {
         // Slight non-uniform scale, so even one shape does not read as cloned.
         DUMMY.scale.set(size * (0.94 + hash(slot * 19.1) * 0.12), size, size * (0.94 + hash(slot * 23.3) * 0.12));
@@ -216,6 +259,24 @@ export class Props {
     this.lampPole.instanceMatrix.needsUpdate = true;
     this.lampHead.instanceMatrix.needsUpdate = true;
   }
+}
+
+/**
+ * Roll a type from the mix, skipping the linear ones — those are placed by run,
+ * so letting the per-slot roll produce them would scatter lone fence panels
+ * through the fields.
+ */
+function pickScatterType(mix, roll) {
+  let total = 0;
+  for (const [name, weight] of mix) if (!ALONG.has(name)) total += weight;
+  if (total <= 0) return null;
+  let target = roll * total;
+  for (const [name, weight] of mix) {
+    if (ALONG.has(name)) continue;
+    target -= weight;
+    if (target <= 0) return name;
+  }
+  return null;
 }
 
 /** Roll one type out of a set's weighted mix, deterministically per slot. */

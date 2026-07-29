@@ -290,9 +290,12 @@ const CORE_KIT = {
     jitter: 30,
   },
   wall: {
+    // 5.2 long on a single-slot stride (4.5u), so sections overlap slightly and
+    // the run reads as continuous drystone rather than as separate blocks.
+    stride: 1,
     parts: [{ geometry: stoneWall, material: 'b' }],
     spread: 12.5,
-    jitter: 3,
+    jitter: 0,
   },
   flare: {
     parts: [
@@ -396,9 +399,10 @@ const CORE_KIT = {
     jitter: 40,
   },
   guardrail: {
+    stride: 1,
     parts: [{ geometry: guardrailGeometry, material: 'b' }],
     spread: 10.5,
-    jitter: 1.5,
+    jitter: 0,
   },
   grass: {
     parts: [{ geometry: grassTuft, material: 'a' }],

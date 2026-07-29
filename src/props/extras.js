@@ -201,8 +201,9 @@ export const EXTRA_KIT = {
     spread: 17,
     jitter: 8,
   },
-  fence: { parts: [{ geometry: railFence, material: 'b' }], spread: 12, jitter: 3 },
-  hedge: { parts: [{ geometry: hedgeRun, material: 'a' }], spread: 12, jitter: 6 },
+  // 8 long on a stride of 2 slots (9u) leaves a post-sized gap between runs.
+  fence: { stride: 2, parts: [{ geometry: railFence, material: 'b' }], spread: 12, jitter: 0 },
+  hedge: { stride: 2, parts: [{ geometry: hedgeRun, material: 'a' }], spread: 12.5, jitter: 0 },
   shrub: { parts: [{ geometry: shrub, material: 'a' }], spread: 11, jitter: 28 },
   reeds: { parts: [{ geometry: reeds, material: 'a' }], spread: 11, jitter: 18 },
   hayBale: { parts: [{ geometry: hayBale, material: 'a' }], spread: 16, jitter: 26 },
@@ -244,7 +245,7 @@ export const EXTRA_KIT = {
     jitter: 16,
   },
   cone: { parts: [{ geometry: roadCone, material: 'e' }], spread: 9.5, jitter: 1.2 },
-  barrier: { parts: [{ geometry: barrier, material: 'e' }], spread: 10, jitter: 1.5 },
+  barrier: { stride: 1, parts: [{ geometry: barrier, material: 'e' }], spread: 10, jitter: 0 },
   mailbox: { parts: [{ geometry: mailbox, material: 'b' }], spread: 10.5, jitter: 3 },
   busShelter: {
     scale: 0.85,
