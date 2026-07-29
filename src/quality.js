@@ -15,6 +15,7 @@ export const TIERS = {
     detail: 1.55, // geometry segment multiplier
     shadows: 1024, // shadow map size; 0 = blob only
     headlamps: 2, // real spot lights on the car; 1 still lights the road
+    lampLights: 3, // street lamps that actually cast, walked along the nearest
     cloudOctaves: 4,
     waterSegments: [16, 34],
     waterNormals: true,
@@ -38,6 +39,7 @@ export const TIERS = {
     detail: 1.0,
     shadows: 768,
     headlamps: 2,
+    lampLights: 1,
     cloudOctaves: 3,
     waterSegments: [10, 20],
     waterNormals: true,
@@ -63,6 +65,7 @@ export const TIERS = {
     detail: 0.6,
     shadows: 0,
     headlamps: 1,
+    lampLights: 0,
     cloudOctaves: 2,
     waterSegments: [5, 10],
     waterNormals: false,

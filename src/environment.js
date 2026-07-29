@@ -477,7 +477,13 @@ export class Environment {
     // Any meaningful "lamps on" gives a full beam; darkness alone decides how
     // much of it lands. Multiplying the two directly let a dim overcast — where
     // both terms are middling — lose the beam altogether.
-    live.beamThrow = clamp01(live.headlights * 3) * clamp01((4 - sceneLight) / 3.2);
+    const nightness = clamp01((4 - sceneLight) / 3.2);
+    live.beamThrow = clamp01(live.headlights * 3) * nightness;
+    // Street lamps split the same way: `lampIntensity` says whether there are
+    // lamps on this road at all, `lampGlow` says whether they are lit. A lamp
+    // over a bright afternoon is off, and that is correct — but it has to look
+    // like a switched-off fitting rather than a black box someone forgot.
+    live.lampGlow = clamp01(live.lampIntensity * 4) * nightness;
     live.beamStrength = clamp01(live.beamThrow * (0.25 + live.fogDensity * 26));
 
     live.funnel = ov.funnel ?? 0;
