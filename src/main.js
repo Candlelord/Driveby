@@ -3,6 +3,7 @@ import './style.css';
 
 import { CONFIG, applyTier } from './config.js';
 import { detectTier, tierFromQuery } from './quality.js';
+import { setDetail } from './props/detail.js';
 import { PathFrame, heading } from './path.js';
 import { Environment } from './environment.js';
 import { CarPhysics } from './physics.js';
@@ -29,6 +30,8 @@ import { Atmosphere } from './world/atmosphere.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
+// Must run before any geometry is constructed.
+setDetail(tier.detail ?? 1);
 
 const container = document.getElementById('scene');
 
@@ -67,7 +70,9 @@ const props = new Props(scene, tier);
 const features = new Features(scene, tier);
 const landmarks = new Landmarks(scene, CONFIG);
 const eventVisuals = new EventVisuals(scene, tier);
-const atmosphere = new Atmosphere(scene, tier);
+// Birds, fireflies, exhaust and spray are four extra Points systems updated
+// every frame; the lowest tier does without them.
+const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
 const car = new Car(scene);
 const weather = new Weather(scene, tier);
@@ -172,7 +177,7 @@ function tick() {
   car.update(state, frame);
   weather.update(state);
   eventVisuals.update(state, camera);
-  atmosphere.update(state);
+  atmosphere?.update(state);
 
   ui.update(environment, state, landmarks.label);
   post.update(state);

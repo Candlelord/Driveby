@@ -56,7 +56,9 @@ const FRAGMENT_SHADER = /* glsl */ `
   float fbm(vec2 p) {
     float total = 0.0;
     float amplitude = 0.5;
-    for (int i = 0; i < 4; i++) {
+    // Compile-time bound: the octave count is the single most expensive knob in
+    // the whole renderer, since it runs for every sky pixel.
+    for (int i = 0; i < CLOUD_OCTAVES; i++) {
       total += noise(p) * amplitude;
       p *= 2.03;
       amplitude *= 0.5;
@@ -140,6 +142,7 @@ export class Sky {
         time: { value: 0 },
         drift: { value: 0 },
       },
+      defines: { CLOUD_OCTAVES: tier.cloudOctaves ?? 3 },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
       side: THREE.BackSide,
@@ -147,7 +150,12 @@ export class Sky {
       fog: false,
     });
 
-    this.dome = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 18), this.domeMaterial);
+    // A denser dome on high tiers keeps the gradient banding-free.
+    const domeSegments = tier.detail >= 1.2 ? [48, 28] : tier.detail >= 0.9 ? [32, 18] : [20, 12];
+    this.dome = new THREE.Mesh(
+      new THREE.SphereGeometry(900, domeSegments[0], domeSegments[1]),
+      this.domeMaterial
+    );
     this.dome.renderOrder = -4;
     this.dome.frustumCulled = false;
     this.group.add(this.dome);
@@ -177,7 +185,7 @@ export class Sky {
       fog: false,
     });
 
-    this.core = new THREE.Mesh(new THREE.CircleGeometry(1, 48), this.coreMaterial);
+    this.core = new THREE.Mesh(new THREE.CircleGeometry(1, tier.detail >= 1.2 ? 64 : 32), this.coreMaterial);
     this.core.renderOrder = -1;
     this.core.frustumCulled = false;
     this.group.add(this.core);

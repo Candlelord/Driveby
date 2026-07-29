@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { seg } from '../props/detail.js';
 
 export const WHEEL_RADIUS = 0.44;
 
@@ -73,9 +74,9 @@ export function buildCarParts({ staticWheels = false } = {}) {
 }
 
 function buildWheel() {
-  const tyre = new THREE.CylinderGeometry(WHEEL_RADIUS, WHEEL_RADIUS, 0.32, 14);
+  const tyre = new THREE.CylinderGeometry(WHEEL_RADIUS, WHEEL_RADIUS, 0.32, seg(14, 8));
   tyre.rotateZ(Math.PI / 2);
-  const hub = new THREE.CylinderGeometry(WHEEL_RADIUS * 0.5, WHEEL_RADIUS * 0.5, 0.34, 8);
+  const hub = new THREE.CylinderGeometry(WHEEL_RADIUS * 0.5, WHEEL_RADIUS * 0.5, 0.34, seg(8, 5));
   hub.rotateZ(Math.PI / 2);
   hub.translate(0.01, 0, 0);
   return mergeGeometries([tyre, hub]);

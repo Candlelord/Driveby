@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { seg, subdiv } from './detail.js';
 import { EXTRA_KIT } from './extras.js';
 
 /**
@@ -15,8 +16,12 @@ import { EXTRA_KIT } from './extras.js';
  * sharing that matrix.
  */
 
-const cyl = (rt, rb, h, seg = 6) => new THREE.CylinderGeometry(rt, rb, h, seg);
+const cyl = (rt, rb, h, s = 6) => new THREE.CylinderGeometry(rt, rb, h, seg(s));
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+
+const cone = (r, h, s) => new THREE.ConeGeometry(r, h, seg(s, 5));
+const ico = (r) => new THREE.IcosahedronGeometry(r, subdiv());
+const dod = (r) => new THREE.DodecahedronGeometry(r, subdiv());
 
 function at(geometry, x, y, z) {
   return geometry.translate(x, y, z);
@@ -76,7 +81,7 @@ function conifer() {
     [1.16, 1.95, 2.65],
     [0.82, 1.8, 3.75],
   ]) {
-    parts.push(new THREE.ConeGeometry(radius, height, 7).translate(0, y, 0));
+    parts.push(cone(radius, height, 7).translate(0, y, 0));
   }
   return merge(parts);
 }
@@ -95,7 +100,7 @@ function broadleaf(scale = 1) {
   ];
   return merge(
     lobes.map(([r, x, y, z]) =>
-      new THREE.IcosahedronGeometry(r * scale, 0).translate(x * scale, y * scale, z * scale)
+      ico(r * scale).translate(x * scale, y * scale, z * scale)
     )
   );
 }
@@ -160,7 +165,7 @@ function flowerCluster() {
   for (let i = 0; i < 6; i++) {
     const angle = i * 1.9;
     parts.push(
-      new THREE.IcosahedronGeometry(0.13, 0).translate(
+      ico(0.13).translate(
         Math.cos(angle) * 0.35,
         0.22 + (i % 3) * 0.08,
         Math.sin(angle) * 0.35
@@ -206,7 +211,7 @@ function stoneWall() {
   const parts = [box(5.2, 0.72, 0.5).translate(0, 0.36, 0)];
   for (let i = 0; i < 6; i++) {
     parts.push(
-      new THREE.DodecahedronGeometry(0.24, 0).translate((i - 2.5) * 0.85, 0.76, (i % 2) * 0.06)
+      dod(0.24).translate((i - 2.5) * 0.85, 0.76, (i % 2) * 0.06)
     );
   }
   return merge(parts);
@@ -265,7 +270,7 @@ const CORE_KIT = {
   redwood: {
     parts: [
       { geometry: () => at(cyl(1.0, 1.5, 22, 8), 0, 11, 0), material: 'b' },
-      { geometry: () => at(new THREE.ConeGeometry(3.0, 9, 7), 0, 24, 0), material: 'a' },
+      { geometry: () => at(cone(3.0, 9, 7), 0, 24, 0), material: 'a' },
     ],
     spread: 12,
     jitter: 14,
@@ -292,7 +297,7 @@ const CORE_KIT = {
   flare: {
     parts: [
       { geometry: flareTower, material: 'b' },
-      { geometry: () => at(new THREE.IcosahedronGeometry(0.9, 0), 0, 16.6, 0), material: 'e' },
+      { geometry: () => at(ico(0.9), 0, 16.6, 0), material: 'e' },
     ],
     spread: 34,
     jitter: 44,
@@ -311,12 +316,12 @@ const CORE_KIT = {
     jitter: 26,
   },
   rock: {
-    parts: [{ geometry: () => at(new THREE.DodecahedronGeometry(1.3, 0), 0, 0.45, 0), material: 'b' }],
+    parts: [{ geometry: () => at(dod(1.3), 0, 0.45, 0), material: 'b' }],
     spread: 15,
     jitter: 28,
   },
   boulder: {
-    parts: [{ geometry: () => at(new THREE.IcosahedronGeometry(2.6, 0), 0, 0.9, 0), material: 'b' }],
+    parts: [{ geometry: () => at(ico(2.6), 0, 0.9, 0), material: 'b' }],
     spread: 17,
     jitter: 26,
   },
@@ -350,7 +355,7 @@ const CORE_KIT = {
   silo: {
     parts: [
       { geometry: () => at(cyl(1.1, 1.1, 7, 9), 0, 3.5, 0), material: 'a' },
-      { geometry: () => at(new THREE.ConeGeometry(1.25, 1.4, 9), 0, 7.7, 0), material: 'b' },
+      { geometry: () => at(cone(1.25, 1.4, 9), 0, 7.7, 0), material: 'b' },
     ],
     spread: 24,
     jitter: 34,
@@ -366,7 +371,7 @@ const CORE_KIT = {
   farmhouse: {
     parts: [
       { geometry: () => at(box(3.2, 2.4, 2.8), 0, 1.2, 0), material: 'a' },
-      { geometry: () => at(new THREE.ConeGeometry(2.6, 1.5, 4), 0, 3.1, 0), material: 'b' },
+      { geometry: () => at(cone(2.6, 1.5, 4), 0, 3.1, 0), material: 'b' },
       { geometry: () => at(box(0.5, 0.4, 0.06), -0.8, 1.4, -1.44), material: 'e' },
       { geometry: () => at(box(0.5, 0.4, 0.06), 0.8, 1.4, -1.44), material: 'e' },
     ],
@@ -384,7 +389,7 @@ const CORE_KIT = {
   },
   windmill: {
     parts: [
-      { geometry: () => at(new THREE.ConeGeometry(1.1, 6.4, 6), 0, 3.2, 0), material: 'a' },
+      { geometry: () => at(cone(1.1, 6.4, 6), 0, 3.2, 0), material: 'a' },
       { geometry: windmillBlades, material: 'b' },
     ],
     spread: 30,

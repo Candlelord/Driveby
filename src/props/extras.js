@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { seg, subdiv } from './detail.js';
 
 /**
  * The second half of the prop kit: the small stuff that makes a roadside look
@@ -8,12 +9,16 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  * instance matrix places the whole thing.
  */
 
-const cyl = (rt, rb, h, seg = 6) => new THREE.CylinderGeometry(rt, rb, h, seg);
+const cyl = (rt, rb, h, s = 6) => new THREE.CylinderGeometry(rt, rb, h, seg(s));
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
 function merge(parts) {
   return mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)));
 }
+const cone = (r, h, s) => new THREE.ConeGeometry(r, h, seg(s, 5));
+const ico = (r) => new THREE.IcosahedronGeometry(r, subdiv());
+const dod = (r) => new THREE.DodecahedronGeometry(r, subdiv());
+
 const at = (g, x, y, z) => g.translate(x, y, z);
 
 // --- roadside furniture -----------------------------------------------------
@@ -44,15 +49,15 @@ function railFence() {
 function hedgeRun() {
   const parts = [];
   for (let i = 0; i < 4; i++) {
-    parts.push(new THREE.IcosahedronGeometry(1.05, 0).translate((i - 1.5) * 1.7, 0.85, 0));
+    parts.push(ico(1.05).translate((i - 1.5) * 1.7, 0.85, 0));
   }
   return merge(parts);
 }
 
 const shrub = () =>
   merge([
-    new THREE.IcosahedronGeometry(0.78, 0).translate(0, 0.62, 0),
-    new THREE.IcosahedronGeometry(0.54, 0).translate(0.55, 0.44, 0.24),
+    ico(0.78).translate(0, 0.62, 0),
+    ico(0.54).translate(0.55, 0.44, 0.24),
   ]);
 
 function reeds() {
@@ -80,7 +85,7 @@ const waterTowerLegs = () => {
   return merge(parts);
 };
 const waterTowerTank = () =>
-  merge([cyl(2.7, 2.7, 3.4, 10).translate(0, 10.7, 0), new THREE.ConeGeometry(2.9, 1.5, 10).translate(0, 13.1, 0)]);
+  merge([cyl(2.7, 2.7, 3.4, 10).translate(0, 10.7, 0), cone(2.9, 1.5, 10).translate(0, 13.1, 0)]);
 
 const windTurbineTower = () => cyl(0.4, 0.8, 26, 8).translate(0, 13, 0);
 function windTurbineBlades() {
@@ -98,7 +103,7 @@ function scarecrow() {
     cyl(0.09, 0.11, 2.6, 5).translate(0, 1.3, 0),
     box(1.9, 0.14, 0.14).translate(0, 2.0, 0),
     box(0.62, 0.7, 0.4).translate(0, 2.55, 0),
-    new THREE.ConeGeometry(0.55, 0.4, 7).translate(0, 3.05, 0),
+    cone(0.55, 0.4, 7).translate(0, 3.05, 0),
   ]);
 }
 
@@ -134,13 +139,13 @@ function antennaMast() {
   }
   return merge(parts);
 }
-const antennaLight = () => new THREE.IcosahedronGeometry(0.35, 0).translate(0, 22.4, 0);
+const antennaLight = () => ico(0.35).translate(0, 22.4, 0);
 
 const pierPost = () =>
   merge([cyl(0.28, 0.34, 4.6, 6).translate(0, 2.3, 0), box(1.1, 0.24, 1.1).translate(0, 4.5, 0)]);
 
 const buoy = () =>
-  merge([cyl(0.55, 0.75, 1.5, 7).translate(0, 0.75, 0), new THREE.ConeGeometry(0.4, 0.8, 6).translate(0, 1.85, 0)]);
+  merge([cyl(0.55, 0.75, 1.5, 7).translate(0, 0.75, 0), cone(0.4, 0.8, 6).translate(0, 1.85, 0)]);
 
 // --- rest and camp ----------------------------------------------------------
 
@@ -155,7 +160,7 @@ function picnicTable() {
 }
 
 const tent = () => {
-  const body = new THREE.CylinderGeometry(0.02, 1.9, 3.2, 3).rotateZ(Math.PI / 2).rotateY(Math.PI / 2);
+  const body = new THREE.CylinderGeometry(0.02, 1.9, 3.2, seg(3)).rotateZ(Math.PI / 2).rotateY(Math.PI / 2);
   return body.translate(0, 1.15, 0);
 };
 
@@ -163,14 +168,14 @@ const campStones = () => {
   const parts = [];
   for (let i = 0; i < 6; i++) {
     const angle = (i / 6) * Math.PI * 2;
-    parts.push(new THREE.DodecahedronGeometry(0.28, 0).translate(Math.cos(angle) * 0.85, 0.18, Math.sin(angle) * 0.85));
+    parts.push(dod(0.28).translate(Math.cos(angle) * 0.85, 0.18, Math.sin(angle) * 0.85));
   }
   return merge(parts);
 };
-const campFlame = () => new THREE.ConeGeometry(0.42, 1.1, 5).translate(0, 0.6, 0);
+const campFlame = () => cone(0.42, 1.1, 5).translate(0, 0.6, 0);
 
 const roadCone = () =>
-  merge([box(0.52, 0.08, 0.52).translate(0, 0.04, 0), new THREE.ConeGeometry(0.24, 0.85, 6).translate(0, 0.48, 0)]);
+  merge([box(0.52, 0.08, 0.52).translate(0, 0.04, 0), cone(0.24, 0.85, 6).translate(0, 0.48, 0)]);
 
 const barrier = () =>
   merge([box(2.4, 0.75, 0.5).translate(0, 0.38, 0), box(2.4, 0.16, 0.62).translate(0, 0.8, 0)]);

@@ -36,6 +36,7 @@ export function tunnelAt(distance, amount) {
  */
 export class Features {
   constructor(scene, tier) {
+    this.tier = tier;
     this._buildWater(scene);
     this._buildShafts(scene);
     this._buildSkyline(scene, tier);
@@ -137,7 +138,8 @@ export class Features {
     this.water = new THREE.Group();
     for (const side of [-1, 1]) {
       // Segmented now, so the surface can actually be displaced into waves.
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(420, 900, 14, 30), this.waterMaterial);
+      const [wSeg, hSeg] = this.tier.waterSegments ?? [10, 20];
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(420, 900, wSeg, hSeg), this.waterMaterial);
       plane.geometry.userData.rest = Float32Array.from(plane.geometry.attributes.position.array);
       plane.rotation.x = -Math.PI / 2;
       plane.position.set(side * 235, 0, -320);
@@ -165,7 +167,8 @@ export class Features {
     });
 
     this.shafts = new THREE.Group();
-    for (let i = 0; i < 7; i++) {
+    const shaftCount = this.tier.detail >= 1.2 ? 11 : this.tier.detail >= 0.9 ? 7 : 4;
+    for (let i = 0; i < shaftCount; i++) {
       const shaft = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.shaftMaterial);
       shaft.userData.seed = i;
       shaft.scale.set(4 + (i % 3) * 2.5, 46, 1);
@@ -308,7 +311,10 @@ export class Features {
       );
     }
     position.needsUpdate = true;
-    geometry.computeVertexNormals();
+    // Recomputing normals every frame is what makes the sun track move with the
+    // swell, and it is also the most expensive line in this file. Low tiers keep
+    // the motion and give up the moving highlight.
+    if (this.tier.waterNormals) geometry.computeVertexNormals();
   }
 
   _updateShafts(state) {

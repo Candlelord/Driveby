@@ -260,8 +260,19 @@ just oscillate.
 | Pixel ratio cap | 2 | 1.5 | 1.25 |
 | MSAA | on | off | off |
 | Bloom | on | on | off |
-| Road drawn ahead | 360u | 296u | 232u |
-| Triangles | ~21k | ~16k | ~12.5k |
+| Geometry detail | 1.55x | 1.0x | 0.6x |
+| Cloud octaves (per sky pixel) | 4 | 3 | 2 |
+| Water grid / normals | 16x34, rebuilt | 10x20, rebuilt | 5x10, static |
+| Birds, fireflies, exhaust, spray | on | on | off |
+| Terrain rows | every segment | every 2nd | every 3rd |
+| Road drawn ahead | 384u | 296u | 232u |
+| Triangles (measured) | ~29k | — | ~8.6k |
+
+The tiers used to shrink only buffers, which left a phone rendering the same
+geometry a desktop did. A shared `detail` level now scales segment counts on
+every curved surface, and the three genuinely expensive things — per-pixel cloud
+octaves, per-frame water normal recomputation, and the four extra particle
+systems — are cut explicitly rather than incidentally.
 
 Rendering also stops entirely when the tab is backgrounded, which on a phone is
 the difference between a game and a battery drain. Touch steering is a
