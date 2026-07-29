@@ -417,6 +417,38 @@ export const TERRAIN_SETS = {
 
 
   // ------------------------------------------------ additional sets
+  // The concept frame: golden-hour coast road, teal sea on the left with rock
+  // stacks in the surf, tan scrub hillside climbing on the right, a lighthouse
+  // out on the headland. Ground colour splits by the height banding — the
+  // accent keeps the verge green while the climbing hillside dries to tan.
+  coastalHighway: set({
+    label: 'coastal highway',
+    climate: 'clear',
+    propMix: [['shrub', 0.3], ['rock', 0.18], ['grass', 0.14], ['seaStack', 0.12], ['guardrail', 0.12], ['sign', 0.06], ['lighthouse', 0.04], ['buoy', 0.04]],
+    groundColorBase: 0xc9924e,
+    groundAccent: 0x8fae57,
+    propA: 0x4f8a48,
+    propB: 0x8a5f42,
+    propE: 0xfff2c8,
+    propEmissive: 0.7,
+    skyNudge: 0xe8a878,
+    skyNudgeStrength: 0.22,
+    ridgeNearColor: 0x9a6a52,
+    ridgeFarColor: 0xb08aa0,
+    waterColor: 0x2e9aa8,
+    hillHeight: 9,
+    hillSharpness: 1.3,
+    cliffSide: 1,
+    cliffHeight: 22,
+    water: 0.95,
+    waterSide: -1,
+    waterLevel: -9,
+    propDensity: 0.8,
+    ridgeOpacity: 0.9,
+    ridgeHeight: 1.6,
+    speedScale: 1.04,
+  }),
+
   // Long enclosed stretches with daylight at either end. The audio layer keys
   // off the same coverage function, so the wind drops as the mouth swallows you.
   tunnelRun: set({
@@ -694,6 +726,7 @@ export const TERRAIN_POOLS = {
     'saltFlats',
   ],
   chill: [
+    'coastalHighway',
     'pineForest',
     'mistyLake',
     'redwoodCorridor',
@@ -706,6 +739,7 @@ export const TERRAIN_POOLS = {
     'highlandMoor',
   ],
   happy: [
+    'coastalHighway',
     'wheatFields',
     'palmHighway',
     'desertBloom',

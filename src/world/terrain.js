@@ -77,6 +77,7 @@ export class Terrain {
       vertexColors: true,
     });
 
+    this.ribbon.mesh.receiveShadow = true;
     scene.add(this.ribbon.mesh);
     this.live = null;
   }

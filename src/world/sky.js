@@ -90,13 +90,17 @@ const FRAGMENT_SHADER = /* glsl */ `
       float density = base * 0.72 + detail * 0.28;
 
       // Sharpness turns the same field from haze into distinct cumulus.
-      float cover = smoothstep(0.62 - cloudAmount * 0.36, 0.62 - cloudAmount * 0.36 + cloudSharpness, density);
+      float cut = 0.62 - cloudAmount * 0.36;
+      float cover = smoothstep(cut, cut + cloudSharpness, density);
       // Fade the deck out at the horizon so it does not form a hard ring.
       cover *= smoothstep(0.0, 0.22, height);
 
-      // Light the tops from the sun side.
+      // Two tones by density: rims stay in the tinted colour, cores go to the
+      // lit cream. This is what turns a wash of noise into cumulus with body —
+      // the concept clouds are exactly this, pink edges around bright centres.
+      float core = smoothstep(cut + cloudSharpness * 0.8, cut + cloudSharpness * 0.8 + 0.16, density);
       float toSunFlat = max(dot(normalize(direction), normalize(sunDirection)), 0.0);
-      vec3 cloud = mix(cloudColor, cloudLitColor, pow(toSunFlat, 2.0) * 0.85 + detail * 0.25);
+      vec3 cloud = mix(cloudColor, cloudLitColor, core * 0.7 + pow(toSunFlat, 2.0) * 0.3);
       sky = mix(sky, cloud, cover * cloudAmount);
     }
 

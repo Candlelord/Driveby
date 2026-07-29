@@ -28,6 +28,10 @@ export class Road {
 
     this.surfaceMaterial = flat(0x3a4048);
     this.lineMaterial = flat(0xffffff);
+    // Centre dashes take their own colour — the concept frames run yellow
+    // dashes against white edge lines, and that little difference is a
+    // surprising amount of what makes the road read as a highway.
+    this.dashMaterial = flat(0xf2c94c);
     this.shoulderMaterial = flat(0x4a5058);
 
     this.surface = new Ribbon({
@@ -51,6 +55,8 @@ export class Road {
       skipQuads: [1],
     });
 
+    this.surface.mesh.receiveShadow = true;
+    this.shoulders.mesh.receiveShadow = true;
     scene.add(this.shoulders.mesh, this.surface.mesh, this.lines.mesh);
 
     this.lines.mesh.renderOrder = 1;
@@ -71,7 +77,7 @@ export class Road {
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 2000);
 
     this.dashGeometry = geometry;
-    this.dashes = new THREE.Mesh(geometry, this.lineMaterial);
+    this.dashes = new THREE.Mesh(geometry, this.dashMaterial);
     this.dashes.frustumCulled = false;
     this.dashes.renderOrder = 1;
     scene.add(this.dashes);
@@ -91,6 +97,7 @@ export class Road {
     const live = state.live;
     this.surfaceMaterial.color.copy(live.roadColor);
     this.lineMaterial.color.copy(live.lineColor);
+    this.dashMaterial.color.copy(live.dashColor);
     this.shoulderMaterial.color
       .copy(live.shoulderColor)
       .lerp(live.groundTint, live.groundTintStrength * 0.85);

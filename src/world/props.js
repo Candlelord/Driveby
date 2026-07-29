@@ -63,12 +63,15 @@ export class Props {
     for (const name of PROP_NAMES) {
       const def = PROP_KIT[name];
       const meshes = def.parts.map((part) => {
-        const mesh = instanced(part.geometry(), materials[part.material], this.slots);
+        // A part may carry a fixed colour instead of a palette slot — a
+        // lighthouse is red and white whatever set it stands in.
+        const material = part.color ? flat(part.color) : materials[part.material];
+        const mesh = instanced(part.geometry(), material, this.slots);
         mesh.visible = false;
         // Per-instance colour: identical props in a row is the single biggest
         // tell that a scene is instanced. A small deterministic jitter around
         // the set's colour breaks it up for one attribute.
-        mesh.userData.tint = part.material;
+        mesh.userData.tint = part.color ? 'fixed' : part.material;
         scene.add(mesh);
         return mesh;
       });
@@ -212,7 +215,7 @@ export class Props {
         mesh.setMatrixAt(type.used, DUMMY.matrix);
         // Emissive props keep their exact colour — a flickering neon sign that
         // is a different orange every instance reads as a bug, not variety.
-        if (mesh.userData.tint !== 'e') {
+        if (mesh.userData.tint !== 'e' && mesh.userData.tint !== 'fixed') {
           TINT.setScalar(jitter);
           mesh.setColorAt(type.used, TINT);
         }

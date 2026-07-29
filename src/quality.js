@@ -13,6 +13,7 @@ export const TIERS = {
     pixelRatio: 2,
     bloom: true,
     detail: 1.55, // geometry segment multiplier
+    shadows: 1024, // shadow map size; 0 = blob only
     cloudOctaves: 4,
     waterSegments: [16, 34],
     waterNormals: true,
@@ -34,6 +35,7 @@ export const TIERS = {
     pixelRatio: 1.5,
     bloom: true,
     detail: 1.0,
+    shadows: 768,
     cloudOctaves: 3,
     waterSegments: [10, 20],
     waterNormals: true,
@@ -57,6 +59,7 @@ export const TIERS = {
     // The three things that actually cost a phone: per-pixel cloud octaves,
     // per-frame water normal recomputation, and the extra particle systems.
     detail: 0.6,
+    shadows: 0,
     cloudOctaves: 2,
     waterSegments: [5, 10],
     waterNormals: false,

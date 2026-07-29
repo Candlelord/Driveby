@@ -28,6 +28,7 @@ export const MOOD_COLOR_KEYS = [
   // road surface
   'roadColor',
   'lineColor',
+  'dashColor',
   'shoulderColor',
   'lampColor',
   // grade
@@ -106,6 +107,7 @@ export const MOOD_PROFILES = {
 
     roadColor: 0x3f444b,
     lineColor: 0x9aa3ad,
+    dashColor: 0xb8c0c8,
     shoulderColor: 0x4a5058,
     lampColor: 0xaebccc,
     lampIntensity: 0.16,
@@ -161,6 +163,7 @@ export const MOOD_PROFILES = {
 
     roadColor: 0x4a3f4c,
     lineColor: 0xd8b8a8,
+    dashColor: 0xf0b070,
     shoulderColor: 0x6b5257,
     lampColor: 0xffcf9a,
     lampIntensity: 0.35,
@@ -216,6 +219,7 @@ export const MOOD_PROFILES = {
 
     roadColor: 0x50565e,
     lineColor: 0xf4f0e2,
+    dashColor: 0xf2c052,
     shoulderColor: 0x8f8f70,
     lampColor: 0xfff0c8,
     lampIntensity: 0.0,
@@ -272,6 +276,7 @@ export const MOOD_PROFILES = {
 
     roadColor: 0x1c1c24,
     lineColor: 0x8f8fb2,
+    dashColor: 0xc8a0ff,
     shoulderColor: 0x232330,
     lampColor: 0x46e8ff,
     lampIntensity: 1.0,

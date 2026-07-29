@@ -227,6 +227,43 @@ function flareTower() {
   return merge(parts);
 }
 
+/** Red-and-white striped tower with a gallery and lamp. */
+function lighthouseTower() {
+  // The white bands; the red ones are a separate part so they keep their colour.
+  const parts = [];
+  for (let i = 0; i < 3; i++) {
+    const y = i * 3.6;
+    const r0 = 1.55 - i * 0.18;
+    const r1 = 1.37 - i * 0.18;
+    parts.push(cyl(r1, r0, 1.8, 10).translate(0, y + 0.9, 0));
+  }
+  parts.push(cyl(1.15, 1.15, 0.5, 10).translate(0, 10.9, 0)); // gallery floor
+  parts.push(cone(1.15, 1.3, 9).translate(0, 12.6, 0)); // cap
+  return merge(parts);
+}
+
+function lighthouseBands() {
+  const parts = [];
+  for (let i = 0; i < 3; i++) {
+    const y = i * 3.6 + 1.8;
+    const r0 = 1.46 - i * 0.18;
+    const r1 = 1.28 - i * 0.18;
+    parts.push(cyl(r1, r0, 1.8, 10).translate(0, y + 0.9, 0));
+  }
+  return merge(parts);
+}
+
+const lighthouseLamp = () => cyl(0.72, 0.72, 1.0, 8).translate(0, 11.6, 0);
+
+/** A tall stack of weathered rock, for standing in the surf. */
+function seaStack() {
+  return merge([
+    dod(2.6).scale(1, 2.6, 1).translate(0, 5.2, 0),
+    dod(1.7).scale(1, 2.2, 1).translate(0.8, 10.5, 0.4),
+    dod(1.0).translate(-0.4, 13.4, -0.3),
+  ]);
+}
+
 function barnRoof() {
   const roof = cyl(0.01, 1.6, 3.4, 3).rotateZ(Math.PI / 2).rotateY(Math.PI / 2);
   return roof.translate(0, 2.5, 0);
@@ -312,6 +349,21 @@ const CORE_KIT = {
     ],
     spread: 26,
     jitter: 30,
+  },
+  lighthouse: {
+    scale: 0.9,
+    parts: [
+      { geometry: lighthouseTower, color: 0xf2ede2 },
+      { geometry: lighthouseBands, color: 0xc4402e },
+      { geometry: lighthouseLamp, material: 'e' },
+    ],
+    spread: 55,
+    jitter: 45,
+  },
+  seaStack: {
+    parts: [{ geometry: seaStack, material: 'b' }],
+    spread: 40,
+    jitter: 55,
   },
   cactus: {
     parts: [{ geometry: cactusGeometry, material: 'a' }],

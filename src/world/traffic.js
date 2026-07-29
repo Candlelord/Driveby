@@ -51,6 +51,9 @@ export class Traffic {
     this.tails = instanced(parts.tails, this.tailMaterial, this.count);
 
     this.meshes = [this.body, this.dark, this.glass, this.heads, this.tails];
+    // Traffic near the player sits inside the car's shadow frustum and casts too.
+    this.body.castShadow = true;
+    this.dark.castShadow = true;
 
     this._buildGlows();
     this._buildShadows();
@@ -163,7 +166,7 @@ export class Traffic {
 
     const on = live.headlights;
     this.headMaterial.color.setRGB(1, 0.94, 0.8).multiplyScalar(0.35 + on * 1.8);
-    this.tailMaterial.color.setRGB(1, 0.16, 0.1).multiplyScalar(0.55 + on * 1.0);
+    this.tailMaterial.color.setRGB(1, 0.28, 0.12).multiplyScalar(0.95 + on * 0.8);
     this.headGlowMaterial.opacity = on * 0.55;
     this.tailGlowMaterial.opacity = on * 0.4;
     this.shadowMaterial.opacity = 0.06 + 0.2 * (1 - live.lampIntensity);

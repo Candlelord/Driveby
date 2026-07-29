@@ -12,8 +12,9 @@ const HERE = new THREE.Vector3();
  * this file touches the meshes, only `group.position` / `group.rotation`.
  */
 export class Car {
-  constructor(scene) {
+  constructor(scene, { realShadow = false } = {}) {
     this.group = new THREE.Group();
+    this.realShadow = realShadow;
     scene.add(this.group);
 
     const parts = buildCarParts();
@@ -23,9 +24,15 @@ export class Car {
     this.glassMaterial = flat(0x1e2630, 0.25, 0.4);
     this.tyreMaterial = flat(0x141619, 0.95, 0);
 
-    this.group.add(new THREE.Mesh(parts.body, this.bodyMaterial));
-    this.group.add(new THREE.Mesh(parts.dark, this.darkMaterial));
-    this.group.add(new THREE.Mesh(parts.glass, this.glassMaterial));
+    for (const [geometry, material] of [
+      [parts.body, this.bodyMaterial],
+      [parts.dark, this.darkMaterial],
+      [parts.glass, this.glassMaterial],
+    ]) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = realShadow;
+      this.group.add(mesh);
+    }
 
     // Unlit materials, driven above 1.0 at night so bloom has something to grab.
     this.headlightMaterial = new THREE.MeshBasicMaterial({ color: 0xfff3d4 });
@@ -43,12 +50,13 @@ export class Car {
   _buildWheels(geometry) {
     this.wheels = [];
     for (const [x, z, steers] of [
-      [-1.0, -1.45, true],
-      [1.0, -1.45, true],
-      [-1.0, 1.5, false],
-      [1.0, 1.5, false],
+      [-0.92, -1.42, true],
+      [0.92, -1.42, true],
+      [-0.92, 1.46, false],
+      [0.92, 1.46, false],
     ]) {
       const wheel = new THREE.Mesh(geometry, this.tyreMaterial);
+      wheel.castShadow = this.realShadow;
       wheel.position.set(x, WHEEL_RADIUS, z);
       wheel.rotation.order = 'YXZ';
       wheel.userData.steers = steers;
@@ -143,8 +151,11 @@ export class Car {
     const on = live.headlights;
 
     this.headlightMaterial.color.setRGB(1, 0.94, 0.8).multiplyScalar(0.35 + on * 1.5);
-    this.taillightMaterial.color.setRGB(1, 0.16, 0.1).multiplyScalar(0.55 + on * 0.8);
-    this.shadow.material.opacity = 0.08 + 0.22 * (1 - live.lampIntensity);
+    this.taillightMaterial.color.setRGB(1, 0.28, 0.12).multiplyScalar(1.05 + on * 0.7);
+    // With a real shadow map the blob is just a faint contact patch under the
+    // sills; without one it carries the whole grounding job as before.
+    const blob = this.realShadow ? 0.35 : 1;
+    this.shadow.material.opacity = (0.08 + 0.22 * (1 - live.lampIntensity)) * blob;
 
     this.poolMaterial.color.copy(live.lampColor).lerp(WARM, 0.6);
     this.poolMaterial.opacity = on * 0.26;

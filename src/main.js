@@ -67,6 +67,26 @@ const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(60, 90, -40);
 scene.add(sun, sun.target);
 
+// One real cast shadow, for the car alone. The frustum is a tight box around
+// the origin — where the car always is — so the map stays sharp at a small
+// size, and the long soft shadow anchors the car to the road the way the
+// concept art's does. Traffic passing through the box picks it up for free.
+if (tier.shadows) {
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(tier.shadows, tier.shadows);
+  const frustum = sun.shadow.camera;
+  frustum.left = -16;
+  frustum.right = 16;
+  frustum.top = 16;
+  frustum.bottom = -16;
+  frustum.near = 40;
+  frustum.far = 220;
+  sun.shadow.bias = -0.0006;
+  sun.shadow.radius = 4;
+}
+
 const environment = new Environment();
 const physics = new CarPhysics();
 const frame = new PathFrame();
@@ -82,7 +102,7 @@ const eventVisuals = new EventVisuals(scene, tier);
 // every frame; the lowest tier does without them.
 const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
-const car = new Car(scene);
+const car = new Car(scene, { realShadow: Boolean(tier.shadows) });
 const weather = new Weather(scene, tier);
 
 const input = new Input(renderer.domElement, {
