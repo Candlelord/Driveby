@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildCarParts, WHEEL_RADIUS } from './carGeometry.js';
-import { softDotTexture, beamTexture } from './textures.js';
+import { beamTexture } from './textures.js';
 
 const AHEAD = new THREE.Vector3();
 const HERE = new THREE.Vector3();
@@ -12,9 +12,10 @@ const HERE = new THREE.Vector3();
  * this file touches the meshes, only `group.position` / `group.rotation`.
  */
 export class Car {
-  constructor(scene, { realShadow = false } = {}) {
+  constructor(scene, { realShadow = false, headlamps = 2 } = {}) {
     this.group = new THREE.Group();
     this.realShadow = realShadow;
+    this.headlampCount = headlamps;
     scene.add(this.group);
 
     const parts = buildCarParts();
@@ -82,31 +83,35 @@ export class Car {
   }
 
   /**
-   * Two effects, no real light sources.
+   * Real lights, plus one cheat for the air.
    *
-   * The pool is a lit patch of road ahead of the car — the part you actually
-   * read as "headlights are on". The beams are flat wedges at lamp height that
-   * only come up when there is something in the air to scatter off, so clear
-   * nights stay clean and fog gets shafts.
+   * The lamps are actual SpotLights, so the road, the verge and anything
+   * standing in the beam are genuinely lit by the car — drive past a fence at
+   * night and it brightens as it enters the cone and falls away behind. An
+   * additive quad could never do that, which is exactly why the old one read
+   * as a decal painted on the tarmac.
+   *
+   * Falloff is art-directed rather than physical: real 1/d² dies inside ten
+   * metres and leaves the road ahead black, so `DECAY` is well under 2 and the
+   * cone carries far enough to actually show you where you are going.
+   *
+   * The beams are flat wedges at lamp height that only come up when there is
+   * something in the air to scatter off, so clear nights stay clean and fog
+   * gets shafts. That one stays a cheat — volumetrics are not worth a phone.
    */
   _buildLights() {
-    this.poolMaterial = new THREE.MeshBasicMaterial({
-      color: 0xfff0d0,
-      map: softDotTexture(),
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      fog: false,
-    });
-
-    this.pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.poolMaterial);
-    this.pool.rotation.x = -Math.PI / 2;
-    // Starts clear of the front bumper (z = -2.3) and reaches up the road.
-    this.pool.position.set(0, 0.05, -17);
-    this.pool.scale.set(7, 32, 1);
-    this.pool.renderOrder = 2;
-    this.group.add(this.pool);
+    this.lamps = [];
+    // One lamp sits on the centreline; two straddle it as a real car does.
+    const xs = this.headlampCount >= 2 ? [-LAMP_X, LAMP_X] : [0];
+    for (const x of xs) {
+      const light = new THREE.SpotLight(0xfff0d0, 0, LAMP_RANGE, LAMP_ANGLE, 0.75, DECAY);
+      light.position.set(x, LAMP_Y, -2.15);
+      // A spot aims at its target's world position, so the target has to be a
+      // child of the car too or the beam swings loose as the car moves.
+      light.target.position.set(x * 0.35, 0.1, -LAMP_REACH);
+      this.group.add(light, light.target);
+      this.lamps.push(light);
+    }
 
     this.beamMaterial = new THREE.MeshBasicMaterial({
       color: 0xfff0d0,
@@ -157,11 +162,25 @@ export class Car {
     const blob = this.realShadow ? 0.35 : 1;
     this.shadow.material.opacity = (0.08 + 0.22 * (1 - live.lampIntensity)) * blob;
 
-    this.poolMaterial.color.copy(live.lampColor).lerp(WARM, 0.6);
-    this.poolMaterial.opacity = on * 0.26;
-    this.pool.visible = on > 0.02;
+    // The lamps take the mood's colour so a neon night reads cooler than a
+    // country one, but stay mostly tungsten — headlights are not mood lighting.
+    BEAM.copy(live.lampColor).lerp(WARM, 0.6);
+    // Two lamps each carry half the light, so the road looks the same however
+    // many the device can afford. Note this rides `beamThrow`, not `headlights`
+    // — the lenses glow whenever the lamps are on, but the beam only lands on
+    // the road once the road is darker than the beam.
+    const paints = live.beamThrow;
+    const each = (LAMP_POWER / this.lamps.length) * paints;
+    for (const lamp of this.lamps) {
+      lamp.color.copy(BEAM);
+      lamp.intensity = each;
+      lamp.visible = paints > 0.02;
+      // Aim where the wheels are pointed. A headlight that does not sweep
+      // through a corner is the giveaway that it is painted on.
+      lamp.target.position.x = lamp.position.x * 0.35 - state.steer * LAMP_SWEEP;
+    }
 
-    this.beamMaterial.color.copy(this.poolMaterial.color);
+    this.beamMaterial.color.copy(BEAM);
     this.beamMaterial.opacity = live.beamStrength * 0.3;
     for (const beam of this.beams) beam.visible = live.beamStrength > 0.02;
 
@@ -172,6 +191,23 @@ export class Car {
 }
 
 const WARM = new THREE.Color(0xfff0d0);
+const BEAM = new THREE.Color();
+
+// Headlamp geometry and falloff. `LAMP_POWER` is in three's candela-ish units
+// and was measured against rendered road brightness rather than guessed —
+// standard materials divide diffuse irradiance by π, so the number that looks
+// right is several times larger than it reads.
+const LAMP_X = 0.62;
+const LAMP_Y = 0.72;
+const LAMP_ANGLE = 0.44; // radians, half-angle of the cone
+const LAMP_RANGE = 78; // hard cutoff, so distant geometry costs nothing
+const LAMP_REACH = 34; // how far up the road the cone is aimed
+const LAMP_SWEEP = 9; // lateral travel of the aim point at full lock
+// Flatter than physical (2.0) on purpose: at true inverse-square the pool dies
+// about fifteen metres out and the road beyond it is black, which is neither
+// useful to drive by nor what a headlight looks like from behind the car.
+const DECAY = 0.85;
+const LAMP_POWER = 380;
 
 /**
  * A unit quad lying flat, running from the lamp at z = 0 to z = -1 ahead, with

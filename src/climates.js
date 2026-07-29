@@ -73,7 +73,9 @@ export const CLIMATE_PROFILES = {
   wetNight: climate({
     label: 'wet',
     fogDensityBase: 0.0094,
-    roadRoughness: 0.3,
+    // Was 0.3, which turned the whole carriageway into a mirror for the key
+    // light — a broad pink wash rather than a reflection.
+    roadRoughness: 0.55,
     haze: 0.3,
     hazeSize: 1.4,
     hazeColor: 0xff8ad4,

@@ -102,7 +102,7 @@ const eventVisuals = new EventVisuals(scene, tier);
 // every frame; the lowest tier does without them.
 const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
-const car = new Car(scene, { realShadow: Boolean(tier.shadows) });
+const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps });
 const weather = new Weather(scene, tier);
 
 const input = new Input(renderer.domElement, {

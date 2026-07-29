@@ -105,7 +105,9 @@ export class Road {
     // Wet moods drop the roughness so the key light lays a sheen down the
     // asphalt — the cheapest "it has been raining" cue there is.
     this.surfaceMaterial.roughness = live.roadRoughness;
-    this.surfaceMaterial.metalness = (1 - live.roadRoughness) * 0.4;
+    // Kept well below mirror-like, per the art direction: wet road should read
+    // as a soft sheen, not as a reflective surface competing with the sky.
+    this.surfaceMaterial.metalness = (1 - live.roadRoughness) * 0.18;
   }
 
   _updateDashes(frame, firstIndex) {

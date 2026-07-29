@@ -199,7 +199,38 @@ export class Sfx {
       this._rumbling = false;
     }
 
+    this._updateThunder(state, live, music);
     this._updateAmbience(state, live, music);
+  }
+
+  /**
+   * Thunder, fired by the flash rather than by a timer.
+   *
+   * It used to run off the ambience schedule, so the crack almost never
+   * coincided with the light — which is exactly the thing that makes a storm
+   * read as a storm. The delay is the real one: sound lags light by distance,
+   * and a longer gap reads as a more distant strike.
+   */
+  _updateThunder(state, live, music) {
+    const flash = live.screenFlash ?? 0;
+    const rising = flash > 0.35 && (this._lastFlash ?? 0) <= 0.35;
+    this._lastFlash = flash;
+
+    if (rising) {
+      // Close strikes are brighter, so a bright flash gets a short delay and a
+      // sharp crack; a dim one rolls in late and low.
+      const near = Math.min(1, flash);
+      this._thunderIn = 0.25 + (1 - near) * 2.6;
+      this._thunderNear = near;
+    }
+
+    if (this._thunderIn > 0) {
+      this._thunderIn -= state.dt;
+      if (this._thunderIn <= 0) {
+        this.thunder(this._thunderNear ?? 0.6);
+        music?.duck(0.18, 2.4);
+      }
+    }
   }
 
   /**
@@ -211,11 +242,6 @@ export class Sfx {
     if (this._nextAmbience > 0) return;
     this._nextAmbience = 9 + Math.random() * 22;
 
-    if (live.screenFlash > 0.3) {
-      this.thunder();
-      music?.duck(0.2, 2.2);
-      return;
-    }
     // Nothing sings in a storm.
     if (live.rain > 0.5 || live.wind > 0.8) return;
 
@@ -247,7 +273,7 @@ export class Sfx {
   }
 
   /** A noise burst dragged down through a closing filter. */
-  thunder() {
+  thunder(near = 0.6) {
     if (!this.started) return;
     const ctx = this.context;
     const t = ctx.currentTime;
@@ -258,12 +284,13 @@ export class Sfx {
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(900, t);
-    filter.frequency.exponentialRampToValueAtTime(70, t + 2.4);
+    // A near strike keeps its high end and cracks; a distant one is all rumble.
+    filter.frequency.setValueAtTime(300 + near * 2200, t);
+    filter.frequency.exponentialRampToValueAtTime(50 + near * 60, t + 2.4);
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.5, t + 0.05);
+    gain.gain.linearRampToValueAtTime(0.22 + near * 0.45, t + 0.02 + (1 - near) * 0.3);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
 
     source.connect(filter).connect(gain).connect(this.master);

@@ -29,6 +29,19 @@ const SWAYS = new Set([
   'round', 'palm', 'hedge',
 ]);
 
+// Placement memory for the separation pass. Slots are 4.5 units apart, which is
+// less than the footprint of most structures, so without this a barn and a
+// water tower two slots apart end up standing inside each other.
+const RECENT_SLOTS = 24;
+// Multiple of the two footprints that must be clear between centres. Above 1
+// because touching is not the bar: a barn and an oak four metres apart do not
+// intersect, but from a car they read as one lump. The clumping waves still
+// give thickets and clearings; this only stops things piling into each other.
+const CLEARANCE = 1.35;
+// Props smaller than this cluster freely: grass and flowers are meant to grow
+// in patches, and holding them apart would read as a lawn.
+const MIN_FOOTPRINT = 0.9;
+
 const TINT = new THREE.Color();
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
@@ -62,11 +75,23 @@ export class Props {
     this.types = {};
     for (const name of PROP_NAMES) {
       const def = PROP_KIT[name];
+      // Measured rather than authored: every part's horizontal extent at unit
+      // scale, so a new prop gets sensible spacing without anyone remembering
+      // to give it a number.
+      let footprint = 0;
       const meshes = def.parts.map((part) => {
+        const geometry = part.geometry();
+        geometry.computeBoundingBox();
+        const box = geometry.boundingBox;
+        footprint = Math.max(
+          footprint,
+          Math.abs(box.min.x), Math.abs(box.max.x),
+          Math.abs(box.min.z), Math.abs(box.max.z)
+        );
         // A part may carry a fixed colour instead of a palette slot — a
         // lighthouse is red and white whatever set it stands in.
         const material = part.color ? flat(part.color) : materials[part.material];
-        const mesh = instanced(part.geometry(), material, this.slots);
+        const mesh = instanced(geometry, material, this.slots);
         mesh.visible = false;
         // Per-instance colour: identical props in a row is the single biggest
         // tell that a scene is instanced. A small deterministic jitter around
@@ -75,8 +100,13 @@ export class Props {
         scene.add(mesh);
         return mesh;
       });
-      this.types[name] = { def, meshes, used: 0 };
+      this.types[name] = { def, meshes, used: 0, footprint };
     }
+
+    // Ring buffer of what has just been placed, for the separation check.
+    this.recent = [];
+    for (let i = 0; i < RECENT_SLOTS; i++) this.recent.push({ s: 0, x: 0, r: 0 });
+    this.recentHead = 0;
 
     this.lampPole = instanced(cylinder(0.12, 6.4, 3.2), this.lampPoleMaterial, this.lampSlots);
     this.lampHead = instanced(
@@ -114,6 +144,9 @@ export class Props {
     const farEdge = CONFIG.segmentsAhead * CONFIG.segmentLength;
 
     for (const type of Object.values(this.types)) type.used = 0;
+    // Slots are walked in ascending distance, so the memory only ever needs to
+    // reach backwards; clear it and let the pass refill it.
+    for (const entry of this.recent) entry.r = 0;
 
     for (let i = 0; i < this.slots; i++) {
       const slot = firstSlot + i;
@@ -161,6 +194,42 @@ export class Props {
       const distance = runsAlong ? def.spread : def.spread + hash(slot * 3.3) * def.jitter;
       const offset = side * distance;
 
+      // Fade in with distance rather than popping at the spawn boundary: the
+      // furthest slots scale up over their last stretch of approach.
+      const ahead = s - state.travelled;
+      const fade = clamp((farEdge - ahead) / 55, 0, 1);
+      if (fade <= 0.01) continue;
+
+      // Big structures take a fixed damper as well as the set's scale, so a
+      // water tower thirty units away does not end up the size of a hill.
+      // Linear props take no size jitter either — mismatched section heights
+      // are as obvious as mismatched angles.
+      const jitterScale = runsAlong ? 1 : 0.75 + hash(slot * 7.1) * 0.8;
+      const size = jitterScale * set.propScale * (def.scale ?? 1) * fade;
+      let spanX = size;
+      let spanY = size;
+      let spanZ = size;
+      if (def.stretch) {
+        const [fMin, fMax] = def.stretch.footprint;
+        const [hMin, hMax] = def.stretch.height;
+        spanX = (fMin + hash(slot * 11.7) * (fMax - fMin)) * fade;
+        spanY = (hMin + hash(slot * 13.1) * (hMax - hMin)) * fade;
+        spanZ = (fMin + hash(slot * 17.3) * (fMax - fMin)) * fade;
+      } else if (!runsAlong) {
+        // Slight non-uniform scale, so even one shape does not read as cloned.
+        spanX = size * (0.94 + hash(slot * 19.1) * 0.12);
+        spanZ = size * (0.94 + hash(slot * 23.3) * 0.12);
+      }
+
+      // Keep objects out of each other. Linear runs sit this out on both
+      // sides: their sections are meant to abut, and a fence long enough to
+      // fill the ring buffer would crowd out the scatter it is protecting.
+      const radius = type.footprint * Math.max(spanX, spanZ);
+      if (!runsAlong && radius > MIN_FOOTPRINT) {
+        if (!this._isClear(s, offset, radius)) continue;
+        this._remember(s, offset, radius);
+      }
+
       frame.point(s, offset, terrainHeight(offset, s, live), POSITION);
 
       DUMMY.position.copy(POSITION);
@@ -182,32 +251,7 @@ export class Props {
         : 0;
       DUMMY.rotation.z = live.propLean * 0.35 * (runsAlong || FACING.has(typeName) ? 0.3 : 1) + sway;
 
-      // Fade in with distance rather than popping at the spawn boundary: the
-      // furthest slots scale up over their last stretch of approach.
-      const ahead = s - state.travelled;
-      const fade = clamp((farEdge - ahead) / 55, 0, 1);
-      if (fade <= 0.01) continue;
-
-      // Big structures take a fixed damper as well as the set's scale, so a
-      // water tower thirty units away does not end up the size of a hill.
-      // Linear props take no size jitter either — mismatched section heights
-      // are as obvious as mismatched angles.
-      const jitterScale = runsAlong ? 1 : 0.75 + hash(slot * 7.1) * 0.8;
-      const size = jitterScale * set.propScale * (def.scale ?? 1) * fade;
-      if (def.stretch) {
-        const [fMin, fMax] = def.stretch.footprint;
-        const [hMin, hMax] = def.stretch.height;
-        DUMMY.scale.set(
-          (fMin + hash(slot * 11.7) * (fMax - fMin)) * fade,
-          (hMin + hash(slot * 13.1) * (hMax - hMin)) * fade,
-          (fMin + hash(slot * 17.3) * (fMax - fMin)) * fade
-        );
-      } else if (runsAlong) {
-        DUMMY.scale.setScalar(size);
-      } else {
-        // Slight non-uniform scale, so even one shape does not read as cloned.
-        DUMMY.scale.set(size * (0.94 + hash(slot * 19.1) * 0.12), size, size * (0.94 + hash(slot * 23.3) * 0.12));
-      }
+      DUMMY.scale.set(spanX, spanY, spanZ);
       DUMMY.updateMatrix();
 
       const jitter = 0.82 + hash(slot * 29.7) * 0.36;
@@ -233,6 +277,33 @@ export class Props {
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       }
     }
+  }
+
+  /**
+   * Is there room at (s, x) for something of this radius?
+   *
+   * Distance is measured in road space rather than world space — along-road
+   * against lateral — which is exact enough at these radii and costs nothing,
+   * since the placement already works in those coordinates.
+   */
+  _isClear(s, x, radius) {
+    for (const other of this.recent) {
+      if (other.r <= 0) continue;
+      const need = (radius + other.r) * CLEARANCE;
+      const ds = s - other.s;
+      if (ds > need) continue;
+      const dx = x - other.x;
+      if (ds * ds + dx * dx < need * need) return false;
+    }
+    return true;
+  }
+
+  _remember(s, x, radius) {
+    const entry = this.recent[this.recentHead];
+    entry.s = s;
+    entry.x = x;
+    entry.r = radius;
+    this.recentHead = (this.recentHead + 1) % this.recent.length;
   }
 
   _updateLamps(state, frame) {

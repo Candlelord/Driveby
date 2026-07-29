@@ -21,6 +21,11 @@ const CLEAR_NIGHT = {
   bottom: new THREE.Color(0x0b1020),
 };
 
+/** Rec. 709 relative luminance, for judging how bright a light actually reads. */
+function luminance(color) {
+  return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+}
+
 /** One crossfading axis: a current profile, a previous one, and a mix. */
 class Axis {
   constructor(profiles, keys, startId) {
@@ -373,7 +378,25 @@ export class Environment {
         live.tunnelCoverage
       )
     );
-    live.beamStrength = clamp01(live.headlights * (0.25 + live.fogDensity * 26));
+    // How much the beam actually shows on the ground, as opposed to whether the
+    // lamps are lit. On a real car those are different things: the lenses come
+    // on in daytime rain and throw nothing you can see, because the road is
+    // already brighter than the beam. Without this split, an overcast afternoon
+    // drags a white pool along in front of the bumper.
+    //
+    // Brightness has to be weighted by the light's *colour*, not just its
+    // intensity — Sad carries a high ambient number in a very dark blue, which
+    // by intensity alone reads brighter than a hip-hop night. Measured on this
+    // scale: hip-hop night ≈ 0.5, Sad overcast ≈ 3.4, Happy noon ≈ 7.9.
+    const sceneLight =
+      (live.sunIntensity * luminance(live.sunColor) +
+        live.ambientIntensity * luminance(live.ambientColor)) *
+      live.exposureFinal;
+    // Any meaningful "lamps on" gives a full beam; darkness alone decides how
+    // much of it lands. Multiplying the two directly let a dim overcast — where
+    // both terms are middling — lose the beam altogether.
+    live.beamThrow = clamp01(live.headlights * 3) * clamp01((4 - sceneLight) / 3.2);
+    live.beamStrength = clamp01(live.beamThrow * (0.25 + live.fogDensity * 26));
 
     live.funnel = ov.funnel ?? 0;
     live.funnelNear = ov.funnelNear ?? 0;
