@@ -14,40 +14,73 @@ export class EventVisuals {
   }
 
   /**
-   * A tapered, twisted column. It lives in the sky group's frame conceptually —
-   * but simply parking it far ahead and to one side reads correctly, since a
-   * tornado that stays put on the horizon is exactly what you would see.
+   * The funnel: two counter-rotating shells and a debris skirt where it lands.
+   *
+   * A single opaque cone was the whole thing before, and it failed in two
+   * specific ways. It was cut off dead straight wherever the terrain occluded
+   * it, so at close range it read as a pipe hanging in the air rather than
+   * something touching the ground; and being very nearly axisymmetric, no
+   * amount of spinning it about its own axis produced any visible motion.
+   *
+   * So: the skirt is a wide, faint flare at the base that both hides that
+   * intersection and supplies the thing a viewer actually reads as ground
+   * contact — a boil of lifted dirt. The two shells turn at different rates
+   * and in opposite directions, which is what makes the column look like it
+   * is rotating instead of merely standing there. And alpha is baked per
+   * vertex so the top feathers into the cloud deck rather than ending, which
+   * the art direction asks for everywhere else too.
    */
   _buildFunnel(scene) {
-    this.funnelMaterial = new THREE.MeshBasicMaterial({
-      color: 0x6d6f5e,
+    this.funnelGroup = new THREE.Group();
+    this.funnelGroup.visible = false;
+    scene.add(this.funnelGroup);
+
+    this.funnelShells = [];
+    this.funnelMaterials = [];
+
+    // Inner is dense and tight; outer is a wider, fainter haze around it, and
+    // the pair reading against each other is most of the sense of depth.
+    // Dark. A funnel is a silhouette against a lit sky, and the previous
+    // mid-grey sat at almost exactly the luminance of the storm veil behind
+    // it, which is why it read as a smudge rather than a shape.
+    for (const [topRadius, bottomRadius, alpha, tint] of [
+      [30, 6, 1, 0x41443a],
+      [46, 13, 0.5, 0x5f6356],
+    ]) {
+      const geometry = twistedColumn(topRadius, bottomRadius, 190);
+      const material = new THREE.MeshBasicMaterial({
+        color: tint,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        vertexColors: true, // carries the vertical alpha feather
+        fog: false,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      mesh.userData.alpha = alpha;
+      this.funnelGroup.add(mesh);
+      this.funnelShells.push(mesh);
+      this.funnelMaterials.push(material);
+    }
+
+    // The skirt. Wide, low, and open at the top so it reads as a cloud of
+    // lifted ground rather than a cone sitting on the grass.
+    const skirt = new THREE.CylinderGeometry(9, 40, 26, 16, 3, true);
+    paintVerticalAlpha(skirt, 26, (t) => (1 - t) ** 1.4 * 0.85);
+    this.skirtMaterial = new THREE.MeshBasicMaterial({
+      color: 0x8a8267,
       transparent: true,
       opacity: 0,
       depthWrite: false,
       side: THREE.DoubleSide,
+      vertexColors: true,
       fog: false,
     });
-
-    // Open-ended cone, wide at the cloud base and narrow at the ground.
-    const geometry = new THREE.CylinderGeometry(26, 5, 150, 14, 6, true);
-    const position = geometry.attributes.position;
-    for (let i = 0; i < position.count; i++) {
-      const y = position.getY(i);
-      const t = (y + 75) / 150;
-      // Lean and twist the column so it is not a plain cone.
-      const twist = (1 - t) * 1.6;
-      const x = position.getX(i);
-      const z = position.getZ(i);
-      position.setX(i, x * Math.cos(twist) - z * Math.sin(twist) + (1 - t) * 14);
-      position.setZ(i, x * Math.sin(twist) + z * Math.cos(twist));
-    }
-    position.needsUpdate = true;
-    geometry.computeVertexNormals();
-
-    this.funnel = new THREE.Mesh(geometry, this.funnelMaterial);
-    this.funnel.frustumCulled = false;
-    this.funnel.visible = false;
-    scene.add(this.funnel);
+    this.funnelSkirt = new THREE.Mesh(skirt, this.skirtMaterial);
+    this.funnelSkirt.frustumCulled = false;
+    this.funnelGroup.add(this.funnelSkirt);
   }
 
   /** Tumbling flecks torn along by the wind. */
@@ -141,16 +174,41 @@ export class EventVisuals {
 
   _updateFunnel(state, live) {
     const amount = live.funnel;
-    this.funnel.visible = amount > 0.02;
-    if (!this.funnel.visible) return;
+    this.funnelGroup.visible = amount > 0.02;
+    if (!this.funnelGroup.visible) return;
 
     // Comes in from the horizon on one side and closes as the event builds.
     const near = live.funnelNear;
-    const distance = 620 - near * 480;
-    this.funnel.position.set(-120 + near * 60, 46, -distance);
-    this.funnel.rotation.y = state.time * 0.9;
-    this.funnel.scale.setScalar(0.7 + near * 0.6);
-    this.funnelMaterial.opacity = Math.min(1, amount) * 0.55;
+    const distance = 620 - near * 470;
+    const scale = 0.8 + near * 0.9;
+
+    // Sit the column so its base lands on the ground rather than at a fixed
+    // height: the whole point of the skirt is that the two meet.
+    // Tracks in toward the road as it closes, rather than staying parked on
+    // one bearing — a tornado that never gets nearer is scenery, not an event.
+    this.funnelGroup.position.set(-150 + near * 105, HALF_COLUMN * scale, -distance);
+    this.funnelGroup.scale.setScalar(scale);
+
+    // A tornado is never plumb. A slow lean, on its own clock so it does not
+    // beat against the rotation.
+    this.funnelGroup.rotation.z = Math.sin(state.time * 0.23) * 0.1;
+    this.funnelGroup.rotation.x = Math.cos(state.time * 0.17) * 0.06;
+
+    const opacity = Math.min(1, amount);
+    for (let i = 0; i < this.funnelShells.length; i++) {
+      const shell = this.funnelShells[i];
+      // Opposed and at different rates: matched shells would lock together and
+      // the column would go back to looking rigid.
+      shell.rotation.y = state.time * (i === 0 ? 1.15 : -0.72);
+      this.funnelMaterials[i].opacity = opacity * 0.82 * shell.userData.alpha;
+    }
+
+    // The skirt sits at the foot of the column, spinning the other way again
+    // and swelling as the funnel bears down.
+    this.funnelSkirt.position.y = -HALF_COLUMN;
+    this.funnelSkirt.rotation.y = -state.time * 0.5;
+    this.funnelSkirt.scale.setScalar(0.85 + near * 0.5);
+    this.skirtMaterial.opacity = opacity * (0.3 + near * 0.45);
   }
 
   _updateDebris(state, live) {
@@ -222,6 +280,69 @@ export class EventVisuals {
       mesh.material.opacity = amount * (0.16 - band * 0.03);
     }
   }
+}
+
+const COLUMN_HEIGHT = 190;
+const HALF_COLUMN = COLUMN_HEIGHT / 2;
+
+/**
+ * An open cone, twisted and leaned along its length, with a vertical alpha
+ * feather baked in.
+ *
+ * The twist is what stops it reading as a traffic cone: it makes the
+ * silhouette change as the shell turns, which is the only way a shape this
+ * close to axisymmetric can show rotation at all.
+ */
+function twistedColumn(topRadius, bottomRadius, height) {
+  const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, 18, 10, true);
+  const position = geometry.attributes.position;
+  const half = height / 2;
+
+  for (let i = 0; i < position.count; i++) {
+    const t = (position.getY(i) + half) / height; // 0 at the ground, 1 at the cloud
+    const twist = (1 - t) * 2.1;
+    const x = position.getX(i);
+    const z = position.getZ(i);
+    // Waist: real funnels pinch part-way down rather than tapering evenly.
+    const pinch = 1 - Math.sin(t * Math.PI) * 0.22;
+    position.setX(i, (x * Math.cos(twist) - z * Math.sin(twist)) * pinch + (1 - t) * 16);
+    position.setZ(i, (x * Math.sin(twist) + z * Math.cos(twist)) * pinch);
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+
+  // Dense through the body, feathering out into the cloud deck at the top and
+  // into the debris skirt at the bottom, so neither end is an edge.
+  paintVerticalAlpha(geometry, height, (t) => {
+    const top = 1 - smoothRamp((t - 0.72) / 0.28);
+    const bottom = smoothRamp(t / 0.08);
+    return Math.min(top, 0.35 + bottom * 0.65);
+  });
+  return geometry;
+}
+
+/**
+ * Write a per-vertex RGBA where alpha comes from height. Three multiplies
+ * vertex alpha into the material's, which is the cheapest way to feather a
+ * silhouette without a texture or a custom shader.
+ */
+function paintVerticalAlpha(geometry, height, alphaAt) {
+  const position = geometry.attributes.position;
+  const half = height / 2;
+  const colors = new Float32Array(position.count * 4);
+  for (let i = 0; i < position.count; i++) {
+    const t = (position.getY(i) + half) / height;
+    colors[i * 4] = 1;
+    colors[i * 4 + 1] = 1;
+    colors[i * 4 + 2] = 1;
+    colors[i * 4 + 3] = alphaAt(t);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
+}
+
+function smoothRamp(x) {
+  const t = x < 0 ? 0 : x > 1 ? 1 : x;
+  return t * t * (3 - 2 * t);
 }
 
 function rand(min, max) {
