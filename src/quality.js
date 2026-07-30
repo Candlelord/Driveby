@@ -89,16 +89,28 @@ export const TIER_ORDER = ['high', 'medium', 'low'];
 /**
  * Pick a starting tier. Deliberately conservative on touch devices: it is far
  * better to start at medium and stay smooth than to start at high and stutter
- * for the three seconds the watchdog needs to notice.
+ * for the three seconds the watchdog needs to notice — and the watchdog only
+ * walks tiers *down*, so an optimistic guess is one you live with all session.
  */
 export function detectTier() {
   if (typeof window === 'undefined') return TIERS.high;
 
-  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
   const cores = navigator.hardwareConcurrency ?? 4;
+  // Safari has never implemented deviceMemory, so on every iPhone and iPad this
+  // is the fallback rather than a reading. It can raise suspicion, never settle
+  // the question.
   const memory = navigator.deviceMemory ?? 4;
 
-  if (!coarse) return cores <= 4 ? TIERS.medium : TIERS.high;
+  // iPadOS Safari requests desktop sites by default, which means it reports a
+  // Mac user agent, `(pointer: fine)` and `(hover: hover)`. Asking about the
+  // pointer therefore identifies an iPad as a laptop and hands a tablet GPU the
+  // full desktop budget. Touch points are the one signal that survives the
+  // masquerade: a Mac reports 0 whatever else it claims.
+  const touch = (navigator.maxTouchPoints ?? 0) > 0;
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  const handheld = touch || coarse;
+
+  if (!handheld) return cores <= 4 ? TIERS.medium : TIERS.high;
   if (cores <= 4 || memory <= 3) return TIERS.low;
   return TIERS.medium;
 }

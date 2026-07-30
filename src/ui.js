@@ -14,6 +14,11 @@ export class Ui {
     this.event = document.getElementById('hud-event');
     this.flash = document.getElementById('flash');
     this.hint = document.getElementById('hint');
+    // A tablet has no arrow keys to offer. Same touch test as the quality tier
+    // uses, because iPadOS Safari will happily claim to be a laptop.
+    if ((navigator.maxTouchPoints ?? 0) > 0 && this.hint?.dataset.touch) {
+      this.hint.textContent = this.hint.dataset.touch;
+    }
 
     this._lastLabel = '';
     this._wasCrossfading = null;
