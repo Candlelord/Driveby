@@ -25,6 +25,19 @@ body {
   inset: 0;
 }
 
+/* touch-action is not an inherited property, so setting it on <body> leaves the
+   canvas on the default `auto`. On iOS that lets Safari claim a horizontal drag
+   as a pan or an edge-swipe back-navigation partway through, which shows up as
+   the steering mysteriously dropping out mid-corner. It has to be declared on
+   the element the touch actually lands on. */
+#scene,
+#scene canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 #scene canvas {
   display: block;
   width: 100%;
@@ -374,4 +387,58 @@ body {
   opacity: 1;
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- stick
+   The touch steering indicator: an anchor ring where the finger landed, a
+   travel track showing how far full lock is, and a knob on it. Deliberately
+   quiet — it is there to be glanced at, not looked at, so it sits at low
+   opacity and fades out the moment the wheel returns to centre. */
+#stick {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  z-index: 4;
+  --lock: 0;
+  --span: 120px;
+  --held: 1;
+}
+
+#stick.is-live {
+  opacity: calc(0.5 * var(--held));
+}
+
+/* Travel track: full width is lock to lock. */
+#stick i {
+  position: absolute;
+  left: calc(var(--span) * -1);
+  top: -1px;
+  width: calc(var(--span) * 2);
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* The knob. */
+#stick b {
+  position: absolute;
+  left: calc(var(--lock) * var(--span) - 13px);
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #stick {
+    transition: none;
+  }
 }

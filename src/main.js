@@ -15,6 +15,7 @@ import { EVENT_NAMES } from './events.js';
 import { Session } from './session.js';
 import { Sfx } from './audio/sfx.js';
 import { Input } from './input.js';
+import { FrameClock } from './loop.js';
 import { Ui } from './ui.js';
 import { Post } from './post.js';
 import { Sky } from './world/sky.js';
@@ -106,6 +107,7 @@ const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.
 const weather = new Weather(scene, tier);
 
 const input = new Input(renderer.domElement, {
+  stick: document.getElementById('stick'),
   tiltButton: document.getElementById('tilt-btn'),
 });
 const ui = new Ui();
@@ -151,7 +153,7 @@ let cameraRoll = 0;
 let cameraFov = 62;
 let running = true;
 
-const clock = new THREE.Clock();
+const clock = new FrameClock();
 
 function resize() {
   const width = window.innerWidth;
@@ -172,18 +174,21 @@ document.addEventListener('visibilitychange', () => {
   const wasRunning = running;
   running = visible;
   if (visible && !wasRunning) {
-    clock.getDelta(); // discard the time spent hidden
+    clock.reset(); // drop the time spent hidden
     requestAnimationFrame(tick);
   }
 });
 
-function tick() {
+function tick(now) {
   if (!running) return;
 
-  // Clamped so a slow frame doesn't teleport the car.
-  const dt = Math.min(clock.getDelta(), 1 / 20);
+  // Filtered, not raw: see loop.js. Safari's rAF jitter is what makes an
+  // otherwise framerate-independent sim shimmer on an iPhone.
+  const dt = clock.tick(now ?? performance.now());
   state.dt = dt;
   state.time += dt;
+
+  input.update(dt);
 
   updateDriving(dt);
   environment.update(dt, state.travelled);
@@ -328,6 +333,7 @@ if (import.meta.env.DEV) {
     tier,
     CONFIG,
     physics,
+    input,
     props,
     features,
     landmarks,
