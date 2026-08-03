@@ -461,7 +461,11 @@ body {
   }
 
   .hud-env {
+    /* The panel is width-capped, but nowrap meant the text simply ran out past
+       it and off the screen. Mid-crossfade this line carries two terrain names
+       and two climates, so on a phone it has to be allowed to wrap. */
     display: block;
+    white-space: normal;
     line-height: 1.35;
   }
 
