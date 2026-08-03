@@ -267,15 +267,10 @@ function updateCamera(dt) {
   const shakeX = shake > 0 ? Math.sin(state.time * 27.3) * Math.sin(state.time * 11.1) * shake * 0.5 : 0;
   const shakeY = shake > 0 ? Math.sin(state.time * 33.7 + 2.1) * shake * 0.35 : 0;
 
-  // Portrait wants a different seat. A tall frame with a high camera fills its
-  // bottom half with the tarmac immediately behind the car — dead pixels where
-  // the country should be. Dropping the camera flattens the grazing angle,
-  // which compresses that near-ground band and gives the distance back.
-  const portrait = clamp01((1.4 - camera.aspect) / 0.9);
   camTarget.set(
     state.lateral * 0.45 + swayX + shakeX,
-    CONFIG.camHeight - portrait * 1.45 + swayY + shakeY,
-    CONFIG.camDistance - portrait * 0.9
+    CONFIG.camHeight + swayY + shakeY,
+    CONFIG.camDistance
   );
   camera.position.lerp(camTarget, lag);
 
@@ -290,7 +285,12 @@ function updateCamera(dt) {
   // travelling through it. Sampling the point and using it is both simpler and
   // correct.
   frame.point(state.travelled + CONFIG.camLookAhead, 0, 0, lookTarget);
-  lookTarget.y += 1.9 + portrait * 0.55;
+  // The lift is what sets the pitch, and it is negative because the aim point
+  // is now genuinely 45 units out rather than the 20 the old code pretended.
+  // Sampling honestly at 45 with the old +1.9 lift looked 2.23 degrees higher
+  // than this game has always framed itself; -0.27 puts the pitch back exactly
+  // where it was while keeping the yaw correct.
+  lookTarget.y += CONFIG.camAimLift;
   // A little of the driver's own position, so the camera leads a lane change
   // rather than reporting it afterwards.
   lookTarget.x += state.lateral * 0.25;
@@ -327,10 +327,6 @@ function updateCamera(dt) {
 // before the perspective goes fisheye and the road starts to bow.
 const FOV_REFERENCE_ASPECT = 1.4;
 const FOV_PORTRAIT_MAX = 80;
-
-function clamp01(x) {
-  return x < 0 ? 0 : x > 1 ? 1 : x;
-}
 
 function fitFov(baseFov, aspect) {
   if (!aspect || aspect >= FOV_REFERENCE_ASPECT) return baseFov;

@@ -32,6 +32,7 @@ export const CONFIG = {
   camDistance: 10.5,
   camLag: 6, // exponential smoothing rate
   camLookAhead: 45, // how far up the road the camera aims
+  camAimLift: -0.27, // height of the aim point relative to the road there; sets the pitch
   camRoll: 0.35, // how far the camera banks into a corner
   camSway: 0.055, // handheld drift, in world units
 
