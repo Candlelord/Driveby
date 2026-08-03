@@ -108,6 +108,8 @@ export class Environment {
 
     // Set while a landmark's country is being held; see enterRegion().
     this.regionSet = null;
+    // How long the current place has been on screen, for the scene clock.
+    this.sceneTime = 0;
 
     this.events = new EventDirector(CONFIG);
     this.flash = 0;
@@ -190,10 +192,20 @@ export class Environment {
     this.mood.writeInto(this.live);
     this.set.writeInto(this.live);
     this.climate.writeInto(this.live);
+    // The landform is handed over as two endpoints and a mix rather than as
+    // blended numbers, because one of those numbers is a frequency and
+    // interpolating it slides the ground instead of reshaping it. See
+    // terrainHeight().
+    this.live.landform = {
+      from: TERRAIN_SETS[this.set.fromId],
+      to: TERRAIN_SETS[this.set.toId],
+      t: smoothstep(this.set.transition),
+    };
     // The year turns with distance rather than with the playlist: a season is
     // where you are, not what is playing.
     writeSeason(this.live, travelled, CONFIG.seasonLength);
 
+    this.sceneTime += dt;
     this.overrides = this.events.update(dt, this.mood.toId);
     this._updateLightning(dt);
     this._pruneSegments(travelled);
@@ -218,6 +230,12 @@ export class Environment {
       this.blockIndex = (this.blockIndex + 1) % this.order.length;
       this.songIndex = 0;
       this._startBlock(travelled);
+    } else if (this.sceneTime >= CONFIG.sceneSeconds && !this.regionSet) {
+      // A place has had its four minutes. Move on at this song boundary rather
+      // than mid-track, so the change still lands on a cut in the music — the
+      // mood, and therefore the palette, carries on untouched.
+      this._applySet(this._pickSet(this.mood.toId), travelled);
+      this.sceneTime = 0;
     }
     this._emitSong();
   }
@@ -241,6 +259,7 @@ export class Environment {
 
   _applySet(setId, travelled) {
     if (!this.set.advanceTo(setId)) return;
+    this.sceneTime = 0;
     this.climate.advanceTo(TERRAIN_SETS[setId].climate);
     // New scenery starts beyond the fog, so the swap itself is never seen.
     this.setSegments.push({ from: travelled + CONFIG.propSwapDistance, setId });

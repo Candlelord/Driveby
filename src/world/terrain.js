@@ -24,26 +24,47 @@ const CLIFF_END = 90;
  *   cliffSide      one side climbs into a wall while the other falls to water
  */
 export function terrainHeight(w, s, live) {
+  // Crossfade the two sets' *heights*, never their parameters.
+  //
+  // `hillScale` is a frequency. Interpolating a frequency does not morph a
+  // landscape, it slides it: at s = 4000, taking hillScale from 1.15 to 1.30
+  // moves the phase of the first term by eight radians, so the ground pumps
+  // through more than a whole wavelength over the five seconds of a set
+  // change. Measured before this: zero drift within a set, 23.9 units/sec at
+  // the peak of a crossfade, with every prop riding it. Blending the outputs
+  // costs one extra evaluation while a transition is running and nothing at
+  // all the rest of the time.
+  const blend = live.landform;
+  if (!blend || blend.t >= 1) return shapeAt(w, s, blend ? blend.to : live);
+  if (blend.t <= 0) return shapeAt(w, s, blend.from);
+
+  const from = shapeAt(w, s, blend.from);
+  const to = shapeAt(w, s, blend.to);
+  return from + (to - from) * blend.t;
+}
+
+/** The landform for one set's shape controls, with no blending in sight. */
+function shapeAt(w, s, p) {
   const abs = Math.abs(w);
   const ramp = smoothstep(RAMP_START, RAMP_END, abs);
-  const base = -0.35 - live.causeway * smoothstep(RAMP_START, RAMP_START + 26, abs);
+  const base = -0.35 - p.causeway * smoothstep(RAMP_START, RAMP_START + 26, abs);
   if (ramp <= 0) return base;
 
-  const f = live.hillScale;
+  const f = p.hillScale;
   const raw =
     (Math.sin(s * 0.0135 * f + w * 0.021 * f) +
       Math.sin(s * 0.037 * f - w * 0.013 * f + 1.9) * 0.45 +
       Math.sin(w * 0.031 * f + 0.7) * 0.6) /
     2.05;
 
-  const shaped = Math.sign(raw) * Math.pow(Math.abs(raw), live.hillSharpness);
-  let height = base + shaped * live.hillHeight * 2.05 * ramp;
+  const shaped = Math.sign(raw) * Math.pow(Math.abs(raw), p.hillSharpness);
+  let height = base + shaped * p.hillHeight * 2.05 * ramp;
 
   // A cliff wall on one side. Sign convention matches the road normal, so
   // cliffSide of 1 puts the wall on the driver's right.
-  if (live.cliffHeight > 0.01) {
-    const onWallSide = Math.sign(w) === Math.sign(live.cliffSide);
-    const climb = smoothstep(CLIFF_START, CLIFF_END, abs) * live.cliffHeight;
+  if (p.cliffHeight > 0.01) {
+    const onWallSide = Math.sign(w) === Math.sign(p.cliffSide);
+    const climb = smoothstep(CLIFF_START, CLIFF_END, abs) * p.cliffHeight;
     height += onWallSide ? climb : -climb * 0.85;
   }
 

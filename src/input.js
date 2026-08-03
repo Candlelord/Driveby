@@ -15,6 +15,14 @@ const DEADZONE = 0.07;
 const FOLLOW_RATE = 26;
 const RELEASE_RATE = 11;
 
+// Throttle. A finger on the screen is the accelerator as well as the wheel, so
+// the ramp has to be slow enough that a quick steering correction is not also a
+// launch, and the fall has to be slower still — the ask was to lose speed
+// gradually after letting go, and a car that stops pulling is not a car that
+// stops.
+const THROTTLE_RISE = 1.15;
+const THROTTLE_FALL = 0.65;
+
 /**
  * Steering input, normalised to -1..1.
  *
@@ -38,6 +46,9 @@ export class Input {
     this.tilt = 0;
     this.tiltEnabled = false;
     this.hasInput = false;
+    /** 0..1 — how hard the driver is asking for speed. */
+    this.throttle = 0;
+    this._throttleHeld = false;
 
     this._keys = new Set();
     this._pointerId = null;
@@ -61,6 +72,17 @@ export class Input {
     const rate = this._pointerId === null ? RELEASE_RATE : FOLLOW_RATE;
     this.touch += (this._target - this.touch) * (1 - Math.exp(-rate * dt));
     if (Math.abs(this.touch) < 0.002) this.touch = 0;
+
+    // Linear rather than exponential, so holding for twice as long really does
+    // get you twice as far up the range and letting go coasts down at a
+    // predictable rate instead of dropping most of it in the first moment.
+    const held = this._throttleHeld || this._pointerId !== null;
+    this.throttle = clamp(
+      this.throttle + (held ? THROTTLE_RISE : -THROTTLE_FALL) * dt,
+      0,
+      1
+    );
+
     this._drawStick();
   }
 
@@ -86,8 +108,16 @@ export class Input {
       this.keyboard = clamp(value, -1, 1);
     };
 
+    const isGo = (key) => key === 'ArrowUp' || key === 'w' || key === 'W' || key === ' ';
+
     window.addEventListener('keydown', (event) => {
       if (event.repeat) return;
+      if (isGo(event.key)) {
+        event.preventDefault();
+        this._throttleHeld = true;
+        this.hasInput = true;
+        return;
+      }
       if (!isLeft(event.key) && !isRight(event.key)) return;
       event.preventDefault();
       this._keys.add(event.key);
@@ -96,6 +126,7 @@ export class Input {
     });
 
     window.addEventListener('keyup', (event) => {
+      if (isGo(event.key)) this._throttleHeld = false;
       this._keys.delete(event.key);
       recompute();
     });
@@ -103,6 +134,7 @@ export class Input {
     window.addEventListener('blur', () => {
       this._keys.clear();
       this.keyboard = 0;
+      this._throttleHeld = false;
     });
   }
 

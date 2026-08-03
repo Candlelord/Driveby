@@ -442,3 +442,32 @@ body {
     transition: none;
   }
 }
+
+/* --- portrait phones ---
+   A 414px-wide screen cannot carry the desktop HUD: at full size it spans the
+   whole width and the environment line, which can hold two terrain names and
+   two climates mid-crossfade, runs out of room. Shrink it and let it sit in the
+   corner it was designed for. */
+@media (max-aspect-ratio: 3 / 4) {
+  #hud {
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    left: calc(env(safe-area-inset-left, 0px) + 10px);
+    right: auto;
+    min-width: 0;
+    max-width: min(74vw, 300px);
+    padding: 8px 10px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+
+  .hud-env {
+    display: block;
+    line-height: 1.35;
+  }
+
+  /* The hint sits above the home indicator rather than under a thumb. */
+  #hint {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    font-size: 10px;
+  }
+}

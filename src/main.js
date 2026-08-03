@@ -222,7 +222,7 @@ function tick(now) {
 }
 
 function updateDriving(dt) {
-  physics.update(dt, input.value, state.live, state.live.shake);
+  physics.update(dt, input.value, state.live, state.live.shake, input.throttle);
 
   state.travelled = physics.travelled;
   state.lateral = physics.lateral;
@@ -231,6 +231,7 @@ function updateDriving(dt) {
   state.roll = physics.roll;
   state.bob = physics.bob;
   state.edgePressure = physics.edgePressure;
+  state.throttle = input.throttle;
 }
 
 function applyLighting() {
@@ -266,20 +267,33 @@ function updateCamera(dt) {
   const shakeX = shake > 0 ? Math.sin(state.time * 27.3) * Math.sin(state.time * 11.1) * shake * 0.5 : 0;
   const shakeY = shake > 0 ? Math.sin(state.time * 33.7 + 2.1) * shake * 0.35 : 0;
 
+  // Portrait wants a different seat. A tall frame with a high camera fills its
+  // bottom half with the tarmac immediately behind the car — dead pixels where
+  // the country should be. Dropping the camera flattens the grazing angle,
+  // which compresses that near-ground band and gives the distance back.
+  const portrait = clamp01((1.4 - camera.aspect) / 0.9);
   camTarget.set(
     state.lateral * 0.45 + swayX + shakeX,
-    CONFIG.camHeight + swayY + shakeY,
-    CONFIG.camDistance
+    CONFIG.camHeight - portrait * 1.45 + swayY + shakeY,
+    CONFIG.camDistance - portrait * 0.9
   );
   camera.position.lerp(camTarget, lag);
 
-  // Aim at a point up the road so corners lead the car instead of trailing it.
+  // Aim at where the road actually is, well ahead, so corners lead the car
+  // instead of trailing it.
+  //
+  // This used to be a hybrid: the lateral offset of a point 45 units up the
+  // road, halved, but then placed at only 20 units. Halving the offset and
+  // more than halving the distance leaves the *angle* over twice what the bend
+  // really is, so the camera swung much further than the road turned and the
+  // whole world appeared to slew sideways around the car rather than the car
+  // travelling through it. Sampling the point and using it is both simpler and
+  // correct.
   frame.point(state.travelled + CONFIG.camLookAhead, 0, 0, lookTarget);
-  lookTarget.set(
-    lookTarget.x * 0.5 + state.lateral * 0.3,
-    lookTarget.y * 0.5 + 1.9,
-    -CONFIG.camLookAhead * 0.45
-  );
+  lookTarget.y += 1.9 + portrait * 0.55;
+  // A little of the driver's own position, so the camera leads a lane change
+  // rather than reporting it afterwards.
+  lookTarget.x += state.lateral * 0.25;
   lookSmoothed.lerp(lookTarget, lag);
   camera.lookAt(lookSmoothed);
 
@@ -290,13 +304,39 @@ function updateCamera(dt) {
   camera.rotateZ(cameraRoll + (physics.shakeRoll ?? 0));
 
   // Field of view is part of each mood: wide and open for happy, tighter and
-  // more closed-in for sad.
-  const targetFov = state.live.fov;
+  // more closed-in for sad. Speed opens it a little further, which is most of
+  // what sells a boost as speed rather than as the world being scaled down.
+  // Applied after fitting rather than before, so a portrait screen — already at
+  // the widening cap — still gets a speed cue instead of having it swallowed.
+  const boost = physics.speed / (CONFIG.speed * state.live.speedScale) - 1;
+  const targetFov = Math.min(
+    FOV_PORTRAIT_MAX + 7,
+    fitFov(state.live.fov, camera.aspect) + Math.max(0, boost) * 11
+  );
   if (Math.abs(targetFov - cameraFov) > 0.01) {
     cameraFov += (targetFov - cameraFov) * (1 - Math.exp(-3 * dt));
     camera.fov = cameraFov;
     camera.updateProjectionMatrix();
   }
+}
+
+// Vertical field of view is what three takes, so on a portrait phone a mood's
+// 62° leaves a horizontal view of about 31° — a letterbox on its side, with the
+// verges out of frame and no sense of the country you are in. Widen the
+// vertical FOV as the screen narrows so the horizontal view holds up, capped
+// before the perspective goes fisheye and the road starts to bow.
+const FOV_REFERENCE_ASPECT = 1.4;
+const FOV_PORTRAIT_MAX = 80;
+
+function clamp01(x) {
+  return x < 0 ? 0 : x > 1 ? 1 : x;
+}
+
+function fitFov(baseFov, aspect) {
+  if (!aspect || aspect >= FOV_REFERENCE_ASPECT) return baseFov;
+  const halfWide = Math.tan((baseFov * Math.PI) / 360) * FOV_REFERENCE_ASPECT;
+  const fitted = (360 / Math.PI) * Math.atan(halfWide / aspect);
+  return Math.min(FOV_PORTRAIT_MAX, fitted);
 }
 
 // Debug: force an extreme weather event. The spec asks for manual triggers so

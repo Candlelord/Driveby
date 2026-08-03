@@ -15,6 +15,7 @@ export const CONFIG = {
 
   // --- driving ---
   speed: 34, // base cruise, world units/sec; terrain sets scale it
+  boostScale: 2.35, // flat out, as a multiple of the set's own cruise
   accelRate: 0.85, // how hard the car pulls toward its target speed
   brakeRate: 2.2, // easing off is quicker than getting up to speed
   maxLateral: 4.6, // road edge
@@ -35,7 +36,14 @@ export const CONFIG = {
   camSway: 0.055, // handheld drift, in world units
 
   // --- environment clocks ---
-  songSeconds: 14, // stand-in for "a song finished"; real audio replaces this
+  // Stand-in for "a song finished"; real audio replaces this. Sized so a mock
+  // block of 3-4 songs runs three and a half to four and a half minutes, which
+  // is how long a place is meant to last.
+  songSeconds: 68,
+  // A scene ends at the first song boundary past this, whatever the block is
+  // doing. Without it, real playback — where a block really is four whole
+  // songs — would leave you in one country for a quarter of an hour.
+  sceneSeconds: 240,
   crossfadeSeconds: 4, // mood: spec asks for 3-5s
   setCrossfadeSeconds: 5, // terrain set colours and landform
   propSwapDistance: 330, // scenery swaps this far ahead, i.e. outside the fog

@@ -28,17 +28,23 @@ export class CarPhysics {
    * @param {object} live blended environment profile
    * @param {number} shake extra irregular motion from an extreme weather event
    */
-  update(dt, input, live, shake = 0) {
-    this._updateSpeed(dt, live);
+  update(dt, input, live, shake = 0, throttle = 0) {
+    this._updateSpeed(dt, live, throttle);
     this._updateSteering(dt, input);
     this._updateSuspension(dt, live, shake);
     this.travelled += this.speed * dt;
   }
 
-  _updateSpeed(dt, live) {
+  _updateSpeed(dt, live, throttle) {
     // Each terrain set has its own comfortable cruise: open highway runs
     // faster than a forest or a mountain pass.
-    this.targetSpeed = CONFIG.speed * live.speedScale;
+    //
+    // Holding the screen asks for more. It scales the set's own cruise rather
+    // than replacing it, so a mountain pass still feels slower flat out than an
+    // open highway does — the boost is the driver leaning on it, not a
+    // different road.
+    this.cruise = CONFIG.speed * live.speedScale;
+    this.targetSpeed = this.cruise * (1 + throttle * (CONFIG.boostScale - 1));
 
     // Asymmetric: pulling away takes longer than easing off, which is what
     // makes a standing start feel like effort rather than a jump cut.
@@ -48,6 +54,9 @@ export class CarPhysics {
     // Acceleration falls off as the car approaches its cap, so the last few
     // units per second take the longest — a torque curve without the maths.
     const headroom = Math.max(0.12, 1 - this.speed / (this.targetSpeed * 1.35));
+    // Steering slackens off as the car gains speed, the way a real one does at
+    // motorway pace, so flat out is a committed straight line rather than the
+    // same twitchy lane-change with a bigger number attached.
     this.speed += gap * (1 - Math.exp(-rate * headroom * dt));
   }
 
@@ -58,7 +67,10 @@ export class CarPhysics {
     this.steerVelocity += (wheelTarget - this.steerVelocity) * (1 - Math.exp(-CONFIG.steerResponse * dt));
     this.steer += (this.steerVelocity - this.steer) * (1 - Math.exp(-CONFIG.steerFollow * dt));
 
-    const speedFactor = this.speed / CONFIG.speed;
+    // Lateral rate is capped rather than proportional: past the base cruise the
+    // car covers ground faster but does not also change lanes faster, which is
+    // what keeps a boost controllable instead of skittish.
+    const speedFactor = Math.min(1.25, this.speed / CONFIG.speed);
     this.lateral += this.steer * CONFIG.steerRate * speedFactor * dt;
 
     // Soft boundary: rather than a wall, the verge pushes back harder the
