@@ -25,7 +25,7 @@ const FACING = new Set([
   'sign', 'mileMarker', 'billboard', 'cone', 'mailbox', 'busShelter', 'pierPost',
   'stall', 'bungalow', 'mudHouse', 'canalHouses', 'lagosBlock', 'lagosBlockBlue', 'lagosShops', 'stiltHouse',
 ]);
-const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier', 'haussmannRow', 'haussmannStreet', 'mudWall']);
+const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier', 'haussmannRow', 'haussmannStreet', 'mudWall', 'lagosStreet', 'kanoStreet', 'algiersStreet']);
 
 // Types with a dedicated placement pass, and therefore barred from the scatter
 // roll — otherwise a set would get both an orderly power line *and* a field of
@@ -328,10 +328,11 @@ export class Props {
       // rail fence left a hedge as a line of separate bushes. The 0.92 makes
       // neighbours overlap slightly rather than meet on a hairline.
       const full = set.propScale * (def.scale ?? 1);
-      const stride = Math.max(
-        1,
-        Math.round((2 * type.footprint * full * 0.92) / propSpacing)
-      );
+      // A street states its own length: its widest extent is its depth across
+      // the road, and spacing by that would overlap the facades.
+      const stride = def.length
+        ? Math.max(1, Math.round((def.length * full) / propSpacing))
+        : Math.max(1, Math.round((2 * type.footprint * full * 0.92) / propSpacing));
       if (slot % stride !== 0) continue;
 
       const offset = run.side * def.spread;
@@ -351,7 +352,9 @@ export class Props {
       DUMMY.rotation.z = live.propLean * 0.105;
       DUMMY.scale.setScalar(size);
       DUMMY.updateMatrix();
-      this._write(type, DUMMY.matrix, 1);
+      // Fences stay one colour along a run; a street varies segment to
+      // segment, which also seeds its lit windows and its shop signs.
+      this._write(type, DUMMY.matrix, def.length ? 0.86 + hash(slot * 29.7) * 0.28 : 1);
     }
   }
 
@@ -816,6 +819,8 @@ function surfaceMaterial(surface, color = 0xffffff) {
     bark: { ...barkMaps(), roughness: 0.95, shade: 1 },
     rock: { ...rockMaps(), roughness: 0.92, shade: 1.05 },
     facade: { material: () => facadeMaterial(), shade: 1 },
+    paint: { roughness: 0.32, metalness: 0.4, shade: 1 },
+    glass: { roughness: 0.05, metalness: 0.3, shade: 1 },
     tower: { material: () => facadeMaterial({ bay: [3.0, 3.8], litFraction: 0.5 }), shade: 1 },
     industrial: { material: () => facadeMaterial({ bay: [6.5, 4.6], litFraction: 0.3, industrial: true }), shade: 1 },
   }[surface] ?? { roughness: 0.82, shade: 1 };

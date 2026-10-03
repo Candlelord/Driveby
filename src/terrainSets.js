@@ -16,6 +16,7 @@ export const SET_COLOR_KEYS = [
   'propB',
   'propE', // emissive: windows, neon, glow
   'propF', // foliage, where it is not the same colour as the walls
+  'pavementColor',
   'ridgeNearColor',
   'ridgeFarColor',
   'waterColor',
@@ -62,6 +63,7 @@ export const SET_NUMBER_KEYS = [
   // that is yellow danfo minibuses.
   'kerbs',
   'danfo',
+  'sidewalk', // paved pavement from kerb to building line
 ];
 
 /** Defaults, so a set only has to state what makes it different. */
@@ -103,6 +105,11 @@ const BASE = {
   lightPollution: 0,
   kerbs: 0,
   danfo: 0,
+  sidewalk: 0,
+  pavementColor: 0xb8b2a6,
+  // Not blended: how busy the pavements are, and who is on them (people.js).
+  people: 0,
+  peopleStyle: 'mixed',
   // Not blended: the road runs on a bridge deck over water through any stretch
   // laid down by a set with this on (see Features).
   bridge: 0,
@@ -190,6 +197,8 @@ export const TERRAIN_SETS = {
   }),
 
   ruralCrossroads: set({
+    people: 0.05,
+    peopleStyle: 'europe',
     label: 'rural crossroads',
     climate: 'rain',
     propMix: [['pole', 0.26], ['silo', 0.1], ['barn', 0.1], ['deadTree', 0.1], ['fence', 0.16], ['mailbox', 0.08], ['hayBale', 0.1], ['scarecrow', 0.05], ['sign', 0.05]],
@@ -295,6 +304,8 @@ export const TERRAIN_SETS = {
 
   // -------------------------------------------------------------- HAPPY
   wheatFields: set({
+    people: 0.03,
+    peopleStyle: 'europe',
     grass: 1.3,
     label: 'wheat fields',
     climate: 'clear',
@@ -357,6 +368,8 @@ export const TERRAIN_SETS = {
   }),
 
   orchardHills: set({
+    people: 0.04,
+    peopleStyle: 'europe',
     label: 'orchard hills',
     climate: 'clear',
     propMix: [['round', 0.5], ['farmhouse', 0.08], ['grass', 0.08], ['hedge', 0.14], ['fence', 0.1], ['cattle', 0.06], ['hayBale', 0.04]],
@@ -619,6 +632,8 @@ export const TERRAIN_SETS = {
   }),
 
   lavenderFields: set({
+    people: 0.04,
+    peopleStyle: 'europe',
     grass: 1.1,
     label: 'lavender fields',
     climate: 'clear',
@@ -795,6 +810,8 @@ export const TERRAIN_SETS = {
   // Lagos Lagoon, with Makoko's stilt houses on the water and Lagos Island's
   // towers on the far shore.
   lagosLagoon: set({
+    people: 0,
+    peopleStyle: 'westAfrica',
     label: 'Third Mainland Bridge',
     climate: 'humid',
     grass: 0,
@@ -826,9 +843,15 @@ export const TERRAIN_SETS = {
   lagosCity: set({
     label: 'Lagos',
     climate: 'humid',
-    grass: 0.35,
+    grass: 0.05,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['lagosBlock', 0.24], ['lagosBlockBlue', 0.1], ['lagosShops', 0.18], ['stall', 0.1], ['billboard', 0.12], ['palm', 0.1], ['building', 0.06], ['busShelter', 0.04], ['pole', 0.06]],
+    // Continuous street frontage both sides (lagosStreet), with stalls,
+    // billboards and the odd palm filling in behind and between.
+    propMix: [['lagosStreet', 0.5], ['lagosBlock', 0.1], ['lagosShops', 0.08], ['stall', 0.08], ['billboard', 0.1], ['palm', 0.08], ['busShelter', 0.03], ['pole', 0.03]],
+    runChance: 0.9,
+    sidewalk: 1,
+    people: 1,
+    peopleStyle: 'westAfrica',
     groundColorBase: 0x7a6a58, // dust over paving and laterite
     groundAccent: 0x5e4a3c,
     propA: 0xd8c8a8, // painted render, faded by the sun
@@ -855,6 +878,8 @@ export const TERRAIN_SETS = {
   }),
 
   rainforestBelt: set({
+    people: 0.12,
+    peopleStyle: 'westAfrica',
     label: 'rainforest belt',
     climate: 'humid',
     grass: 1.25,
@@ -879,6 +904,8 @@ export const TERRAIN_SETS = {
   }),
 
   guineaSavanna: set({
+    people: 0.05,
+    peopleStyle: 'westAfrica',
     label: 'Guinea savanna',
     climate: 'clear',
     grass: 1.4,
@@ -899,6 +926,8 @@ export const TERRAIN_SETS = {
   }),
 
   abujaHills: set({
+    people: 0.22,
+    peopleStyle: 'westAfrica',
     label: 'Abuja hills',
     climate: 'clear',
     grass: 1.0,
@@ -925,6 +954,8 @@ export const TERRAIN_SETS = {
   }),
 
   sahelSavanna: set({
+    people: 0.07,
+    peopleStyle: 'westAfrica',
     label: 'Sahel',
     climate: 'harmattan',
     grass: 0.7,
@@ -951,7 +982,12 @@ export const TERRAIN_SETS = {
     climate: 'harmattan',
     grass: 0.15,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['mudHouse', 0.36], ['mosque', 0.08], ['stall', 0.16], ['mudWall', 0.14], ['round', 0.12], ['pole', 0.08], ['billboard', 0.04], ['cattle', 0.04]],
+    propMix: [['kanoStreet', 0.45], ['mudWall', 0.08], ['mudHouse', 0.14], ['mosque', 0.08], ['stall', 0.1], ['round', 0.08], ['pole', 0.04], ['billboard', 0.03]],
+    runChance: 0.9,
+    sidewalk: 1,
+    pavementColor: 0xc4a888, // dusty laterite paving
+    people: 0.9,
+    peopleStyle: 'westAfrica',
     groundColorBase: 0xb48c62,
     groundAccent: 0x9a7048,
     propA: 0x3e8a5a, // green domes and umbrellas
@@ -1018,6 +1054,8 @@ export const TERRAIN_SETS = {
   }),
 
   mzabValley: set({
+    people: 0.3,
+    peopleStyle: 'maghreb',
     label: 'M’zab valley',
     climate: 'desertHeat',
     grass: 0.2,
@@ -1042,7 +1080,12 @@ export const TERRAIN_SETS = {
     climate: 'clear',
     grass: 0.6,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['building', 0.22], ['bungalow', 0.12], ['palm', 0.2], ['cypress', 0.14], ['round', 0.1], ['mosque', 0.04], ['wall', 0.08], ['busShelter', 0.04], ['sign', 0.06]],
+    propMix: [['algiersStreet', 0.42], ['building', 0.08], ['palm', 0.16], ['cypress', 0.1], ['round', 0.06], ['mosque', 0.06], ['busShelter', 0.04], ['sign', 0.04]],
+    runChance: 0.85,
+    sidewalk: 1,
+    pavementColor: 0xd8d2c4,
+    people: 0.6,
+    peopleStyle: 'maghreb',
     groundColorBase: 0x9a8a62,
     groundAccent: 0x7a6a4a,
     propA: 0xece6d8, // la Blanche: white walls
@@ -1073,6 +1116,10 @@ export const TERRAIN_SETS = {
     groundColorBase: 0x8e8a80, // pale stone and gravel
     groundAccent: 0x6e7a5a,
     runChance: 0.94,
+    sidewalk: 1,
+    pavementColor: 0xcfc6b2,
+    people: 0.75,
+    peopleStyle: 'europe',
     propA: 0xe2d6bc, // Lutetian limestone
     propF: 0x5e7a3e, // plane trees
     propB: 0x4a4038,
@@ -1089,6 +1136,8 @@ export const TERRAIN_SETS = {
   }),
 
   polder: set({
+    people: 0.08,
+    peopleStyle: 'europe',
     label: 'polder',
     climate: 'clear',
     grass: 1.3,

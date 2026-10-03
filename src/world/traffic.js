@@ -14,6 +14,11 @@ const COLOR = new THREE.Color();
 // player is free to roam across both, because there is nothing to crash into.
 const LANE = 2.9;
 
+// Footprint overlap that counts as contact: centre-to-centre along the road,
+// and across it. Both bodies are about 4.6 long and 2 wide.
+const CAR_LENGTH = 4.5;
+const CAR_WIDTH = 1.9;
+
 // Minimum spacing between cars sharing a lane.
 const MIN_GAP = 26;
 
@@ -28,8 +33,9 @@ const PAINT = [0xd8d8d2, 0x2f3a4a, 0x8a2f2f, 0x30503c, 0xd8a23a, 0x5a5f68, 0x7a4
  * receding tail lights versus headlights growing out of the dark — which is
  * most of the reason traffic is here at all.
  *
- * Nothing collides. This game has no fail state, so instead of a crash, traffic
- * eases toward its shoulder when the player ends up on top of it.
+ * Traffic is solid: drive into it and you crash (see _collide). There is still
+ * no fail state — the hit costs you speed and a shove, and the other car spins
+ * off and stops — but you have to drive around it.
  */
 export class Traffic {
   constructor(scene, tier) {
@@ -137,6 +143,12 @@ export class Traffic {
     car.oncoming = Math.random() < 0.38;
     car.lane = car.oncoming ? -LANE : LANE;
     car.laneOffset = 0;
+    // Collision state: a hit car spins, slides off its line and rolls to a stop.
+    car.hit = 0;
+    car.spin = 0;
+    car.spinRate = 0;
+    car.slide = 0;
+    car.cooldown = 0;
 
     // Retry a few times rather than dropping a car inside one already in the
     // same lane; a handful of attempts is plenty at these densities.
@@ -162,7 +174,7 @@ export class Traffic {
     return true;
   }
 
-  update(state, frame) {
+  update(state, frame, physics, sfx) {
     const live = state.live;
     const travelled = state.travelled;
     const behind = -55;
@@ -175,11 +187,8 @@ export class Traffic {
       const gap = car.s - travelled;
       if (gap < behind || gap > ahead) this._spawn(car, travelled, false, live.danfo);
 
-      // No collisions — traffic yields instead. Only same-direction cars can
-      // linger alongside the player long enough for this to matter.
-      const closing = Math.abs(gap) < 9 && Math.abs(state.lateral - car.lane) < 2.6;
-      const target = closing ? Math.sign(car.lane || 1) * 1.5 : 0;
-      car.laneOffset += (target - car.laneOffset) * (1 - Math.exp(-2.5 * state.dt));
+      this._updateWreck(car, state.dt);
+      if (physics) this._collide(car, gap, state, physics, sfx);
 
       this._place(car, frame, travelled, i);
     }
@@ -198,13 +207,65 @@ export class Traffic {
     this.shadowMaterial.opacity = 0.06 + 0.2 * (1 - live.lampIntensity);
   }
 
+  /** A car that has been hit: spinning down, sliding off its line, stopping. */
+  _updateWreck(car, dt) {
+    car.cooldown = Math.max(0, car.cooldown - dt);
+    if (car.hit <= 0) return;
+    car.hit -= dt;
+    car.speed *= Math.exp(-1.4 * dt);
+    car.spin += car.spinRate * dt;
+    car.spinRate *= Math.exp(-1.8 * dt);
+    car.laneOffset += car.slide * dt;
+    car.slide *= Math.exp(-2.2 * dt);
+    // It can end up on the verge, but not out in the fields.
+    const edge = CONFIG.roadHalfWidth + 2;
+    car.laneOffset = Math.max(-edge - car.lane, Math.min(edge - car.lane, car.laneOffset));
+  }
+
+  /**
+   * Cars are solid. Overlap the player's footprint and both vehicles take the
+   * hit: the player loses most of their speed and is shoved off the line, the
+   * other car is shunted, spins and comes to rest. How violent it is follows
+   * from the closing speed, so a nudge while overtaking is a scrape and a
+   * head-on is a proper smash.
+   */
+  _collide(car, gap, state, physics, sfx) {
+    if (car.cooldown > 0) return;
+    const dx = car.lane + car.laneOffset - state.lateral;
+    if (Math.abs(gap) > CAR_LENGTH || Math.abs(dx) > CAR_WIDTH) return;
+
+    const theirs = car.oncoming ? -car.speed : car.speed; // along the road
+    // Positive when the two are converging along the road.
+    const closing = gap >= 0 ? state.speed - theirs : theirs - state.speed;
+    const glancing = Math.abs(dx) > CAR_WIDTH * 0.6;
+    const strength = Math.min(1, Math.max(0.15, Math.max(0, closing) / 45 + (glancing ? 0.1 : 0.2)));
+    const away = Math.sign(dx) || 1; // which side the other car is on
+
+    // The player: rear-ending something drops you below its speed; a head-on
+    // stops you almost dead; a scrape from the side mostly just shoves.
+    let speedAfter = state.speed;
+    if (gap >= 0 && closing > 0) speedAfter = glancing ? state.speed * 0.7 : Math.max(0, theirs) * 0.6;
+    physics.collide(speedAfter, -away * (3 + strength * 9), strength);
+
+    // The other car.
+    car.hit = 4;
+    car.cooldown = 1.2;
+    car.spinRate = away * (1.2 + strength * 4) * (Math.random() < 0.5 ? 1 : -1);
+    car.slide = away * (2 + strength * 6);
+    if (car.oncoming) car.speed *= 0.1;
+    else if (gap >= 0) car.speed += Math.max(0, closing) * 0.45; // shunted forward
+    else car.speed *= 0.5;
+
+    sfx?.crash(strength);
+  }
+
   _place(car, frame, travelled, index) {
     const lateral = car.lane + car.laneOffset;
     frame.point(car.s, lateral, 0, POSITION);
 
     // Align with the road where the car actually is, not where the player is.
     const relative = heading(car.s) - heading(travelled);
-    const yaw = -relative + (car.oncoming ? Math.PI : 0);
+    const yaw = -relative + (car.oncoming ? Math.PI : 0) + car.spin;
 
     DUMMY.position.copy(POSITION);
     DUMMY.rotation.set(0, yaw, 0);

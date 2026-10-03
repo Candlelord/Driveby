@@ -49,7 +49,9 @@ still run against a stand-in library.
 In route mode the HUD's top-right panel shows the leg and distance left.
 
 The car drives itself forward at a constant speed. Steering only moves it across
-the road, and it clamps at the lane edges — there is nothing to crash into.
+the road, and it clamps at the lane edges. Traffic is solid: hit a car and you
+crash — you lose most of your speed and get shoved off line, the other car
+spins off and stops — but there is still no game over.
 
 ## Route mode: Lagos → Paris
 
@@ -83,6 +85,13 @@ times the 128 km to Ibadan.
   rows under rusted awnings, yellow-and-black painted kerbs and yellow danfo
   minibuses in the traffic. Kano has its earthen city walls and a gate you
   drive through; Paris is continuous Haussmann street walls on both sides.
+- **City life**: in Lagos, Kano, Algiers and Paris the road is lined both
+  sides with a continuous street frontage (`lagosStreet`, `kanoStreet`,
+  `algiersStreet`, `haussmannStreet`), a raised paved pavement, cars parked
+  along the kerb, and people (`world/people.js`) walking and standing —
+  dressed and carrying head-loads according to the region, limbs animated in
+  the vertex shader. Villages and the countryside get a few people on the
+  verges.
 - **Landmarks**, at real proportions: Lagos Island, Zuma Rock, Abuja's
   National Mosque, Kano's city gate, Algiers' Maqam Echahid, the Eiffel Tower,
   the Arc de Triomphe and the Atomium.

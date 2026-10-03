@@ -113,6 +113,10 @@ const FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
+// Sun, moon and stars sit just inside the camera's far plane (1500), behind
+// everything else in the world, so the depth test lets anything nearer cover them.
+const SKY_DEPTH = 1380;
+const DISC_SCALE = SKY_DEPTH / 760;
 const RIDGE_NEAR_RADIUS = 560;
 const RIDGE_FAR_RADIUS = 700;
 
@@ -173,11 +177,14 @@ export class Sky {
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: false,
       fog: false,
       blending: THREE.AdditiveBlending,
     });
 
+    // The sun and stars are depth-tested and sit at the back of the scene, so
+    // hills, buildings and trees pass in front of them. They used to skip the
+    // depth test, which painted the sun over everything between it and you.
+    //
     // Three layers make a convincing sun: a hard core disc, a soft additive
     // halo with no rim of its own, and the dome's broad scattering behind both.
     this.coreMaterial = new THREE.MeshBasicMaterial({
@@ -185,17 +192,17 @@ export class Sky {
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: false,
       fog: false,
     });
 
     this.core = new THREE.Mesh(new THREE.CircleGeometry(1, tier.detail >= 1.2 ? 64 : 32), this.coreMaterial);
-    this.core.renderOrder = -1;
+    // Before the ridges, so the hazy hills on the horizon can cover a low sun.
+    this.core.renderOrder = -3;
     this.core.frustumCulled = false;
     this.group.add(this.core);
 
     this.disc = new THREE.Mesh(new THREE.CircleGeometry(1, 32), this.discMaterial);
-    this.disc.renderOrder = -1;
+    this.disc.renderOrder = -3;
     this.disc.frustumCulled = false;
     this.group.add(this.disc);
 
@@ -213,9 +220,9 @@ export class Sky {
       const theta = Math.random() * Math.PI * 2;
       const y = 0.06 + Math.random() * 0.94;
       const r = Math.sqrt(1 - y * y);
-      positions[i * 3] = Math.cos(theta) * r * 820;
-      positions[i * 3 + 1] = y * 820;
-      positions[i * 3 + 2] = Math.sin(theta) * r * 820;
+      positions[i * 3] = Math.cos(theta) * r * SKY_DEPTH;
+      positions[i * 3 + 1] = y * SKY_DEPTH;
+      positions[i * 3 + 2] = Math.sin(theta) * r * SKY_DEPTH;
       sizes[i] = 3 + Math.random() * 9;
     }
 
@@ -231,13 +238,12 @@ export class Sky {
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: false,
       fog: false,
       blending: THREE.AdditiveBlending,
     });
 
     this.stars = new THREE.Points(geometry, this.starMaterial);
-    this.stars.renderOrder = -3;
+    this.stars.renderOrder = -3.5;
     this.stars.frustumCulled = false;
     this.group.add(this.stars);
   }
@@ -362,10 +368,11 @@ export class Sky {
       .normalize();
     uniforms.sunDirection.value.copy(this.sunDirection);
 
-    this._discPosition.copy(this.sunDirection).multiplyScalar(760);
+    this._discPosition.copy(this.sunDirection).multiplyScalar(SKY_DEPTH);
 
     this.core.position.copy(this._discPosition);
-    this.core.scale.setScalar(live.discSize);
+    // Sizes were authored at 760 units out; keep the same apparent size.
+    this.core.scale.setScalar(live.discSize * DISC_SCALE);
     this.core.lookAt(this.group.position);
     // Driven past 1.0 so the disc has headroom for bloom to pick up.
     this.coreMaterial.color.copy(live.discColor).multiplyScalar(live.discIntensity);
@@ -373,7 +380,7 @@ export class Sky {
     this.core.visible = live.discOpacity > 0.01;
 
     this.disc.position.copy(this._discPosition).multiplyScalar(0.99);
-    this.disc.scale.setScalar(live.discSize * 4.5);
+    this.disc.scale.setScalar(live.discSize * 4.5 * DISC_SCALE);
     this.disc.quaternion.copy(this.core.quaternion);
     this.discMaterial.color.copy(live.sunGlowColor);
     this.discMaterial.opacity = live.discOpacity * 0.5;

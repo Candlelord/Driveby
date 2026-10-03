@@ -18,6 +18,7 @@ export const TIERS = {
     propShadows: true, // scenery casts into the map, not just the car
     textureSize: 512, // procedural surface textures
     grass: 2600, // grass tufts along the verges; 0 = none
+    people: 260, // pedestrians on city pavements
     headlamps: 2, // real spot lights on the car; 1 still lights the road
     lampLights: 3, // street lamps that actually cast, walked along the nearest
     cloudOctaves: 4,
@@ -46,6 +47,7 @@ export const TIERS = {
     propShadows: true,
     textureSize: 512,
     grass: 1400,
+    people: 160,
     headlamps: 2,
     lampLights: 1,
     cloudOctaves: 3,
@@ -75,6 +77,7 @@ export const TIERS = {
     // Generated once at load; below 512 the asphalt grain turns to mush.
     textureSize: 512,
     grass: 500,
+    people: 70,
     headlamps: 1,
     lampLights: 0,
     cloudOctaves: 2,

@@ -31,6 +31,7 @@ import { EventVisuals } from './world/eventVisuals.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { EnvironmentLight } from './world/envLight.js';
 import { Grass } from './world/grass.js';
+import { People } from './world/people.js';
 import { RouteDirector } from './routes/director.js';
 import { ROUTES } from './routes/lagosParis.js';
 
@@ -115,6 +116,7 @@ const traffic = new Traffic(scene, tier);
 const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps });
 const weather = new Weather(scene, tier);
 const grass = tier.grass ? new Grass(scene, tier) : null;
+const people = new People(scene, tier);
 const envLight = new EnvironmentLight(renderer, scene, sky.domeMaterial, tier);
 
 const input = new Input(renderer.domElement, {
@@ -229,7 +231,8 @@ function tick(now) {
   landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
   grass?.update(state, frame, environment);
-  traffic.update(state, frame);
+  people.update(state, frame, environment);
+  traffic.update(state, frame, physics, sfx);
   car.update(state, frame);
   weather.update(state);
   eventVisuals.update(state, camera);
@@ -254,6 +257,7 @@ function updateDriving(dt) {
   state.roll = physics.roll;
   state.bob = physics.bob;
   state.edgePressure = physics.edgePressure;
+  state.impactYaw = physics.impactYaw;
   state.throttle = input.throttle;
 }
 
@@ -293,7 +297,8 @@ function updateCamera(dt) {
   const swayY = Math.sin(state.time * 0.47 + 1.3) * CONFIG.camSway * 0.6;
 
   // Extreme weather adds an irregular shake on top of the handheld drift.
-  const shake = state.live.shake;
+  // A collision rattles the camera on top of any weather shake.
+  const shake = state.live.shake + physics.impact * 0.9;
   const shakeX = shake > 0 ? Math.sin(state.time * 27.3) * Math.sin(state.time * 11.1) * shake * 0.5 : 0;
   const shakeY = shake > 0 ? Math.sin(state.time * 33.7 + 2.1) * shake * 0.35 : 0;
 

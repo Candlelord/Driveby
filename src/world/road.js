@@ -90,6 +90,7 @@ export class Road {
     this.lines.mesh.renderOrder = 1;
 
     this._buildKerbs(scene);
+    this._buildPavement(scene);
     this._buildDashes(scene);
   }
 
@@ -142,6 +143,42 @@ export class Road {
     scene.add(this.dashes);
   }
 
+  /**
+   * City pavement: paving slabs from the kerb to the building line, a kerb
+   * height above the road, so a street has somewhere to walk and park and the
+   * ground between road and frontage is not a field.
+   */
+  _buildPavement(scene) {
+    const inner = CONFIG.roadHalfWidth + KERB_WIDTH;
+    const outer = PAVEMENT_OUTER;
+    this.pavementMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: pavingTexture(),
+      roughness: 0.85,
+    });
+    // The pair at each inner edge is the kerb face: low at the road, then up.
+    const columns = [-outer - 0.6, -outer, -inner - 0.01, -inner, inner, inner + 0.01, outer, outer + 0.6];
+    this.pavement = new Ribbon({
+      columns,
+      rows: this.rows,
+      material: this.pavementMaterial,
+      skipQuads: [3],
+      uv: { u: (w) => w / PAVING_TILE, length: PAVING_TILE },
+      smoothNormals: true,
+    });
+    this.pavement.mesh.receiveShadow = true;
+    this.pavement.mesh.visible = false;
+    // Up to kerb height across the walk, a small step at the road edge, and a
+    // lip down into the ground beyond the building line.
+    this._pavementHeight = (w) => {
+      const a = Math.abs(w);
+      if (a <= inner + 0.002) return -0.04;
+      if (a > outer + 0.3) return -0.6;
+      return KERB_HEIGHT;
+    };
+    scene.add(this.pavement.mesh);
+  }
+
   update(state, frame) {
     const { segmentLength, segmentsBehind } = CONFIG;
     const firstIndex = Math.floor(state.travelled / segmentLength) - segmentsBehind;
@@ -152,6 +189,12 @@ export class Road {
     this.shoulders.update(frame, distanceForRow, () => -0.06);
 
     this._updateDashes(frame, firstIndex);
+
+    this.pavement.mesh.visible = state.live.sidewalk > 0.5;
+    if (this.pavement.mesh.visible) {
+      this.pavement.update(frame, distanceForRow, this._pavementHeight);
+      this.pavementMaterial.color.copy(state.live.pavementColor);
+    }
 
     this.kerbs.mesh.visible = state.live.kerbs > 0.5;
     if (this.kerbs.mesh.visible) this.kerbs.update(frame, distanceForRow, this._kerbHeight);
@@ -222,6 +265,43 @@ const ROAD_TILE = 12;
 const KERB_WIDTH = 0.38;
 const KERB_HEIGHT = 0.16;
 const KERB_BLOCK = 1; // metres per painted block
+
+const PAVEMENT_OUTER = 14.5;
+const PAVING_TILE = 2.4;
+
+let pavingMap = null;
+/** Square concrete slabs with dark joints and a little staining. */
+function pavingTexture() {
+  if (pavingMap) return pavingMap;
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  for (let y = 0; y < 2; y++) {
+    for (let x = 0; x < 2; x++) {
+      const g = 200 + Math.round(Math.random() * 30);
+      ctx.fillStyle = `rgb(${g},${g - 3},${g - 8})`;
+      ctx.fillRect(x * 64, y * 64, 64, 64);
+    }
+  }
+  for (let i = 0; i < 260; i++) {
+    ctx.fillStyle = `rgba(70,64,56,${Math.random() * 0.18})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * size, Math.random() * size, 1 + Math.random() * 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(40,38,34,0.75)';
+  ctx.lineWidth = 2;
+  for (const p of [0, 64, 128]) {
+    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, size); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(size, p); ctx.stroke();
+  }
+  pavingMap = new THREE.CanvasTexture(canvas);
+  pavingMap.colorSpace = THREE.SRGBColorSpace;
+  pavingMap.wrapS = pavingMap.wrapT = THREE.RepeatWrapping;
+  pavingMap.anisotropy = 8;
+  return pavingMap;
+}
 
 let kerbMap = null;
 /** Alternating yellow and black blocks, a little worn. */

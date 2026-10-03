@@ -20,6 +20,25 @@ export class CarPhysics {
     this.bob = 0;
     this.travelled = 0;
     this.edgePressure = 0; // 0..1, how hard the car is being held off the verge
+    this.knock = 0; // lateral velocity from a collision, decaying
+    this.impact = 0; // 0..1 shake from the last collision, decaying
+    this.impactYaw = 0; // the body twisting from a hit
+  }
+
+  /**
+   * Hit something. The car keeps going — there is still no fail state — but it
+   * loses most of its speed, is shoved sideways and the body twists, so a hit
+   * has weight and costs you something.
+   *
+   * @param {number} speedAfter forward speed to drop to (never raised)
+   * @param {number} sideways lateral shove, units/sec (+ is right)
+   * @param {number} strength 0..1, how violent it was
+   */
+  collide(speedAfter, sideways, strength) {
+    this.speed = Math.max(0, Math.min(this.speed, speedAfter));
+    this.knock += sideways;
+    this.impact = Math.min(1, Math.max(this.impact, strength));
+    this.impactYaw += Math.sign(sideways || 1) * strength * 0.25;
   }
 
   /**
@@ -31,8 +50,14 @@ export class CarPhysics {
   update(dt, input, live, shake = 0, throttle = 0) {
     this._updateSpeed(dt, live, throttle);
     this._updateSteering(dt, input);
-    this._updateSuspension(dt, live, shake);
+    this._updateSuspension(dt, live, shake + this.impact * 1.4);
     this.travelled += this.speed * dt;
+
+    // Collision aftermath decays away over a second or so.
+    this.lateral += this.knock * dt;
+    this.knock *= Math.exp(-3.2 * dt);
+    this.impact *= Math.exp(-2.4 * dt);
+    this.impactYaw *= Math.exp(-2.8 * dt);
   }
 
   _updateSpeed(dt, live, throttle) {

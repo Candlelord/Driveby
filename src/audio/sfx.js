@@ -272,6 +272,59 @@ export class Sfx {
     osc.stop(t + 0.5);
   }
 
+  /**
+   * A collision: a hard low thump, a burst of crumpling metal, and a tinkle of
+   * glass on the big ones. `strength` is 0..1.
+   */
+  crash(strength = 0.5) {
+    if (!this.started) return;
+    const ctx = this.context;
+    const t = ctx.currentTime;
+    const k = Math.min(1, Math.max(0.15, strength));
+
+    const thump = ctx.createOscillator();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(120, t);
+    thump.frequency.exponentialRampToValueAtTime(38, t + 0.25);
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0.0001, t);
+    thumpGain.gain.exponentialRampToValueAtTime(0.5 * k + 0.1, t + 0.01);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    thump.connect(thumpGain).connect(this.master);
+    thump.start(t);
+    thump.stop(t + 0.4);
+
+    const metal = ctx.createBufferSource();
+    metal.buffer = this.white;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.setValueAtTime(1800, t);
+    band.frequency.exponentialRampToValueAtTime(500, t + 0.5);
+    band.Q.value = 1.4;
+    const metalGain = ctx.createGain();
+    metalGain.gain.setValueAtTime(0.0001, t);
+    metalGain.gain.exponentialRampToValueAtTime(0.35 * k + 0.05, t + 0.008);
+    metalGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18 + k * 0.5);
+    metal.connect(band).connect(metalGain).connect(this.master);
+    metal.start(t);
+    metal.stop(t + 0.8);
+
+    if (k > 0.55) {
+      const glass = ctx.createBufferSource();
+      glass.buffer = this.white;
+      const high = ctx.createBiquadFilter();
+      high.type = 'highpass';
+      high.frequency.value = 5200;
+      const glassGain = ctx.createGain();
+      glassGain.gain.setValueAtTime(0.0001, t + 0.05);
+      glassGain.gain.exponentialRampToValueAtTime(0.12, t + 0.07);
+      glassGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      glass.connect(high).connect(glassGain).connect(this.master);
+      glass.start(t + 0.05);
+      glass.stop(t + 0.8);
+    }
+  }
+
   /** A noise burst dragged down through a closing filter. */
   thunder(near = 0.6) {
     if (!this.started) return;

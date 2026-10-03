@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg } from './detail.js';
 import { leafCards, crownCore, needleCards, coniferCore, rockGeometry } from './foliage.js';
+import { buildCarParts, buildVanParts } from '../world/carGeometry.js';
 
 /**
  * Props for the route regions — West Africa, the Sahara, the Maghreb and
@@ -285,7 +286,132 @@ function mudWallRun() {
   return merge(parts);
 }
 
+// --- streets ------------------------------------------------------------------
+//
+// A city is not buildings scattered over grass; it is a continuous frontage
+// both sides of the road with a pavement in front and cars parked along it.
+// These props are laid by the run system on the road's centreline (spread 0),
+// 48 m at a time. Each module is authored with its front on +Z; modules on the
+// right are turned round to face the road.
+
+const STREET_LENGTH = 48;
+
+/**
+ * Assemble one part of a street: `modules` is a list of [builders, x, side,
+ * depth], where builders maps part names to geometry functions, and `front`
+ * is how far the building line is set back from the centreline.
+ */
+function streetPart(name, modules, front) {
+  return () => {
+    const pieces = [];
+    for (const [builders, x, side, depth] of modules) {
+      const build = builders[name];
+      if (!build) continue;
+      const g = build();
+      if (side > 0) g.rotateY(Math.PI);
+      pieces.push(g.translate(x, 0, side * (front + depth / 2)));
+    }
+    return pieces.length ? merge(pieces) : box(0.001, 0.001, 0.001).translate(0, -50, 0);
+  };
+}
+
+// Parked along the kerb, nose to tail, on both sides.
+const PARKED = [[-18, 1], [-6.5, 1], [10, 1], [-12, -1], [3.5, -1], [16.5, -1]];
+const parkedLateral = 7.9;
+let carParts = null;
+let vanParts = null;
+const parkedPart = (name, slots, van = false) => () => {
+  carParts ??= buildCarParts({ staticWheels: true });
+  vanParts ??= buildVanParts();
+  const parts = van ? vanParts : carParts;
+  return merge(
+    slots.map(([x, side]) => parts[name].clone().rotateY(Math.PI / 2).translate(x, 0.16, side * parkedLateral))
+  );
+};
+/** Parked-car parts for a street: two paint colours, glass and running gear. */
+function parkedCars(slotsA, slotsB, paintA, paintB) {
+  return [
+    { geometry: parkedPart('body', slotsA), color: paintA, surface: 'paint' },
+    { geometry: parkedPart('body', slotsB), color: paintB, surface: 'paint' },
+    { geometry: parkedPart('glass', [...slotsA, ...slotsB]), color: 0x0a0d10, surface: 'glass' },
+    { geometry: parkedPart('dark', [...slotsA, ...slotsB]), color: 0x101113 },
+  ];
+}
+
+const LAGOS_BLOCK = { walls: lagosWalls, slabs: lagosSlabs, trim: lagosTrim, shutters: lagosShutters };
+const LAGOS_BLUE = { blue: lagosWalls, slabs: lagosSlabs, trim: lagosTrim, shutters: lagosShutters };
+const LAGOS_SHOPS = { walls: shopWalls, awning: shopAwning, signs: shopSigns, trim: shopTank, shutters: shopShutters };
+// Each side fills the 48 m segment: shops are 14 m wide, blocks 10 m.
+const LAGOS_MODULES = [
+  [LAGOS_SHOPS, -17, 1, 7], [LAGOS_BLOCK, -5, 1, 8], [LAGOS_BLUE, 5, 1, 8], [LAGOS_BLOCK, 15, 1, 8],
+  [LAGOS_BLOCK, -19, -1, 8], [LAGOS_SHOPS, -7, -1, 7], [LAGOS_BLUE, 5, -1, 8], [LAGOS_SHOPS, 17, -1, 7],
+];
+const LAGOS_FRONT = 13.5;
+
+const KANO_HOUSE = { walls: mudHouseWalls, door: mudHouseDoor, stall: () => merge([stallKiosk(), stallPole()]) };
+const KANO_PLAIN = { walls: mudHouseWalls, door: mudHouseDoor };
+const KANO_MODULES = [-19, -9.5, 0, 9.5, 19].flatMap((x, i) => [
+  [i % 2 ? KANO_HOUSE : KANO_PLAIN, x, 1, 4.4],
+  [i % 2 ? KANO_PLAIN : KANO_HOUSE, x + 4, -1, 4.4],
+]);
+const KANO_FRONT = 12;
+
+/**
+ * Algiers, la Blanche: five-storey white blocks, each floor's balcony railed in
+ * the blue that goes with the white everywhere on that coast.
+ */
+const algiersWalls = () => merge([box(11.6, 16, 10).translate(0, 8, 0), box(11.9, 0.6, 10.3).translate(0, 16.3, 0)]);
+const algiersRails = () =>
+  merge([3.4, 6.6, 9.8, 13].map((y) => box(9.8, 0.95, 0.08).translate(0, y + 0.5, 5.75)));
+const algiersSlabs = () => merge([3.4, 6.6, 9.8, 13].map((y) => box(9.8, 0.18, 1.3).translate(0, y, 5.3)));
+const ALGIERS_BLOCK = { walls: algiersWalls, rails: algiersRails, slabs: algiersSlabs };
+const ALGIERS_MODULES = [-18, -6, 6, 18].flatMap((x) => [
+  [ALGIERS_BLOCK, x, 1, 10],
+  [ALGIERS_BLOCK, x + 3, -1, 10],
+]);
+const ALGIERS_FRONT = 13;
+
 export const REGIONAL_KIT = {
+  lagosStreet: {
+    parts: [
+      { geometry: streetPart('walls', LAGOS_MODULES, LAGOS_FRONT), material: 'a', surface: 'facade' },
+      { geometry: streetPart('blue', LAGOS_MODULES, LAGOS_FRONT), color: 0x9cbccc, surface: 'facade' },
+      { geometry: streetPart('slabs', LAGOS_MODULES, LAGOS_FRONT), color: 0xb4aea2 },
+      { geometry: streetPart('trim', LAGOS_MODULES, LAGOS_FRONT), color: 0x1b1c1f },
+      { geometry: streetPart('shutters', LAGOS_MODULES, LAGOS_FRONT), color: 0x6a6e72, surface: 'metal' },
+      { geometry: streetPart('awning', LAGOS_MODULES, LAGOS_FRONT), color: 0x7e5d4a, surface: 'metal' },
+      { geometry: streetPart('signs', LAGOS_MODULES, LAGOS_FRONT), material: 'e', surface: 'screen' },
+      ...parkedCars(PARKED.slice(0, 2), [PARKED[3]], 0xb8bcc0, 0x7a1e1a),
+      { geometry: parkedPart('body', [PARKED[2], PARKED[5]], true), color: 0xf0b000, surface: 'paint' },
+      { geometry: parkedPart('glass', [PARKED[2], PARKED[5]], true), color: 0x0a0d10, surface: 'glass' },
+      { geometry: parkedPart('dark', [PARKED[2], PARKED[5]], true), color: 0x101113 },
+    ],
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
+  kanoStreet: {
+    parts: [
+      { geometry: streetPart('walls', KANO_MODULES, KANO_FRONT), color: 0xb8865a },
+      { geometry: streetPart('door', KANO_MODULES, KANO_FRONT), color: 0x3a2a20 },
+      { geometry: streetPart('stall', KANO_MODULES, KANO_FRONT - 3), color: 0x8a6a4a },
+      ...parkedCars([PARKED[0], PARKED[4]], [PARKED[2]], 0xd8d4cc, 0x2f3a4a),
+    ],
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
+  algiersStreet: {
+    parts: [
+      { geometry: streetPart('walls', ALGIERS_MODULES, ALGIERS_FRONT), material: 'a', surface: 'facade' },
+      { geometry: streetPart('rails', ALGIERS_MODULES, ALGIERS_FRONT), color: 0x2f6aa8 },
+      { geometry: streetPart('slabs', ALGIERS_MODULES, ALGIERS_FRONT), color: 0xe8e4da },
+      ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0xe6e6e2, 0x5a6470),
+    ],
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
   lagosBlock: {
     parts: [
       { geometry: lagosWalls, material: 'a', surface: 'facade' },
@@ -340,7 +466,9 @@ export const REGIONAL_KIT = {
       { geometry: streetSides(haussmannRowWalls), material: 'a', surface: 'facade' },
       { geometry: streetSides(haussmannRowRoofs), color: 0x5d646c, surface: 'metal' },
       { geometry: streetSides(haussmannRowBalconies), color: 0x1e2226 },
+      ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0x2a2e36, 0x8a8e94),
     ],
+    length: STREET_LENGTH,
     spread: 0,
     jitter: 0,
   },
