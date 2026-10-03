@@ -317,7 +317,8 @@ function streetPart(name, modules, front) {
 
 // Parked along the kerb, nose to tail, on both sides.
 const PARKED = [[-18, 1], [-6.5, 1], [10, 1], [-12, -1], [3.5, -1], [16.5, -1]];
-const parkedLateral = 7.9;
+export const PARKED_LATERAL = 7.9;
+const parkedLateral = PARKED_LATERAL;
 let carParts = null;
 let vanParts = null;
 const parkedPart = (name, slots, van = false) => () => {
@@ -371,7 +372,93 @@ const ALGIERS_MODULES = [-18, -6, 6, 18].flatMap((x) => [
 ]);
 const ALGIERS_FRONT = 13;
 
+/**
+ * A Saharan medina street (Tamanrasset, In Salah, Ghardaïa): two-storey
+ * cubic houses of rendered mud brick with small deep windows, flat roofs
+ * behind a crenellated parapet, alternating between the set's colour and a
+ * paler lime wash.
+ */
+function medinaWalls() {
+  const parts = [box(10.6, 6.6, 8).translate(0, 3.3, 0)];
+  for (let i = 0; i < 7; i++) parts.push(box(0.7, 0.8, 0.5).translate(-4.6 + i * 1.53, 7.0, 3.75));
+  return merge(parts);
+}
+function medinaOpenings() {
+  return merge([
+    box(1.4, 2.4, 0.12).translate(-2.2, 1.2, 4.02), // door
+    box(0.8, 0.9, 0.12).translate(1.6, 2.0, 4.02),
+    box(0.8, 0.9, 0.12).translate(-3.6, 4.6, 4.02),
+    box(0.8, 0.9, 0.12).translate(0.4, 4.6, 4.02),
+    box(0.8, 0.9, 0.12).translate(3.6, 4.6, 4.02),
+  ]);
+}
+const MEDINA_A = { walls: medinaWalls, openings: medinaOpenings };
+const MEDINA_B = { pale: medinaWalls, openings: medinaOpenings };
+const MEDINA_MODULES = [-18, -6, 6, 18].flatMap((x, i) => [
+  [i % 2 ? MEDINA_B : MEDINA_A, x, 1, 8],
+  [i % 2 ? MEDINA_A : MEDINA_B, x + 2, -1, 8],
+]);
+const MEDINA_FRONT = 12.5;
+
+/**
+ * Amsterdam: tall narrow brick canal houses shoulder to shoulder, each with
+ * its own height and a stepped or bell gable, white cornices and a hoist beam.
+ */
+function canalHouse(height, gable) {
+  return () => {
+    const parts = [box(4.2, height, 7).translate(0, height / 2, 0)];
+    for (let i = 0; i < gable; i++) {
+      const w = 3.4 - i * 0.95;
+      parts.push(box(w, 1.0, 0.6).translate(0, height + 0.5 + i, 3.2));
+    }
+    return merge(parts);
+  };
+}
+const canalTrim = (height) => () =>
+  merge([box(4.3, 0.25, 0.2).translate(0, height, 3.6), box(0.2, 0.2, 1.1).translate(0, height + 2.2, 3.8)]);
+const CANAL_HEIGHTS = [9.2, 10.6, 8.6, 11.2, 9.8, 10.2, 8.9, 11.6, 9.4, 10.8, 9.0];
+const AMSTERDAM_MODULES = [];
+for (const side of [-1, 1]) {
+  CANAL_HEIGHTS.forEach((h, i) => {
+    const height = side > 0 ? h : CANAL_HEIGHTS[(i + 5) % CANAL_HEIGHTS.length];
+    AMSTERDAM_MODULES.push([
+      { walls: canalHouse(height, 2 + (i % 2)), trim: canalTrim(height) },
+      -21.8 + i * 4.36,
+      side,
+      7,
+    ]);
+  });
+}
+const AMSTERDAM_FRONT = 12.5;
+
 export const REGIONAL_KIT = {
+  medinaStreet: {
+    parts: [
+      { geometry: streetPart('walls', MEDINA_MODULES, MEDINA_FRONT), material: 'a' },
+      { geometry: streetPart('pale', MEDINA_MODULES, MEDINA_FRONT), color: 0xe2d6be },
+      { geometry: streetPart('openings', MEDINA_MODULES, MEDINA_FRONT), color: 0x2a2018 },
+      ...parkedCars([PARKED[1]], [PARKED[4]], 0xd8d4cc, 0x8a7a5a),
+    ],
+    // For collisions: the building line, and where cars are parked.
+    front: MEDINA_FRONT,
+    parked: [1, 4].map((k) => PARKED[k]),
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
+  amsterdamStreet: {
+    parts: [
+      { geometry: streetPart('walls', AMSTERDAM_MODULES, AMSTERDAM_FRONT), material: 'a', surface: 'facade' },
+      { geometry: streetPart('trim', AMSTERDAM_MODULES, AMSTERDAM_FRONT), color: 0xf2efe8 },
+      ...parkedCars(PARKED.slice(0, 2), PARKED.slice(3, 5), 0x2a2e36, 0x6a7078),
+    ],
+    // For collisions: the building line, and where cars are parked.
+    front: AMSTERDAM_FRONT,
+    parked: [0, 1, 3, 4].map((k) => PARKED[k]),
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
   lagosStreet: {
     parts: [
       { geometry: streetPart('walls', LAGOS_MODULES, LAGOS_FRONT), material: 'a', surface: 'facade' },
@@ -386,6 +473,9 @@ export const REGIONAL_KIT = {
       { geometry: parkedPart('glass', [PARKED[2], PARKED[5]], true), color: 0x0a0d10, surface: 'glass' },
       { geometry: parkedPart('dark', [PARKED[2], PARKED[5]], true), color: 0x101113 },
     ],
+    // For collisions: the building line, and where cars are parked.
+    front: LAGOS_FRONT,
+    parked: [0, 1, 2, 3, 5].map((k) => PARKED[k]),
     length: STREET_LENGTH,
     spread: 0,
     jitter: 0,
@@ -397,6 +487,9 @@ export const REGIONAL_KIT = {
       { geometry: streetPart('stall', KANO_MODULES, KANO_FRONT - 3), color: 0x8a6a4a },
       ...parkedCars([PARKED[0], PARKED[4]], [PARKED[2]], 0xd8d4cc, 0x2f3a4a),
     ],
+    // For collisions: the building line, and where cars are parked.
+    front: KANO_FRONT,
+    parked: [0, 2, 4].map((k) => PARKED[k]),
     length: STREET_LENGTH,
     spread: 0,
     jitter: 0,
@@ -408,6 +501,9 @@ export const REGIONAL_KIT = {
       { geometry: streetPart('slabs', ALGIERS_MODULES, ALGIERS_FRONT), color: 0xe8e4da },
       ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0xe6e6e2, 0x5a6470),
     ],
+    // For collisions: the building line, and where cars are parked.
+    front: ALGIERS_FRONT,
+    parked: [0, 1, 2, 3, 4, 5].map((k) => PARKED[k]),
     length: STREET_LENGTH,
     spread: 0,
     jitter: 0,
@@ -468,6 +564,9 @@ export const REGIONAL_KIT = {
       { geometry: streetSides(haussmannRowBalconies), color: 0x1e2226 },
       ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0x2a2e36, 0x8a8e94),
     ],
+    // For collisions: the building line, and where cars are parked.
+    front: STREET_SETBACK - 6.5,
+    parked: [0, 1, 2, 3, 4, 5].map((k) => PARKED[k]),
     length: STREET_LENGTH,
     spread: 0,
     jitter: 0,

@@ -3,6 +3,7 @@ import { CONFIG } from '../config.js';
 import { hash } from '../path.js';
 import { terrainHeight } from './terrain.js';
 import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
+import { PARKED_LATERAL } from '../props/regional.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -25,7 +26,7 @@ const FACING = new Set([
   'sign', 'mileMarker', 'billboard', 'cone', 'mailbox', 'busShelter', 'pierPost',
   'stall', 'bungalow', 'mudHouse', 'canalHouses', 'lagosBlock', 'lagosBlockBlue', 'lagosShops', 'stiltHouse',
 ]);
-const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier', 'haussmannRow', 'haussmannStreet', 'mudWall', 'lagosStreet', 'kanoStreet', 'algiersStreet']);
+const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier', 'haussmannRow', 'haussmannStreet', 'mudWall', 'lagosStreet', 'kanoStreet', 'algiersStreet', 'medinaStreet', 'amsterdamStreet']);
 
 // Types with a dedicated placement pass, and therefore barred from the scatter
 // roll — otherwise a set would get both an orderly power line *and* a field of
@@ -184,6 +185,9 @@ export class Props {
       this.types[name] = { def, meshes, used: 0, footprint };
     }
 
+    this.streets = [];
+    this.parked = [];
+
     // Ring buffer of what has just been placed, for the separation check.
     this.recent = [];
     for (let i = 0; i < RECENT_SLOTS; i++) this.recent.push({ s: 0, x: 0, r: 0 });
@@ -272,6 +276,10 @@ export class Props {
     // then fills in around it. That is the whole difference between a fence
     // with trees behind it and a fence with trees growing through it.
     for (const type of Object.values(this.types)) type.used = 0;
+    // Street segments laid this frame, for collisions: [{ s0, s1, front }],
+    // and the parked cars along them: [{ s, lateral }].
+    this.streets.length = 0;
+    this.parked.length = 0;
     for (const entry of this.recent) entry.r = 0;
     this.corridorCount = 0;
 
@@ -352,6 +360,12 @@ export class Props {
       DUMMY.rotation.z = live.propLean * 0.105;
       DUMMY.scale.setScalar(size);
       DUMMY.updateMatrix();
+      if (def.front) {
+        // The quarter turn maps the street's local +X onto +s.
+        this.streets.push({ s0: s - def.length / 2, s1: s + def.length / 2, front: def.front * size });
+        for (const [x, side] of def.parked) this.parked.push({ s: s + x * size, lateral: side * PARKED_LATERAL * size });
+      }
+
       // Fences stay one colour along a run; a street varies segment to
       // segment, which also seeds its lit windows and its shop signs.
       this._write(type, DUMMY.matrix, def.length ? 0.86 + hash(slot * 29.7) * 0.28 : 1);

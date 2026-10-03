@@ -590,9 +590,42 @@ function atomium() {
   };
 }
 
+/**
+ * The Grand Mosque of Agadez: a 27-metre minaret of mud brick tapering to its
+ * top, bristling with the toron — the palm-wood beams left sticking out of
+ * every face as scaffolding for re-plastering after the rains.
+ */
+function agadezMosque() {
+  const mud = [
+    new THREE.CylinderGeometry(1.8, 5.6, 27, 4, 1).rotateY(Math.PI / 4).translate(0, 13.5, 0),
+    box(30, 5, 22).translate(-14, 2.5, 6), // the prayer hall
+    box(3.6, 2, 3.6).translate(0, 27.8, 0),
+  ];
+  const wood = [];
+  for (let level = 0; level < 9; level++) {
+    const y = 3 + level * 2.8;
+    const half = 5.6 - (y / 27) * 3.8;
+    for (const offset of [-0.35, 0.35]) {
+      wood.push(box(half * 2 + 2.4, 0.18, 0.18).translate(0, y, offset * half));
+      wood.push(box(0.18, 0.18, half * 2 + 2.4).translate(offset * half, y + 1.4, 0));
+    }
+  }
+  return {
+    name: 'agadezMosque',
+    label: 'the Grand Mosque, Agadez',
+    parts: [
+      { geometry: merge(mud), material: 'mud' },
+      { geometry: merge(wood), material: 'iron' },
+    ],
+    offset: 120,
+    height: 0,
+    approach: 800,
+  };
+}
+
 const BUILDERS = [
   greatWall, stonehenge, moai, pyramids, torii, suspensionBridge, zumaRock, eiffelTower,
-  lagosIsland, nationalMosque, kanoGate, martyrsMemorial, arcDeTriomphe, atomium,
+  lagosIsland, nationalMosque, kanoGate, martyrsMemorial, arcDeTriomphe, atomium, agadezMosque,
 ];
 
 // Materials for the route's city landmarks: out of the scene fog and hazed by

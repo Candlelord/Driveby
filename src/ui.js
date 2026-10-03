@@ -42,6 +42,15 @@ export class Ui {
     this._routeText = '';
   }
 
+  /** Blink the "progress saved" note. */
+  flashSaved() {
+    const el = (this.savedNote ??= document.getElementById('saved'));
+    if (!el) return;
+    el.classList.add('is-live');
+    clearTimeout(this._savedTimer);
+    this._savedTimer = setTimeout(() => el.classList.remove('is-live'), 1200);
+  }
+
   setRouteVisible(visible) {
     this.route.hidden = !visible;
   }

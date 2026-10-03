@@ -122,6 +122,129 @@ const BASE = {
 // before walls and leaves could differ.
 const set = (values) => ({ ...BASE, propF: values.propA ?? BASE.propA, ...values });
 
+// --- city templates for the route's stops ----------------------------------
+//
+// Every stop on the route is a city you drive through, not a sign in a
+// field. These share the street machinery (continuous frontage, pavements,
+// parked cars, people) and differ in what the streets are made of.
+
+/** A Nigerian city: the Lagos street fabric, coloured for the place. */
+const nigerianCity = (label, values = {}) =>
+  set({
+    label,
+    climate: 'humid',
+    grass: 0.05,
+    seasonReach: 0,
+    propMix: [['lagosStreet', 0.5], ['bungalow', 0.1], ['stall', 0.1], ['billboard', 0.08], ['palm', 0.08], ['round', 0.06], ['pole', 0.04], ['busShelter', 0.04]],
+    runChance: 0.97,
+    groundColorBase: 0x7a5e48,
+    groundAccent: 0x5e4a3c,
+    propA: 0xd2bfa0,
+    propF: 0x4e7a3a,
+    propB: 0x5a4a3c,
+    propE: 0xffc070,
+    propEmissive: 0.8,
+    ridgeNearColor: 0x7a7a5a,
+    ridgeFarColor: 0x9aa4a0,
+    hillHeight: 2,
+    propDensity: 0.9,
+    lightPollution: 0.4,
+    kerbs: 1,
+    danfo: 0.4,
+    sidewalk: 1,
+    people: 0.85,
+    peopleStyle: 'westAfrica',
+    skyline: 0.2,
+    speedScale: 0.92,
+    ...values,
+  });
+
+/** A Sahel city of mud compounds: Zinder, Agadez. */
+const sahelCity = (label, values = {}) =>
+  set({
+    label,
+    climate: 'harmattan',
+    grass: 0.08,
+    seasonReach: 0,
+    propMix: [['kanoStreet', 0.45], ['mudHouse', 0.15], ['stall', 0.12], ['acacia', 0.08], ['mosque', 0.06], ['pole', 0.06], ['cattle', 0.04]],
+    runChance: 0.97,
+    groundColorBase: 0xc0a070,
+    groundAccent: 0xa4794c,
+    propA: 0x3e8a5a,
+    propF: 0x6a7a3a,
+    propB: 0xa47c56,
+    propE: 0xffc070,
+    propEmissive: 0.5,
+    ridgeNearColor: 0xb09a7a,
+    ridgeFarColor: 0xc8b8a0,
+    hillHeight: 1,
+    propDensity: 0.75,
+    sidewalk: 1,
+    pavementColor: 0xc4a888,
+    people: 0.7,
+    peopleStyle: 'westAfrica',
+    danfo: 0.05,
+    speedScale: 0.95,
+    ...values,
+  });
+
+/** A Saharan town of cubic mud-brick houses: Tamanrasset, In Salah, Ghardaïa. */
+const desertTown = (label, values = {}) =>
+  set({
+    label,
+    climate: 'desertHeat',
+    grass: 0.05,
+    seasonReach: 0,
+    propMix: [['medinaStreet', 0.5], ['palm', 0.2], ['mudHouse', 0.08], ['mosque', 0.06], ['stall', 0.06]],
+    runChance: 0.97,
+    groundColorBase: 0xc89a68,
+    groundAccent: 0xa87a4c,
+    propA: 0xb8704a,
+    propF: 0x5a8a4a,
+    propB: 0x8a6a4a,
+    propE: 0xffd8a0,
+    propEmissive: 0.4,
+    ridgeNearColor: 0xb48a62,
+    ridgeFarColor: 0xd0b090,
+    hillHeight: 3,
+    propDensity: 0.7,
+    sidewalk: 1,
+    pavementColor: 0xc8a47c,
+    people: 0.5,
+    peopleStyle: 'maghreb',
+    ...values,
+  });
+
+/** A French or Belgian city of stone apartment blocks: Marseille, Lyon, Brussels. */
+const frenchCity = (label, values = {}) =>
+  set({
+    label,
+    climate: 'clear',
+    grass: 0.1,
+    seasonReach: 0.6,
+    propMix: [['haussmannStreet', 0.5], ['haussmann', 0.2], ['round', 0.3], ['busShelter', 0.06], ['mailbox', 0.04], ['sign', 0.04]],
+    runChance: 0.97,
+    groundColorBase: 0x8e8a80,
+    groundAccent: 0x6e7a5a,
+    propA: 0xded2b8,
+    propF: 0x5e7a3e,
+    propB: 0x4a4038,
+    propE: 0xffd8a0,
+    propEmissive: 0.9,
+    ridgeNearColor: 0x8a8a8a,
+    ridgeFarColor: 0xa8acb4,
+    hillHeight: 1.5,
+    propDensity: 0.9,
+    groundGloss: 0.2,
+    lightPollution: 0.7,
+    sidewalk: 1,
+    pavementColor: 0xcfc6b2,
+    people: 0.7,
+    peopleStyle: 'europe',
+    speedScale: 0.95,
+    ...values,
+  });
+
 export const TERRAIN_SETS = {
   // ---------------------------------------------------------------- SAD
   floodedPlain: set({
@@ -1105,6 +1228,77 @@ export const TERRAIN_SETS = {
     cliffHeight: 14,
     propDensity: 0.7,
     lightPollution: 0.3,
+  }),
+
+  // Every other stop on the route, as a city you drive through.
+  ibadanCity: nigerianCity('Ibadan', { propA: 0xc8a888, hillHeight: 5, danfo: 0.35 }),
+  ilorinTown: nigerianCity('Ilorin', { climate: 'clear', propA: 0xd8c8a8, groundColorBase: 0x9a8452, danfo: 0.25 }),
+  abujaCity: set({
+    label: 'Abuja',
+    climate: 'clear',
+    grass: 0.4,
+    seasonReach: 0,
+    // The planned capital: wide boulevards, stone-clad offices and towers set
+    // back behind lawns and trees, Aso Rock's granite beyond.
+    propMix: [['building', 0.32], ['tower', 0.18], ['round', 0.14], ['acacia', 0.06], ['busShelter', 0.06], ['billboard', 0.08], ['mosque', 0.04], ['sign', 0.04]],
+    groundColorBase: 0x8e7e52,
+    groundAccent: 0x6a7a44,
+    propA: 0xd2c6b2,
+    propF: 0x5e7a3a,
+    propB: 0x6e6660,
+    propE: 0xffe0a8,
+    propEmissive: 0.7,
+    ridgeNearColor: 0x6a6460,
+    ridgeFarColor: 0x8e94a0,
+    hillHeight: 6,
+    ridgeHeight: 2,
+    propDensity: 0.95,
+    lightPollution: 0.5,
+    skyline: 0.5,
+    kerbs: 1,
+    sidewalk: 1,
+    people: 0.5,
+    peopleStyle: 'westAfrica',
+    danfo: 0.15,
+  }),
+  kadunaCity: nigerianCity('Kaduna', { climate: 'harmattan', propA: 0xd2c4a8, groundColorBase: 0xb09a70, danfo: 0.15 }),
+  zinderTown: sahelCity('Zinder'),
+  agadezTown: sahelCity('Agadez', { climate: 'desertHeat', groundColorBase: 0xd0a070, propB: 0xb07a4e }),
+  tamanrassetTown: desertTown('Tamanrasset', { propA: 0xb8704a }),
+  inSalahTown: desertTown('In Salah', { propA: 0xa0563a, groundColorBase: 0xd09a62 }),
+  ghardaiaTown: desertTown('Ghardaïa', { propA: 0xd8c4a0, people: 0.6 }),
+  marseilleCity: frenchCity('Marseille', {
+    propA: 0xe6d8bc,
+    propF: 0x6a7a44,
+    propMix: [['haussmannStreet', 0.45], ['palm', 0.12], ['cypress', 0.1], ['round', 0.15], ['busShelter', 0.06], ['sign', 0.04]],
+    peopleStyle: 'mixed',
+  }),
+  lyonCity: frenchCity('Lyon', { propA: 0xe2cdb0 }),
+  brusselsCity: frenchCity('Brussels', { propA: 0xcfc4b0, climate: 'rain', pavementColor: 0x9a948a }),
+  amsterdamCity: set({
+    label: 'Amsterdam',
+    climate: 'clear',
+    grass: 0.3,
+    seasonReach: 0.8,
+    propMix: [['amsterdamStreet', 0.5], ['round', 0.25], ['canalHouses', 0.08], ['busShelter', 0.04]],
+    runChance: 0.97,
+    groundColorBase: 0x6a7a58,
+    groundAccent: 0x5a6a48,
+    propA: 0x8a3a2e, // brick
+    propF: 0x5a7a3e,
+    propB: 0x5e3a2e,
+    propE: 0xffd8a0,
+    propEmissive: 0.9,
+    ridgeNearColor: 0x7a8a78,
+    ridgeFarColor: 0x9aa8b0,
+    hillHeight: 0.3,
+    propDensity: 0.85,
+    lightPollution: 0.6,
+    sidewalk: 1,
+    pavementColor: 0x9a7a6a, // brick paving
+    people: 0.7,
+    peopleStyle: 'europe',
+    speedScale: 0.9,
   }),
 
   parisCity: set({

@@ -32,8 +32,10 @@ import { Atmosphere } from './world/atmosphere.js';
 import { EnvironmentLight } from './world/envLight.js';
 import { Grass } from './world/grass.js';
 import { People } from './world/people.js';
+import { Collisions } from './collisions.js';
 import { RouteDirector } from './routes/director.js';
 import { ROUTES } from './routes/lagosParis.js';
+import { loadSave, writeSave, savedAgo } from './save.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -126,6 +128,7 @@ const input = new Input(renderer.domElement, {
 const ui = new Ui();
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
+const collisions = new Collisions({ physics, props, sfx });
 const session = new Session(environment);
 
 // Audio cannot start until the browser has seen a gesture, so the first real
@@ -141,11 +144,49 @@ window.addEventListener('keydown', startAudio);
 // A route, if the player chose one, takes over where the road goes; the music
 // keeps the light.
 let route = null;
-session.onStart = (trip) => {
-  if (!ROUTES[trip]) return;
-  route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
-  route.start(state.travelled);
+let trip = null; // set once driving starts: 'endless' or a route id
+let saveTimer = 0;
+
+// Saved progress: offer it on the start screen, described in place names.
+const save = loadSave();
+if (save) {
+  const where = ROUTES[save.trip]
+    ? new RouteDirector(ROUTES[save.trip], { environment, landmarks, ui }).describe(save.route?.progress ?? 0)
+    : `${((save.travelled ?? 0) / 1609.34).toFixed(1)} mi driven`;
+  session.screens.offerResume({
+    title: `Continue: ${ROUTES[save.trip]?.title ?? 'Endless drive'}`,
+    sub: `${where} · saved ${savedAgo(save)}`,
+  });
+}
+
+session.onStart = (picked) => {
+  const resume = picked === 'resume' ? loadSave() : null;
+  trip = resume ? resume.trip : picked;
+  if (resume) {
+    physics.travelled = resume.travelled ?? physics.travelled;
+    environment.restoreBlock(resume.blockIndex);
+  }
+  if (ROUTES[trip]) {
+    route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
+    route.start(physics.travelled, resume?.route ?? null);
+  }
+  saveGame();
 };
+
+/** Write the save slot: called on a timer while driving and when hidden. */
+function saveGame() {
+  if (!trip) return;
+  // A finished route carries on as an endless drive.
+  const onRoute = route?.active;
+  const ok = writeSave({
+    trip: onRoute ? trip : 'endless',
+    travelled: physics.travelled,
+    blockIndex: environment.blockIndex,
+    route: onRoute ? route.snapshot(physics.travelled) : null,
+  });
+  if (ok) ui.flashSaved();
+}
+window.addEventListener('pagehide', saveGame);
 
 // Real track ends replace the mock song timer once a library is connected.
 session.player.onTrackEnd(() => environment.songFinished(state.travelled));
@@ -193,6 +234,7 @@ window.visualViewport?.addEventListener('resize', resize);
 // between a game and a battery drain.
 document.addEventListener('visibilitychange', () => {
   const visible = document.visibilityState === 'visible';
+  if (!visible) saveGame();
   const wasRunning = running;
   running = visible;
   if (visible && !wasRunning) {
@@ -213,6 +255,7 @@ function tick(now) {
   input.update(dt);
 
   updateDriving(dt);
+  collisions.update(state);
   environment.update(dt, state.travelled);
 
   frame.setOrigin(state.travelled);
@@ -242,6 +285,12 @@ function tick(now) {
   post.update(state);
   sfx.update(state, state.live, session.player);
   session.update();
+
+  saveTimer += state.dt;
+  if (saveTimer > 5) {
+    saveTimer = 0;
+    saveGame();
+  }
 
   post.render();
   requestAnimationFrame(tick);
@@ -412,6 +461,7 @@ if (import.meta.env.DEV) {
     atmosphere,
     sfx,
     session,
+    collisions,
     get route() {
       return route;
     },

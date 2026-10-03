@@ -48,28 +48,68 @@ export class RouteDirector {
     this.roadKm = route.legs.reduce((sum, leg) => sum + (leg.ferry ? 0 : leg.km), 0);
   }
 
-  start(travelled) {
+  /**
+   * Begin the trip — or pick it up again: `resume` is a saved snapshot (see
+   * snapshot()), and the road, the country and the landmarks ahead are all
+   * restored from its progress.
+   */
+  start(travelled, resume = null) {
+    const progress = resume ? Math.min(resume.progress, this.totalUnits - 1) : 0;
     this.active = true;
     this.finished = false;
-    this.origin = travelled;
-    this.legIndex = 0;
-    this.country = this.route.stops[0].country;
-    this.ferriesDone = new Set();
+    this.origin = travelled - progress;
+    this.ferriesDone = new Set(resume?.ferriesDone ?? []);
     this.fade = null;
 
-    // Arrive in Lagos behind a title card rather than watching it grow out of
-    // whatever field the intro was driving through.
-    this.environment.jumpToRegion(this.route.legs[0].regions[0][0]);
-    this.fade = { kind: 'start', time: 0 };
-    const first = this.route.stops[0];
-    const last = this.route.stops[this.route.stops.length - 1];
-    this.ui.setFade(1, {
-      title: `${first.name}, ${first.country}`,
-      sub: `${this.route.title} · ${formatKm(this.roadKm)} by road to ${last.name}`,
-    });
+    const pending = this._pendingFerryAt(progress);
+    this.legIndex = pending ?? this._legAt(progress);
+    this.country = this._countryAt(progress);
 
-    this.landmarks.useSchedule(this._landmarkSchedule());
+    // Arrive behind a title card rather than watching the place grow out of
+    // whatever field the intro was driving through.
+    this.environment.jumpToRegion(this._regionAt(this._clampToFerry(progress + CONFIG.propSwapDistance)));
+    this.fade = { kind: 'start', time: 0 };
+    const last = this.route.stops[this.route.stops.length - 1];
+    if (resume) {
+      const from = this.route.stops[this.legIndex];
+      const to = this.route.stops[this.legIndex + 1] ?? from;
+      this.ui.setFade(1, {
+        title: `${from.name} → ${to.name}`,
+        sub: `Resuming ${this.route.title} · ${this._drivenKm(progress)} of ${formatKm(this.roadKm)}`,
+      });
+    } else {
+      const first = this.route.stops[0];
+      this.ui.setFade(1, {
+        title: `${first.name}, ${first.country}`,
+        sub: `${this.route.title} · ${formatKm(this.roadKm)} by road to ${last.name}`,
+      });
+    }
+
+    const exit = this.landmarks.config.landmarkExit;
+    this.landmarks.useSchedule(this._landmarkSchedule().filter((item) => item.at > travelled - exit));
     this.ui.setRouteVisible(true);
+  }
+
+  /** What to write to the save slot. */
+  snapshot(travelled) {
+    return { progress: travelled - this.origin, ferriesDone: [...this.ferriesDone] };
+  }
+
+  /** Where the trip stands, for the resume button: "near Kano · 1,190 km". */
+  describe(progress) {
+    const leg = Math.min(this._legAt(progress), this.route.legs.length - 1);
+    const from = this.route.stops[leg];
+    const to = this.route.stops[leg + 1] ?? from;
+    const near = this._fractionAlong(progress, leg) > 0.5 ? to : from;
+    return `near ${near.name}, ${near.country} · ${this._drivenKm(progress)}`;
+  }
+
+  _drivenKm(progress) {
+    const leg = Math.min(this._legAt(progress), this.route.legs.length - 1);
+    let driven = 0;
+    for (let i = 0; i < leg; i++) if (!this.route.legs[i].ferry) driven += this.route.legs[i].km;
+    if (!this.route.legs[leg].ferry) driven += this.route.legs[leg].km * this._fractionAlong(progress, leg);
+    return formatKm(driven);
   }
 
   /** Every landmark on the route, as absolute game distances. */

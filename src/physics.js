@@ -23,6 +23,12 @@ export class CarPhysics {
     this.knock = 0; // lateral velocity from a collision, decaying
     this.impact = 0; // 0..1 shake from the last collision, decaying
     this.impactYaw = 0; // the body twisting from a hit
+    // In a city street the car may mount the pavement, up to the building
+    // line: `wall` is that limit, set each frame by collisions.js (null on an
+    // open road, where the soft verge applies instead). `wallHit` is raised
+    // when the car meets it.
+    this.wall = null;
+    this.wallHit = 0;
   }
 
   /**
@@ -53,8 +59,8 @@ export class CarPhysics {
     this._updateSuspension(dt, live, shake + this.impact * 1.4);
     this.travelled += this.speed * dt;
 
-    // Collision aftermath decays away over a second or so.
-    this.lateral += this.knock * dt;
+    // Collision aftermath decays away over a second or so. (The knock itself
+    // is applied in _updateSteering, before the wall and verge checks.)
     this.knock *= Math.exp(-3.2 * dt);
     this.impact *= Math.exp(-2.4 * dt);
     this.impactYaw *= Math.exp(-2.8 * dt);
@@ -97,12 +103,25 @@ export class CarPhysics {
     // what keeps a boost controllable instead of skittish.
     const speedFactor = Math.min(1.25, this.speed / CONFIG.speed);
     this.lateral += this.steer * CONFIG.steerRate * speedFactor * dt;
+    this.lateral += this.knock * dt;
+
+    // In a street the buildings are a hard edge: the car stops against them,
+    // and how fast it was moving sideways says how hard it hit.
+    if (this.wall !== null) {
+      if (Math.abs(this.lateral) > this.wall) {
+        const into = Math.abs(this.steer * CONFIG.steerRate * speedFactor + this.knock);
+        this.wallHit = Math.max(this.wallHit, into);
+        this.lateral = Math.sign(this.lateral) * this.wall;
+        this.knock = 0;
+      }
+      this.edgePressure = 0;
+    }
 
     // Soft boundary: rather than a wall, the verge pushes back harder the
     // further onto it you get. There is no way to leave the road and no penalty
     // for trying — the car just declines.
     const limit = CONFIG.maxLateral;
-    const over = Math.abs(this.lateral) - limit;
+    const over = this.wall !== null ? 0 : Math.abs(this.lateral) - limit;
     if (over > 0) {
       const push = Math.min(1, over / CONFIG.edgeSoftness);
       this.lateral -= Math.sign(this.lateral) * push * CONFIG.edgeReturn * dt;
@@ -110,7 +129,14 @@ export class CarPhysics {
     } else {
       this.edgePressure = Math.max(0, this.edgePressure - dt * 3);
     }
-    this.lateral = clamp(this.lateral, -limit - CONFIG.edgeSoftness, limit + CONFIG.edgeSoftness);
+    // Out of a street, the edge closes back in at verge-return speed rather
+    // than snapping, so leaving the pavement where the buildings end eases you
+    // back onto the road instead of teleporting you there.
+    const verge = limit + CONFIG.edgeSoftness;
+    this.release = this.wall !== null
+      ? Math.max(verge, Math.abs(this.lateral))
+      : Math.max(verge, (this.release ?? verge) - CONFIG.edgeReturn * dt);
+    if (this.wall === null) this.lateral = clamp(this.lateral, -this.release, this.release);
 
     // Body roll trails the steering rather than tracking it, so the car settles
     // after a correction instead of snapping upright.

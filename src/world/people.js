@@ -10,6 +10,13 @@ const BEHIND = 16;
 const WANDER = 80; // how far a walker roams before looping
 const KERB_HEIGHT = 0.16;
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
+// How far a pedestrian keeps from the car's centreline when it comes onto the pavement.
+const DODGE = 2.6;
+
+function smoothstep(edge0, edge1, x) {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
 
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
@@ -180,10 +187,28 @@ export class People {
         if (ahead < -BEHIND || ahead > this.reach) continue;
 
         // On the pavement in a city; out on the verge anywhere else.
-        const lateral = paved
+        let lateral = paved
           ? // Behind the line of parked cars (about 7.9 out), in front of the shops.
             side * (CONFIG.roadHalfWidth + 3.3 + hash(key + 4.4) * 3.4)
           : side * (CONFIG.roadHalfWidth + CONFIG.shoulderWidth + 0.8 + hash(key + 4.4) * 5);
+        // Get out of the way. If the car comes up the pavement, anyone in its
+        // path steps aside — whichever way leaves more room — easing out as it
+        // approaches and back once it has passed.
+        if (paved && Math.abs(state.lateral) > CONFIG.roadHalfWidth) {
+          const dl = lateral - state.lateral;
+          const near = smoothstep(18, 5, ahead) * smoothstep(-7, -2, ahead);
+          if (near > 0 && Math.abs(dl) < DODGE) {
+            const inner = Math.sign(lateral) * (CONFIG.roadHalfWidth + 0.6);
+            const outer = Math.sign(lateral) * 12.2;
+            const options = [state.lateral + DODGE, state.lateral - DODGE].filter(
+              (x) => Math.abs(x) >= Math.abs(inner) - 0.01 && Math.abs(x) <= Math.abs(outer) + 0.01 && Math.sign(x) === Math.sign(lateral)
+            );
+            const target = options.length
+              ? options.reduce((best, x) => (Math.abs(x - lateral) < Math.abs(best - lateral) ? x : best))
+              : outer;
+            lateral += (target - lateral) * near;
+          }
+        }
         const ground = paved ? KERB_HEIGHT : terrainHeight(lateral, s, live);
         frame.point(s, lateral, ground, POSITION);
 

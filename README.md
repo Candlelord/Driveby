@@ -49,9 +49,18 @@ still run against a stand-in library.
 In route mode the HUD's top-right panel shows the leg and distance left.
 
 The car drives itself forward at a constant speed. Steering only moves it across
-the road, and it clamps at the lane edges. Traffic is solid: hit a car and you
-crash — you lose most of your speed and get shoved off line, the other car
-spins off and stops — but there is still no game over.
+the road. On open road the verge eases you back; in a city street you can mount
+the pavement right up to the shopfronts.
+
+Everything is solid: traffic, parked cars and building fronts. A hit costs you
+speed and shoves you off line, with camera shake and a crash; a car you hit
+spins off and stops, and traffic that is not paying attention can pile into
+it. Pedestrians step out of your way. There is still no game over.
+
+**Progress saves itself** — every few seconds while you drive, and whenever
+the tab is hidden or closed — in this browser's local storage. The start
+screen then offers *Continue*, with where you were ("near Kano, Nigeria ·
+1,187 km · saved 2 h ago").
 
 ## Route mode: Lagos → Paris
 
@@ -85,7 +94,12 @@ times the 128 km to Ibadan.
   rows under rusted awnings, yellow-and-black painted kerbs and yellow danfo
   minibuses in the traffic. Kano has its earthen city walls and a gate you
   drive through; Paris is continuous Haussmann street walls on both sides.
-- **City life**: in Lagos, Kano, Algiers and Paris the road is lined both
+- **Every stop is a city**: Ibadan, Ilorin, Abuja, Kaduna, Zinder, Agadez
+  (with its Grand Mosque), Tamanrasset, In Salah, Ghardaïa, Marseille, Lyon,
+  Brussels and Amsterdam each have their own streets as you arrive and leave
+  — Nigerian shop streets, Sahel mud compounds, Saharan medinas, French stone
+  blocks, Dutch canal houses.
+- **City life**: in the cities the road is lined both
   sides with a continuous street frontage (`lagosStreet`, `kanoStreet`,
   `algiersStreet`, `haussmannStreet`), a raised paved pavement, cars parked
   along the kerb, and people (`world/people.js`) walking and standing —

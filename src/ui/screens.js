@@ -21,10 +21,19 @@ export class Screens {
     // places) or a route id. `?route=lagos-paris` preselects one.
     const requested = new URLSearchParams(window.location.search).get('route');
     this.trip = ROUTES[requested] ? requested : 'endless';
+    // Set by main.js when there is saved progress: { title, sub }. When there
+    // is, picking up where you left off is the default.
+    this.resume = null;
+  }
+
+  offerResume(resume) {
+    this.resume = resume;
+    if (resume && !new URLSearchParams(window.location.search).get('route')) this.trip = 'resume';
   }
 
   _tripPicker() {
     const options = [
+      ...(this.resume ? [{ id: 'resume', title: this.resume.title, sub: this.resume.sub }] : []),
       { id: 'endless', title: 'Endless drive', sub: 'Your music picks the places. No destination.' },
       ...Object.values(ROUTES).map((route) => ({ id: route.id, title: route.title, sub: route.subtitle })),
     ];

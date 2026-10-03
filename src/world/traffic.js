@@ -149,6 +149,8 @@ export class Traffic {
     car.spinRate = 0;
     car.slide = 0;
     car.cooldown = 0;
+    // A few drivers are not watching the road, which is how pile-ups happen.
+    car.distracted = Math.random() < 0.18;
 
     // Retry a few times rather than dropping a car inside one already in the
     // same lane; a handful of attempts is plenty at these densities.
@@ -186,10 +188,14 @@ export class Traffic {
 
       const gap = car.s - travelled;
       if (gap < behind || gap > ahead) this._spawn(car, travelled, false, live.danfo);
-
       this._updateWreck(car, state.dt);
-      if (physics) this._collide(car, gap, state, physics, sfx);
+    }
 
+    this._interact(state, sfx);
+
+    for (let i = 0; i < this.count; i++) {
+      const car = this.cars[i];
+      if (physics) this._collide(car, car.s - travelled, state, physics, sfx);
       this._place(car, frame, travelled, i);
     }
 
@@ -205,6 +211,51 @@ export class Traffic {
     this.headGlowMaterial.opacity = on * 0.55;
     this.tailGlowMaterial.opacity = on * 0.4;
     this.shadowMaterial.opacity = 0.06 + 0.2 * (1 - live.lampIntensity);
+  }
+
+  /**
+   * Traffic and traffic. A car closing on a slower or wrecked one in its lane
+   * brakes to follow it — unless its driver is not paying attention — and any
+   * two that do touch both become wrecks, so a crash can turn into a pile-up.
+   */
+  _interact(state, sfx) {
+    const cars = this.cars;
+    for (let i = 0; i < cars.length; i++) {
+      const a = cars[i];
+      for (let j = 0; j < cars.length; j++) {
+        if (i === j) continue;
+        const b = cars[j];
+        const latA = a.lane + a.laneOffset;
+        const latB = b.lane + b.laneOffset;
+        if (Math.abs(latA - latB) > CAR_WIDTH) continue;
+
+        // Following: b is ahead of a in a's direction of travel.
+        const dirA = a.oncoming ? -1 : 1;
+        const lead = (b.s - a.s) * dirA;
+        const velA = dirA * a.speed;
+        const velB = b.oncoming ? -b.speed : b.speed;
+        if (lead > 0 && lead < 26 && a.hit <= 0 && !a.distracted) {
+          // Ease down to the speed of whatever is in front (along a's heading).
+          const target = Math.max(0, velB * dirA);
+          if (a.speed > target) a.speed += (target - a.speed) * (1 - Math.exp(-2.2 * state.dt));
+        }
+
+        if (j < i || Math.abs(b.s - a.s) > CAR_LENGTH || a.cooldown > 0 || b.cooldown > 0) continue;
+        const closing = Math.abs(velA - velB);
+        const strength = Math.min(1, 0.2 + closing / 40);
+        const side = Math.sign(latB - latA) || 1;
+        for (const [car, away] of [[a, -side], [b, side]]) {
+          car.hit = 4;
+          car.cooldown = 1.2;
+          car.spinRate = away * (1 + strength * 3) * (Math.random() < 0.5 ? 1 : -1);
+          car.slide = away * (1.5 + strength * 4);
+          car.speed *= 0.35;
+        }
+        // Heard if it is near enough.
+        const distance = Math.abs(a.s - state.travelled);
+        if (distance < 140) sfx?.crash(strength * (1 - distance / 160));
+      }
+    }
   }
 
   /** A car that has been hit: spinning down, sliding off its line, stopping. */

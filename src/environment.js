@@ -293,6 +293,16 @@ export class Environment {
     this._applySet(setId, travelled);
   }
 
+  /** Pick the playlist back up at a saved block. */
+  restoreBlock(index) {
+    if (!Number.isFinite(index)) return;
+    this.blockIndex = ((index % this.order.length) + this.order.length) % this.order.length;
+    this.songIndex = 0;
+    this.songTime = 0;
+    this.mood.advanceTo(this.order[this.blockIndex]);
+    this.mood.transition = 1;
+  }
+
   /**
    * Be somewhere, now: no crossfade and no scenery boundary up the road. Only
    * for cuts the player cannot see — behind a title card or a ferry crossing.
@@ -360,7 +370,9 @@ export class Environment {
     // barrier is the same colour in April and October.
     const foliagePull = clamp01(live.foliageStrength) * live.seasonReach;
     if (foliagePull > 0) {
-      live.propA.lerp(live.foliage, foliagePull);
+      // The foliage slot, not the walls: brick and stone do not turn gold in
+      // October. (Sets that never split the two get the same colour in both.)
+      live.propF.lerp(live.foliage, foliagePull);
       live.propB.lerp(live.foliage, foliagePull * 0.18);
       live.groundColorBase.lerp(live.seasonGround, clamp01(live.seasonGroundStrength) * live.seasonReach);
       live.groundAccent.lerp(live.seasonGround, clamp01(live.seasonGroundStrength) * live.seasonReach * 0.8);
