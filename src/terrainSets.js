@@ -53,6 +53,10 @@ export const SET_NUMBER_KEYS = [
   // the full wheel; a desert, a salt flat or a neon city barely register it,
   // and forcing autumn on them would only make every set look the same.
   'seasonReach',
+  // Cities: how wet-glossy the ground between buildings is, and how much the
+  // glow of the place washes the stars out of the sky.
+  'groundGloss',
+  'lightPollution',
 ];
 
 /** Defaults, so a set only has to state what makes it different. */
@@ -90,6 +94,8 @@ const BASE = {
   ridgeOpacity: 0.7,
   ridgeHeight: 1,
   seasonReach: 1,
+  groundGloss: 0,
+  lightPollution: 0,
   // Verge grass density (not blended — grass, like props, belongs to whichever
   // set laid down that stretch of road). 0 for paved and barren places.
   grass: 1,
@@ -358,6 +364,8 @@ export const TERRAIN_SETS = {
 
   // ------------------------------------------------------------ HIP-HOP
   skylineDrive: set({
+    groundGloss: 0.7,
+    lightPollution: 0.85,
     grass: 0,
     seasonReach: 0.3,
     label: 'skyline drive',
@@ -379,6 +387,8 @@ export const TERRAIN_SETS = {
   }),
 
   neonUnderpass: set({
+    groundGloss: 0.8,
+    lightPollution: 0.8,
     grass: 0,
     seasonReach: 0.15,
     label: 'neon underpass',
@@ -399,6 +409,8 @@ export const TERRAIN_SETS = {
   }),
 
   rooftopSkybridge: set({
+    groundGloss: 0.6,
+    lightPollution: 0.8,
     grass: 0,
     seasonReach: 0.15,
     label: 'rooftop skybridge',
@@ -420,6 +432,8 @@ export const TERRAIN_SETS = {
   }),
 
   warehouseDistrict: set({
+    groundGloss: 0.5,
+    lightPollution: 0.6,
     grass: 0.15,
     seasonReach: 0.35,
     label: 'warehouse district',
@@ -479,6 +493,8 @@ export const TERRAIN_SETS = {
   // Long enclosed stretches with daylight at either end. The audio layer keys
   // off the same coverage function, so the wind drops as the mouth swallows you.
   tunnelRun: set({
+    groundGloss: 0.2,
+    lightPollution: 0.4,
     grass: 0.5,
     seasonReach: 0.1,
     label: 'tunnel run',
@@ -612,6 +628,8 @@ export const TERRAIN_SETS = {
   }),
 
   refineryCoast: set({
+    groundGloss: 0.35,
+    lightPollution: 0.5,
     grass: 0.2,
     seasonReach: 0.3,
     label: 'refinery coast',

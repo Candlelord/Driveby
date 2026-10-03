@@ -6,6 +6,7 @@ import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { facadeMaterial, screenMaterial, updateCity } from './city.js';
 import { leafCard, needleCard, frondCard, grassCard, barkMaps, rockMaps, keepCardNormals } from './surfaces.js';
 
 // Distance at which ~15% of an object still shows through clear-weather fog.
@@ -125,6 +126,11 @@ export class Props {
     const slotCache = new Map();
     const materialFor = (part) => {
       if (part.color) return surfaceMaterial(part.surface ?? 'plain', part.color);
+      // Billboard faces show the ad atlas rather than a flat glow.
+      if (part.surface === 'screen') {
+        this.screenMaterial ??= screenMaterial();
+        return this.screenMaterial;
+      }
       if (part.material === 'e') return this.materialE;
       const key = `${part.material}:${part.surface ?? 'plain'}`;
       if (!slotCache.has(key)) {
@@ -167,7 +173,7 @@ export class Props {
         // Per-instance colour: identical props in a row is the single biggest
         // tell that a scene is instanced. A small deterministic jitter around
         // the set's colour breaks it up for one attribute.
-        mesh.userData.tint = part.color ? 'fixed' : part.material;
+        mesh.userData.tint = part.color ? 'fixed' : part.surface === 'screen' ? 'screen' : part.material;
         scene.add(mesh);
         return mesh;
       });
@@ -277,6 +283,11 @@ export class Props {
     // Basic materials have no lighting to dim, so "off" is just a black colour.
     this.materialE.color.copy(live.propE).multiplyScalar(live.propEmissive);
     this.lampPoleMaterial.color.copy(live.propB);
+    if (this.screenMaterial) {
+      // Boards are lit at night and merely printed by day.
+      this.screenMaterial.color.setScalar(0.6 + live.lampIntensity * 0.35 * live.propEmissive);
+    }
+    updateCity(live);
   }
 
   /**
@@ -793,10 +804,14 @@ function surfaceMaterial(surface, color = 0xffffff) {
     core: { roughness: 0.95, shade: 0.32 },
     bark: { ...barkMaps(), roughness: 0.95, shade: 1 },
     rock: { ...rockMaps(), roughness: 0.92, shade: 1.05 },
+    facade: { material: () => facadeMaterial(), shade: 1 },
+    tower: { material: () => facadeMaterial({ bay: [3.0, 3.8], litFraction: 0.5 }), shade: 1 },
+    industrial: { material: () => facadeMaterial({ bay: [6.5, 4.6], litFraction: 0.3, industrial: true }), shade: 1 },
   }[surface] ?? { roughness: 0.82, shade: 1 };
 
-  const { shade, ...params } = spec;
-  const material = new THREE.MeshStandardMaterial({ color, metalness: 0, ...params });
+  const { shade, material: build, ...params } = spec;
+  const material = build ? build() : new THREE.MeshStandardMaterial({ color, metalness: 0, ...params });
+  if (build) material.color.set(color);
   material.userData.shade = shade;
   if (CARD_SURFACES.has(surface)) keepCardNormals(material);
   return material;

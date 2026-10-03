@@ -118,6 +118,8 @@ export class Terrain {
 
   update(state, frame) {
     this.live = state.live;
+    // Wet paving between city blocks catches the neon; fields stay matte.
+    this.material.roughness = 0.95 - state.live.groundGloss * 0.7;
 
     const step = CONFIG.segmentLength * this.rowStride;
     const firstIndex =

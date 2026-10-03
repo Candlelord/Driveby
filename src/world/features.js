@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { skylineWindows } from './city.js';
 import { CONFIG } from '../config.js';
 import { hash } from '../path.js';
 import { softDotTexture } from './textures.js';
 
+const SEED = new THREE.Color();
 const POSITION = new THREE.Vector3();
 const DUMMY = new THREE.Object3D();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -182,45 +184,38 @@ export class Features {
     scene.add(this.shafts);
   }
 
-  /** A band of emissive boxes far away — the city on the horizon. */
+  /**
+   * The city on the horizon: dark towers far out to the sides, each with its
+   * own scatter of lit windows (see city.js), so the skyline reads as
+   * thousands of offices rather than as a band of glowing slabs.
+   */
   _buildSkyline(scene, tier) {
     const count = Math.round(tier.propSlots * 1.4);
     this.skylineCount = count;
 
-    this.skylineMaterial = new THREE.MeshBasicMaterial({
-      color: 0x11121c,
-      transparent: true,
-      opacity: 0,
-      fog: false,
-    });
-    this.skylineLitMaterial = new THREE.MeshBasicMaterial({
-      color: 0x2a3350,
-      transparent: true,
-      opacity: 0,
-      fog: false,
-      blending: THREE.AdditiveBlending,
-    });
+    this.skylineMaterial = skylineWindows(
+      new THREE.MeshBasicMaterial({
+        color: 0x11121c,
+        transparent: true,
+        opacity: 0,
+        fog: false,
+      })
+    );
 
     const geometry = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
     this.skyline = instanced(geometry, this.skylineMaterial, count);
-    this.skylineLit = instanced(
-      new THREE.BoxGeometry(1.02, 1, 0.4).translate(0, 0.5, 0),
-      this.skylineLitMaterial,
-      count
-    );
     this.skyline.visible = false;
-    this.skylineLit.visible = false;
-    scene.add(this.skyline, this.skylineLit);
+    scene.add(this.skyline);
   }
 
   /** Arches the road passes under, for the neon underpass run. */
   _buildOverpasses(scene) {
     this.archCount = 6;
+    // Weathered concrete.
     this.archMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1a1b24,
-      roughness: 1,
+      color: 0x3a3b42,
+      roughness: 0.88,
       metalness: 0,
-      flatShading: true,
     });
     this.archNeonMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
 
@@ -342,12 +337,11 @@ export class Features {
     const amount = live.skyline;
     const visible = amount > 0.02;
     this.skyline.visible = visible;
-    this.skylineLit.visible = visible;
     if (!visible) return;
 
     this.skylineMaterial.opacity = Math.min(1, amount);
-    this.skylineLitMaterial.opacity = Math.min(1, amount) * live.propEmissive * 0.5;
-    this.skylineLitMaterial.color.copy(live.propE).multiplyScalar(0.25);
+    // Haze the towers toward the fog, as distance would.
+    this.skylineMaterial.color.set(0x11121c).lerp(live.fogColor, 0.35);
 
     // A static band far out to the sides, scrolling with distance.
     const spacing = 46;
@@ -365,10 +359,12 @@ export class Features {
       DUMMY.scale.set(width, 30 + hash(slot * 5.3) * 120, width * 0.8);
       DUMMY.updateMatrix();
       this.skyline.setMatrixAt(i, DUMMY.matrix);
-      this.skylineLit.setMatrixAt(i, DUMMY.matrix);
+      // The window pattern's seed, stable per tower as the band scrolls.
+      SEED.setRGB(0.55 + hash(slot * 3.3) * 0.45, 1, 1);
+      this.skyline.setColorAt(i, SEED);
     }
     this.skyline.instanceMatrix.needsUpdate = true;
-    this.skylineLit.instanceMatrix.needsUpdate = true;
+    if (this.skyline.instanceColor) this.skyline.instanceColor.needsUpdate = true;
   }
 
   _updateOverpasses(state, frame) {

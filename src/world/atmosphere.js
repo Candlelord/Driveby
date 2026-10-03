@@ -107,8 +107,9 @@ export class Atmosphere {
   }
 
   _updateFireflies(state, live) {
-    // Only where the set is actually glowing, and only at night.
-    const amount = Math.min(1, live.propEmissive * live.lampIntensity);
+    // Only where the set is actually glowing, only at night, and never in a
+    // city — neon is not bioluminescence.
+    const amount = Math.min(1, live.propEmissive * live.lampIntensity) * (1 - Math.min(1, live.lightPollution * 1.5));
     this.flies.points.visible = amount > 0.1 && live.starOpacity > 0.3;
     if (!this.flies.points.visible) return;
 

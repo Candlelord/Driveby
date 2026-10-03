@@ -498,6 +498,37 @@ export function withMacroVariation(material, scale, amount) {
   return material;
 }
 
+/**
+ * Standing water on asphalt. Where a low-frequency noise dips, a wet road
+ * pools: those patches go near-mirror and a touch darker, so the sky and every
+ * lamp come back off them. `wetness` is a uniform object the caller drives
+ * (0 dry, 1 soaked); a dry road shows nothing.
+ */
+// `aspect` is how many times longer one texture tile is than it is wide, so
+// the puddles come out round rather than smeared along the road.
+export function withPuddles(material, wetness, aspect = 1) {
+  const macro = macroMap();
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.call(material, shader, renderer);
+    shader.uniforms.puddleMap = { value: macro };
+    shader.uniforms.uWetness = wetness;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D puddleMap;\nuniform float uWetness;')
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        float puddleField = texture2D( puddleMap, vMapUv * vec2( 0.55, ${glsl(0.55 * aspect)} ) + 0.17 ).r;
+        float puddle = smoothstep( 0.6, 0.7, puddleField ) * uWetness;
+        roughnessFactor = mix( roughnessFactor, 0.03, puddle );
+        diffuseColor.rgb *= 1.0 - puddle * 0.35;`
+      );
+  };
+  const key = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () => `puddles-${key ? key() : ''}`;
+  return material;
+}
+
 function glsl(value) {
   const s = String(Number(value.toFixed(6)));
   return s.includes('.') || s.includes('e') ? s : s + '.0';

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { Ribbon } from './ribbon.js';
-import { asphaltMaps, gravelMaps, paintMap, withMacroVariation } from './surfaces.js';
+import { asphaltMaps, gravelMaps, paintMap, withMacroVariation, withPuddles } from './surfaces.js';
 
 const NEAR_LEFT = new THREE.Vector3();
 const NEAR_RIGHT = new THREE.Vector3();
@@ -31,10 +31,15 @@ export class Road {
     // set: aggregate albedo, a normal map for the grain, and a roughness map
     // whose polished wheel tracks are what a wet road lights up first.
     const asphalt = asphaltMaps();
-    this.surfaceMaterial = withMacroVariation(
-      surface(0x3a4048, { ...asphalt, normalScale: new THREE.Vector2(0.3, 0.3) }),
-      [1, 9],
-      0.14
+    this.wetness = { value: 0 };
+    this.surfaceMaterial = withPuddles(
+      withMacroVariation(
+        surface(0x3a4048, { ...asphalt, normalScale: new THREE.Vector2(0.3, 0.3) }),
+        [1, 9],
+        0.14
+      ),
+      this.wetness,
+      ROAD_TILE / (2 * inner)
     );
     const paint = paintMap();
     this.lineMaterial = surface(0xffffff, { map: paint, roughness: 0.62 });
@@ -130,6 +135,8 @@ export class Road {
     // The roughness map multiplies this, so a wet road goes glassy in the
     // polished wheel tracks first and stays matte in the grain between.
     this.surfaceMaterial.roughness = live.roadRoughness;
+    // Puddles only form once the road is properly wet.
+    this.wetness.value = Math.min(1, Math.max(0, (0.72 - live.roadRoughness) / 0.38));
     // Water on asphalt is a dielectric film, not metal; the environment map
     // supplies the reflected sky, so metalness stays at zero.
     this.surfaceMaterial.metalness = 0;

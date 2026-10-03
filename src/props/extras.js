@@ -181,7 +181,7 @@ export const EXTRA_KIT = {
   mileMarker: { parts: [{ geometry: mileMarker, material: 'e' }], spread: 10.5, jitter: 1.5 },
   billboard: {
     scale: 0.75,
-    parts: [{ geometry: billboardFrame, material: 'b' }, { geometry: billboardFace, material: 'e' }],
+    parts: [{ geometry: billboardFrame, material: 'b' }, { geometry: billboardFace, material: 'e', surface: 'screen' }],
     spread: 17,
     jitter: 8,
   },

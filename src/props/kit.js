@@ -354,7 +354,7 @@ const CORE_KIT = {
   },
   building: {
     parts: [
-      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', stretch: true },
+      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', surface: 'facade', stretch: true },
       { geometry: () => at(box(1.03, 0.03, 1.03), 0, 0.62, 0), material: 'e', stretch: true },
     ],
     spread: 18,
@@ -363,7 +363,7 @@ const CORE_KIT = {
   },
   tower: {
     parts: [
-      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', stretch: true },
+      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', surface: 'tower', stretch: true },
       { geometry: () => at(box(1.04, 0.02, 1.04), 0, 0.78, 0), material: 'e', stretch: true },
     ],
     spread: 42,
@@ -372,7 +372,7 @@ const CORE_KIT = {
   },
   warehouse: {
     parts: [
-      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', stretch: true },
+      { geometry: () => at(box(1, 1, 1), 0, 0.5, 0), material: 'a', surface: 'industrial', stretch: true },
       { geometry: () => at(box(1.05, 0.04, 0.06), 0, 0.86, 0), material: 'e', stretch: true },
     ],
     spread: 20,

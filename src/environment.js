@@ -465,7 +465,8 @@ export class Environment {
     }
 
     live.exposureFinal = live.exposure * (1 + flash * 0.35);
-    live.starOpacityFinal = clamp01(live.starOpacity + (ov.starBoost ?? 0) * 0.9);
+    live.starOpacityFinal = clamp01(live.starOpacity + (ov.starBoost ?? 0) * 0.9) *
+      (1 - clamp01(live.lightPollution) * 0.85);
     live.bloomStrengthFinal = live.bloomStrength + (ov.bloomBoost ?? 0);
 
     // --- car and world flags read straight off the overrides
