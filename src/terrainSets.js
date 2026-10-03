@@ -15,6 +15,7 @@ export const SET_COLOR_KEYS = [
   'propA',
   'propB',
   'propE', // emissive: windows, neon, glow
+  'propF', // foliage, where it is not the same colour as the walls
   'ridgeNearColor',
   'ridgeFarColor',
   'waterColor',
@@ -57,6 +58,10 @@ export const SET_NUMBER_KEYS = [
   // glow of the place washes the stars out of the sky.
   'groundGloss',
   'lightPollution',
+  // Nigerian streets: yellow-and-black painted kerbs, and the share of traffic
+  // that is yellow danfo minibuses.
+  'kerbs',
+  'danfo',
 ];
 
 /** Defaults, so a set only has to state what makes it different. */
@@ -96,12 +101,19 @@ const BASE = {
   seasonReach: 1,
   groundGloss: 0,
   lightPollution: 0,
+  kerbs: 0,
+  danfo: 0,
+  // Not blended: the road runs on a bridge deck over water through any stretch
+  // laid down by a set with this on (see Features).
+  bridge: 0,
   // Verge grass density (not blended — grass, like props, belongs to whichever
   // set laid down that stretch of road). 0 for paved and barren places.
   grass: 1,
 };
 
-const set = (values) => ({ ...BASE, ...values });
+// Foliage defaults to the set's primary colour, which is what every set used
+// before walls and leaves could differ.
+const set = (values) => ({ ...BASE, propF: values.propA ?? BASE.propA, ...values });
 
 export const TERRAIN_SETS = {
   // ---------------------------------------------------------------- SAD
@@ -779,15 +791,50 @@ export const TERRAIN_SETS = {
   // Places on the Lagos → Paris road trip (routes/). They are in no mood's
   // pool: the route holds them, and the music only sets the light.
 
+  // The Third Mainland Bridge: eleven kilometres of concrete deck across the
+  // Lagos Lagoon, with Makoko's stilt houses on the water and Lagos Island's
+  // towers on the far shore.
+  lagosLagoon: set({
+    label: 'Third Mainland Bridge',
+    climate: 'humid',
+    grass: 0,
+    seasonReach: 0,
+    propMix: [['stiltHouse', 1]],
+    groundColorBase: 0x4a4a40,
+    groundAccent: 0x3a3a34,
+    propA: 0x8a7a68,
+    propF: 0x4e7a3a,
+    propB: 0x4a3a30,
+    propE: 0xffc070,
+    propEmissive: 0.7,
+    ridgeNearColor: 0x8a8a80,
+    ridgeFarColor: 0xa8aca8,
+    waterColor: 0x4a5e52, // brown-green lagoon water
+    hillHeight: 0.3,
+    causeway: 12,
+    water: 0.95,
+    waterSide: 0,
+    waterLevel: -3.4,
+    propDensity: 0.5,
+    bridge: 1,
+    skyline: 0.5,
+    lightPollution: 0.5,
+    ridgeOpacity: 0.25,
+    danfo: 0.45,
+  }),
+
   lagosCity: set({
     label: 'Lagos',
     climate: 'humid',
     grass: 0.35,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['building', 0.22], ['bungalow', 0.16], ['stall', 0.14], ['billboard', 0.12], ['palm', 0.14], ['warehouse', 0.08], ['busShelter', 0.06], ['pole', 0.08]],
-    groundColorBase: 0x7a5e48, // red laterite under the dust
+    propMix: [['lagosBlock', 0.24], ['lagosBlockBlue', 0.1], ['lagosShops', 0.18], ['stall', 0.1], ['billboard', 0.12], ['palm', 0.1], ['building', 0.06], ['busShelter', 0.04], ['pole', 0.06]],
+    groundColorBase: 0x7a6a58, // dust over paving and laterite
     groundAccent: 0x5e4a3c,
     propA: 0xd8c8a8, // painted render, faded by the sun
+    propF: 0x4e7a3a,
+    kerbs: 1,
+    danfo: 0.5,
     propB: 0x5a4a3c,
     propE: 0xffc070,
     propEmissive: 0.8,
@@ -800,9 +847,10 @@ export const TERRAIN_SETS = {
     water: 0.85,
     waterSide: -1,
     waterLevel: -1.8,
-    propDensity: 0.82,
+    propDensity: 0.95,
     lightPollution: 0.5,
     ridgeOpacity: 0.3,
+    skyline: 0.35,
     speedScale: 0.92, // it is Lagos
   }),
 
@@ -814,7 +862,9 @@ export const TERRAIN_SETS = {
     propMix: [['palm', 0.3], ['round', 0.3], ['shrub', 0.14], ['bungalow', 0.08], ['stall', 0.06], ['grass', 0.08], ['pole', 0.04]],
     groundColorBase: 0x8a4e32, // laterite: the red soil of the south
     groundAccent: 0x4e6a34,
-    propA: 0x3e7a34,
+    propA: 0xd6c4a0, // bungalow walls
+    propF: 0x3e7a34,
+    danfo: 0.3,
     propB: 0x5a4234,
     propE: 0xffd08a,
     propEmissive: 0.3,
@@ -856,8 +906,11 @@ export const TERRAIN_SETS = {
     propMix: [['boulder', 0.26], ['rock', 0.12], ['acacia', 0.12], ['round', 0.12], ['building', 0.1], ['mosque', 0.04], ['grass', 0.14], ['sign', 0.05], ['pole', 0.05]],
     groundColorBase: 0x8e7e52,
     groundAccent: 0x7a5a3e,
-    propA: 0x6a7a44,
+    propA: 0xd2c6b2, // the capital's pale stone-clad offices
+    propF: 0x6a7a44,
     propB: 0x6e6660, // granite
+    danfo: 0.15,
+    kerbs: 0.6,
     propE: 0xffe0a8,
     propEmissive: 0.5,
     ridgeNearColor: 0x6a6460,
@@ -898,11 +951,14 @@ export const TERRAIN_SETS = {
     climate: 'harmattan',
     grass: 0.15,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['mudHouse', 0.36], ['mosque', 0.08], ['stall', 0.16], ['wall', 0.12], ['round', 0.12], ['pole', 0.08], ['billboard', 0.04], ['cattle', 0.04]],
+    propMix: [['mudHouse', 0.36], ['mosque', 0.08], ['stall', 0.16], ['mudWall', 0.14], ['round', 0.12], ['pole', 0.08], ['billboard', 0.04], ['cattle', 0.04]],
     groundColorBase: 0xb48c62,
     groundAccent: 0x9a7048,
     propA: 0x3e8a5a, // green domes and umbrellas
+    propF: 0x5a7a3a,
     propB: 0xa47c56, // mud walls
+    kerbs: 1,
+    danfo: 0.25,
     propE: 0xffc070,
     propEmissive: 0.6,
     ridgeNearColor: 0xa48e72,
@@ -990,6 +1046,7 @@ export const TERRAIN_SETS = {
     groundColorBase: 0x9a8a62,
     groundAccent: 0x7a6a4a,
     propA: 0xece6d8, // la Blanche: white walls
+    propF: 0x4e7a3e,
     propB: 0x6a5a4a,
     propE: 0xffe0a8,
     propEmissive: 0.6,
@@ -1012,10 +1069,12 @@ export const TERRAIN_SETS = {
     climate: 'clear',
     grass: 0.15,
     seasonReach: 0.6,
-    propMix: [['haussmann', 0.56], ['round', 0.24], ['busShelter', 0.06], ['mailbox', 0.04], ['sign', 0.06], ['billboard', 0.04]],
+    propMix: [['haussmannStreet', 0.5], ['haussmann', 0.2], ['round', 0.3], ['busShelter', 0.06], ['mailbox', 0.04], ['sign', 0.04]],
     groundColorBase: 0x8e8a80, // pale stone and gravel
     groundAccent: 0x6e7a5a,
+    runChance: 0.94,
     propA: 0xe2d6bc, // Lutetian limestone
+    propF: 0x5e7a3e, // plane trees
     propB: 0x4a4038,
     propE: 0xffd8a0,
     propEmissive: 0.9,
@@ -1038,6 +1097,7 @@ export const TERRAIN_SETS = {
     groundColorBase: 0x6a8a48,
     groundAccent: 0x5a7440,
     propA: 0x8a3a2e, // brick and windmill sails
+    propF: 0x5a7a3e,
     propB: 0x5e3a2e,
     ridgeNearColor: 0x7a8a78,
     ridgeFarColor: 0x9aa8b0,

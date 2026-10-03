@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { terrainHeight } from './terrain.js';
 import { rockGeometry } from '../props/foliage.js';
 import { rockMaps } from './surfaces.js';
+import { facadeMaterial } from './city.js';
 
 const POSITION = new THREE.Vector3();
 
@@ -372,7 +373,231 @@ function eiffelTower() {
   };
 }
 
-const BUILDERS = [greatWall, stonehenge, moai, pyramids, torii, suspensionBridge, zumaRock, eiffelTower];
+// --- city landmarks on the Lagos → Paris route ------------------------------
+//
+// Built at real proportions in metres. All use the fog-exempt, hand-hazed
+// materials, because they are meant to be seen on the skyline from a long way
+// out.
+
+/**
+ * Lagos Island from the Third Mainland Bridge: the towers of the Marina —
+ * NECOM House with its mast, the Union Bank slab, the oval glass Civic Centre
+ * — and, further round, the single pylon and cable fan of the Lekki–Ikoyi Link
+ * Bridge.
+ */
+function lagosIsland() {
+  const towers = [];
+  for (const [x, z, w, d, h] of [
+    [0, 0, 22, 22, 112], [-60, 22, 18, 18, 140], [62, -12, 40, 16, 86], [112, 40, 24, 24, 70],
+    [-118, -30, 30, 20, 62], [30, 72, 20, 20, 96], [-20, -72, 26, 26, 54], [150, -60, 30, 30, 46],
+    [-172, 40, 22, 22, 42], [-90, 80, 28, 18, 50], [200, 10, 26, 22, 38],
+  ]) {
+    towers.push(box(w, h, d).translate(x, h / 2 + 9, z));
+  }
+  const glass = [cyl(14, 14, 76, 24).scale(1.5, 1, 1).translate(-44, 47, -46)];
+  const steel = [cyl(0.5, 0.9, 42, 8).translate(-60, 170, 22)]; // NECOM House mast
+  const concrete = [box(520, 9, 230).translate(0, 4.5, 0)]; // the island itself
+
+  // Lekki–Ikoyi Link Bridge: one inclined pylon, a fan of stays, a low deck.
+  const px = 300;
+  concrete.push(box(4.5, 92, 4.5).translate(px, 55, 60));
+  concrete.push(box(320, 2.4, 12).translate(px, 12, 60));
+  for (let i = 1; i <= 8; i++) {
+    for (const side of [-1, 1]) {
+      const top = new THREE.Vector3(px, 96 - i * 2.6, 60);
+      const anchor = new THREE.Vector3(px + side * i * 18, 13, 60);
+      steel.push(beam(top, anchor, 0.45));
+    }
+  }
+
+  return {
+    name: 'lagosIsland',
+    label: 'Lagos Island',
+    parts: [
+      { geometry: merge(towers), material: 'facade' },
+      { geometry: merge(glass), material: 'glass' },
+      { geometry: merge(steel), material: 'steel' },
+      { geometry: merge(concrete), material: 'concrete' },
+    ],
+    offset: -460,
+    height: 0,
+    approach: 1500,
+  };
+}
+
+/** Abuja's National Mosque: the golden dome on its drum, four tall minarets. */
+function nationalMosque() {
+  const white = [box(64, 18, 64).translate(0, 9, 0), cyl(19, 19, 9, 32).translate(0, 22.5, 0)];
+  const gold = [
+    new THREE.SphereGeometry(19, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 27, 0),
+    new THREE.ConeGeometry(1.2, 9, 8).translate(0, 50, 0),
+  ];
+  for (const [x, z] of [[-36, -36], [36, -36], [-36, 36], [36, 36]]) {
+    white.push(cyl(2.4, 2.8, 78, 12).translate(x, 39, z));
+    white.push(cyl(3.6, 3.6, 1.6, 12).translate(x, 58, z)); // balcony
+    gold.push(new THREE.ConeGeometry(2.6, 8, 12).translate(x, 82, z));
+  }
+  return {
+    name: 'nationalMosque',
+    label: 'the National Mosque, Abuja',
+    parts: [
+      { geometry: merge(white), material: 'white' },
+      { geometry: merge(gold), material: 'gold' },
+    ],
+    // On the lower, open side of the road: the hills rise on the right
+    // through the Abuja stretch and would hide it.
+    offset: -250,
+    height: 0,
+    approach: 1000,
+  };
+}
+
+/**
+ * A gate in Kano's old city walls: two massive earthen towers with the arch
+ * between them, crenellated in the rounded Hausa way, and the wall running
+ * off either side. The road passes through.
+ */
+function kanoGate() {
+  const mud = [];
+  for (const side of [-1, 1]) {
+    mud.push(box(11, 17, 12).translate(side * 15, 8.5, 0));
+    mud.push(box(70, 9, 5).translate(side * 55, 4.5, 0)); // the wall
+  }
+  mud.push(box(41, 5, 12).translate(0, 16.5, 0)); // over the arch
+  for (let i = 0; i < 13; i++) {
+    mud.push(new THREE.CylinderGeometry(0.6, 1.1, 2.2, 8).translate(-19 + i * 3.17, 20.1, 0));
+  }
+  for (let i = 0; i < 40; i++) {
+    const x = (i < 20 ? -1 : 1) * (22 + (i % 20) * 3.5);
+    mud.push(new THREE.CylinderGeometry(0.45, 0.8, 1.6, 7).translate(x, 9.8, 0));
+  }
+  return {
+    name: 'kanoGate',
+    label: 'Kano city gate',
+    parts: [{ geometry: merge(mud), material: 'mud' }],
+    offset: 0,
+    height: 0,
+    straddles: true,
+    approach: 700,
+  };
+}
+
+/**
+ * Maqam Echahid, Algiers: three concrete palm fronds, ninety metres tall,
+ * leaning in toward each other and splaying apart again at the top over the
+ * eternal flame.
+ */
+function martyrsMemorial() {
+  const concrete = [cyl(30, 34, 4, 3).translate(0, 2, 0)];
+  // The frond's centreline as [radius from the axis, height].
+  const spine = [[22, 0], [17, 18], [12, 36], [9.5, 54], [10.5, 68], [14, 80], [19, 92]];
+  for (let blade = 0; blade < 3; blade++) {
+    const yaw = (blade / 3) * Math.PI * 2;
+    for (let i = 0; i < spine.length - 1; i++) {
+      const [r0, y0] = spine[i];
+      const [r1, y1] = spine[i + 1];
+      const length = Math.hypot(r1 - r0, y1 - y0);
+      const width = 15 - i * 1.4;
+      const segment = box(width, length + 0.4, 2.6).translate(0, length / 2, 0);
+      segment.rotateX(Math.atan2(r1 - r0, y1 - y0));
+      segment.translate(0, y0 + 4, r0);
+      segment.rotateY(yaw);
+      concrete.push(segment);
+    }
+  }
+  const flame = [new THREE.ConeGeometry(2.4, 7, 10).translate(0, 7.5, 0)];
+  return {
+    name: 'martyrsMemorial',
+    label: 'Maqam Echahid',
+    parts: [
+      { geometry: merge(concrete), material: 'concrete' },
+      { geometry: merge(flame), material: 'gold' },
+    ],
+    offset: 260,
+    height: 0,
+    approach: 1000,
+  };
+}
+
+/**
+ * The Arc de Triomphe: fifty metres of limestone, the great arch cut through
+ * its long faces, the cornice and attic on top.
+ */
+function arcDeTriomphe() {
+  const shape = new THREE.Shape();
+  shape.moveTo(-22.5, 0);
+  shape.lineTo(-7.3, 0);
+  shape.lineTo(-7.3, 21.7);
+  shape.absarc(0, 21.7, 7.3, Math.PI, 0, true);
+  shape.lineTo(7.3, 0);
+  shape.lineTo(22.5, 0);
+  shape.lineTo(22.5, 44);
+  shape.lineTo(-22.5, 44);
+  shape.closePath();
+  const body = new THREE.ExtrudeGeometry(shape, { depth: 22, bevelEnabled: false, curveSegments: 16 }).translate(0, 0, -11);
+  const stone = [
+    body,
+    box(47.5, 2.2, 24.5).translate(0, 45, 0), // cornice
+    box(45, 6, 22).translate(0, 49, 0), // attic
+    box(46.5, 0.8, 23.5).translate(0, 30.5, 0), // frieze band
+  ];
+  return {
+    name: 'arcDeTriomphe',
+    label: 'the Arc de Triomphe',
+    parts: [{ geometry: merge(stone), material: 'limestone' }],
+    // Across the street from the run of Haussmann blocks on the right.
+    offset: -150,
+    height: 0,
+    approach: 800,
+  };
+}
+
+/**
+ * The Atomium, Brussels: nine steel spheres at the corners and centre of a
+ * cube stood on its diagonal, joined by tubes, a hundred metres tall.
+ */
+function atomium() {
+  const s = 24;
+  const up = new THREE.Vector3(1, 1, 1).normalize();
+  const turn = new THREE.Quaternion().setFromUnitVectors(up, new THREE.Vector3(0, 1, 0));
+  const lift = 9 + Math.sqrt(3) * s;
+  const corners = [];
+  for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+    corners.push(new THREE.Vector3(x * s, y * s, z * s).applyQuaternion(turn).add(new THREE.Vector3(0, lift, 0)));
+  }
+  const centre = new THREE.Vector3(0, lift, 0);
+  const spheres = [...corners, centre].map((c) => new THREE.SphereGeometry(9, 24, 16).translate(c.x, c.y, c.z));
+  const tubes = [];
+  for (let i = 0; i < 8; i++) {
+    tubes.push(beam(centre, corners[i], 2.6));
+    for (let j = i + 1; j < 8; j++) {
+      if (corners[i].distanceTo(corners[j]) < s * 2.1) tubes.push(beam(corners[i], corners[j], 2.6));
+    }
+  }
+  // Three raking supports from the lowest sphere's neighbours to the ground.
+  const bottom = corners.reduce((low, c) => (c.y < low.y ? c : low));
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2;
+    tubes.push(beam(new THREE.Vector3(Math.cos(a) * 18, 0, Math.sin(a) * 18), bottom.clone().add(new THREE.Vector3(Math.cos(a) * 9, 4, Math.sin(a) * 9)), 2.4));
+  }
+  return {
+    name: 'atomium',
+    label: 'the Atomium',
+    parts: [{ geometry: merge([...spheres, ...tubes]), material: 'steel' }],
+    offset: 220,
+    height: 0,
+    approach: 1000,
+  };
+}
+
+const BUILDERS = [
+  greatWall, stonehenge, moai, pyramids, torii, suspensionBridge, zumaRock, eiffelTower,
+  lagosIsland, nationalMosque, kanoGate, martyrsMemorial, arcDeTriomphe, atomium,
+];
+
+// Materials for the route's city landmarks: out of the scene fog and hazed by
+// hand (see update), with their base colour remembered for that.
+const HAZED = ['iron', 'facade', 'glass', 'steel', 'concrete', 'white', 'gold', 'mud', 'limestone'];
 
 export class Landmarks {
   constructor(scene, config) {
@@ -393,7 +618,21 @@ export class Landmarks {
       // Out of the scene fog: at 300 m tall the tower is meant to be seen over
       // the city long before you reach it, so it is hazed by hand below.
       iron: new THREE.MeshStandardMaterial({ color: 0x6e5644, roughness: 0.6, metalness: 0.35, fog: false }),
+      facade: facadeMaterial({ bay: [3.2, 3.8], litFraction: 0.45 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0x3a5a6a, roughness: 0.08, metalness: 0.6 }),
+      steel: new THREE.MeshStandardMaterial({ color: 0xd0d4da, roughness: 0.22, metalness: 1 }),
+      concrete: new THREE.MeshStandardMaterial({ color: 0xb8b4aa, roughness: 0.9 }),
+      white: new THREE.MeshStandardMaterial({ color: 0xece8de, roughness: 0.7 }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xd8a83c, roughness: 0.3, metalness: 1 }),
+      mud: new THREE.MeshStandardMaterial({ color: 0xa8784e, roughness: 0.95 }),
+      limestone: new THREE.MeshStandardMaterial({ color: 0xd8ccb0, roughness: 0.85 }),
     };
+    this.materials.facade.color.set(0xbcb6a8);
+    for (const key of HAZED) {
+      const material = this.materials[key];
+      material.fog = false;
+      material.userData.base = material.color.clone();
+    }
     this.schedule = null;
 
     for (const build of BUILDERS) {
@@ -517,7 +756,10 @@ export class Landmarks {
     // so the tower reads as far away rather than vanishing.
     const distance = Math.hypot(spec.offset, gap);
     const haze = 1 - Math.exp(-((distance * live.fogDensity * 0.4) ** 2));
-    this.materials.iron.color.set(0x6e5644).lerp(live.fogColor, haze);
+    for (const key of HAZED) {
+      const material = this.materials[key];
+      material.color.copy(material.userData.base).lerp(live.fogColor, haze);
+    }
     // The tower's sodium floodlighting comes on with the street lamps.
     this.materials.iron.emissive.setRGB(1, 0.62, 0.28).multiplyScalar(live.lampIntensity * 0.55 * (1 - haze * 0.6));
   }

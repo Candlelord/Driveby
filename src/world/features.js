@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { skylineWindows } from './city.js';
 import { CONFIG } from '../config.js';
-import { hash } from '../path.js';
+import { hash, heading } from '../path.js';
+import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
 
 const SEED = new THREE.Color();
@@ -11,6 +12,8 @@ const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 
 // Tunnels run in stretches rather than continuously — the interesting part is
 // the mouth and the return to daylight, not the middle.
+const BRIDGE_STEP = 6; // deck and parapet segment length
+const BRIDGE_SPAN = 36; // pier spacing
 const TUNNEL_PERIOD = 460;
 const TUNNEL_LENGTH = 250;
 const TUNNEL_SPACING = 8; // segment depth; segments butt together into a tube
@@ -45,6 +48,78 @@ export class Features {
     this._buildOverpasses(scene);
     this._buildTunnel(scene);
     this._buildGroundFog(scene);
+    this._buildBridge(scene);
+  }
+
+  /**
+   * A long concrete viaduct: deck slabs and parapets every few metres so they
+   * follow the curve, and a pair of round piers with a crossbeam every span
+   * going down into the water. Laid wherever a stretch of road belongs to a
+   * set with `bridge` on, so it starts and ends with the scenery rather than
+   * fading in and out.
+   */
+  _buildBridge(scene) {
+    const ahead = CONFIG.segmentsAhead * CONFIG.segmentLength + 60;
+    this.deckCount = Math.ceil(ahead / BRIDGE_STEP) + 4;
+    this.pierCount = Math.ceil(ahead / BRIDGE_SPAN) + 3;
+
+    this.concreteMaterial = new THREE.MeshStandardMaterial({ color: 0x9a968c, roughness: 0.88 });
+    const half = CONFIG.roadHalfWidth + CONFIG.shoulderWidth;
+    const deck = mergeBoxes([
+      [half * 2 + 1.0, 1.4, BRIDGE_STEP + 0.05, 0, -0.85, 0], // slab under the road
+      [0.45, 1.05, BRIDGE_STEP + 0.05, -half - 0.3, 0.45, 0], // parapets
+      [0.45, 1.05, BRIDGE_STEP + 0.05, half + 0.3, 0.45, 0],
+    ]);
+    const piers = mergeBoxes([
+      [half * 2 - 2, 1.6, 2.2, 0, -2.4, 0], // crossbeam (headstock)
+      [1.6, 22, 1.6, -half + 3, -14, 0],
+      [1.6, 22, 1.6, half - 3, -14, 0],
+    ]);
+    this.decks = instanced(deck, this.concreteMaterial, this.deckCount);
+    this.piers = instanced(piers, this.concreteMaterial, this.pierCount);
+    this.decks.receiveShadow = this.piers.receiveShadow = true;
+    this.decks.visible = this.piers.visible = false;
+    scene.add(this.decks, this.piers);
+  }
+
+  _updateBridge(state, frame, environment) {
+    if (!environment) return;
+    const behind = CONFIG.segmentsBehind * CONFIG.segmentLength;
+    const onBridge = (s) => (TERRAIN_SETS[environment.setAt(s)]?.bridge ?? 0) > 0;
+
+    let decks = 0;
+    const firstDeck = Math.floor((state.travelled - behind) / BRIDGE_STEP);
+    for (let i = 0; i < this.deckCount; i++) {
+      const s = (firstDeck + i) * BRIDGE_STEP;
+      if (!onBridge(s)) continue;
+      this._placeAlong(s + BRIDGE_STEP / 2, state, frame);
+      this.decks.setMatrixAt(decks++, DUMMY.matrix);
+    }
+
+    let piers = 0;
+    const firstPier = Math.floor((state.travelled - behind) / BRIDGE_SPAN);
+    for (let i = 0; i < this.pierCount; i++) {
+      const s = (firstPier + i) * BRIDGE_SPAN;
+      if (!onBridge(s)) continue;
+      this._placeAlong(s, state, frame);
+      this.piers.setMatrixAt(piers++, DUMMY.matrix);
+    }
+
+    this.decks.count = decks;
+    this.piers.count = piers;
+    this.decks.visible = decks > 0;
+    this.piers.visible = piers > 0;
+    this.decks.instanceMatrix.needsUpdate = true;
+    this.piers.instanceMatrix.needsUpdate = true;
+  }
+
+  /** Place DUMMY on the road centreline at distance s, turned to follow it. */
+  _placeAlong(s, state, frame) {
+    frame.point(s, 0, 0, POSITION);
+    DUMMY.position.copy(POSITION);
+    DUMMY.rotation.set(0, -(heading(s) - heading(state.travelled)), 0);
+    DUMMY.scale.setScalar(1);
+    DUMMY.updateMatrix();
   }
 
   /**
@@ -258,8 +333,9 @@ export class Features {
     scene.add(this.groundFog);
   }
 
-  update(state, frame) {
+  update(state, frame, environment) {
     const live = state.live;
+    this._updateBridge(state, frame, environment);
     this._updateWater(state, frame);
     this._updateShafts(state);
     this._updateSkyline(state, frame);

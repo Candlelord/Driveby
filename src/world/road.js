@@ -89,7 +89,38 @@ export class Road {
 
     this.lines.mesh.renderOrder = 1;
 
+    this._buildKerbs(scene);
     this._buildDashes(scene);
+  }
+
+  /**
+   * Painted kerbs: the yellow-and-black kerbstones that line roads all over
+   * Nigeria. A raised strip just off each edge line, with a little vertical
+   * face toward the road, shown only where the set asks for them.
+   */
+  _buildKerbs(scene) {
+    const { roadHalfWidth } = CONFIG;
+    const inner = roadHalfWidth + 0.02;
+    const outer = roadHalfWidth + KERB_WIDTH;
+    this.kerbMaterial = new THREE.MeshStandardMaterial({ map: kerbTexture(), roughness: 0.8 });
+    // Duplicated columns a hair apart give the kerb its face: low at the road
+    // side, then up to kerb height.
+    const columns = [-outer - 0.01, -outer, -inner, -inner + 0.01, inner - 0.01, inner, outer, outer + 0.01];
+    this.kerbs = new Ribbon({
+      columns,
+      rows: this.rows,
+      material: this.kerbMaterial,
+      skipQuads: [3],
+      uv: { u: () => 0.5, length: KERB_BLOCK * 2 },
+      smoothNormals: true,
+    });
+    this.kerbs.mesh.receiveShadow = true;
+    this.kerbs.mesh.visible = false;
+    this._kerbHeight = (w) => {
+      const a = Math.abs(w);
+      return a < inner + 0.005 || a > outer + 0.005 ? -0.04 : KERB_HEIGHT;
+    };
+    scene.add(this.kerbs.mesh);
   }
 
   _buildDashes(scene) {
@@ -121,6 +152,9 @@ export class Road {
     this.shoulders.update(frame, distanceForRow, () => -0.06);
 
     this._updateDashes(frame, firstIndex);
+
+    this.kerbs.mesh.visible = state.live.kerbs > 0.5;
+    if (this.kerbs.mesh.visible) this.kerbs.update(frame, distanceForRow, this._kerbHeight);
 
     const live = state.live;
     this.surfaceMaterial.color.copy(live.roadColor);
@@ -185,6 +219,32 @@ function writeVertex(array, offset, v) {
 }
 
 const ROAD_TILE = 12;
+const KERB_WIDTH = 0.38;
+const KERB_HEIGHT = 0.16;
+const KERB_BLOCK = 1; // metres per painted block
+
+let kerbMap = null;
+/** Alternating yellow and black blocks, a little worn. */
+function kerbTexture() {
+  if (kerbMap) return kerbMap;
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#e8b81e';
+  ctx.fillRect(0, 0, 16, 64);
+  ctx.fillStyle = '#151515';
+  ctx.fillRect(0, 64, 16, 64);
+  // Grime and chips.
+  for (let i = 0; i < 90; i++) {
+    ctx.fillStyle = `rgba(60,50,40,${Math.random() * 0.25})`;
+    ctx.fillRect(Math.random() * 16, Math.random() * 128, 2, 2);
+  }
+  kerbMap = new THREE.CanvasTexture(canvas);
+  kerbMap.colorSpace = THREE.SRGBColorSpace;
+  kerbMap.wrapS = kerbMap.wrapT = THREE.RepeatWrapping;
+  return kerbMap;
+}
 
 function surface(color, maps = {}) {
   return new THREE.MeshStandardMaterial({

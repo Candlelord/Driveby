@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { heading } from '../path.js';
-import { buildCarParts } from './carGeometry.js';
+import { buildCarParts, buildVanParts } from './carGeometry.js';
 import { carMaterials } from './car.js';
 import { softDotTexture } from './textures.js';
 
@@ -61,6 +61,23 @@ export class Traffic {
     this.body.castShadow = true;
     this.dark.castShadow = true;
 
+    // Danfos: the yellow Lagos minibus, its own set of instanced parts sharing
+    // every material but the paint. Each slot is either a car or a van; the
+    // other kind's instance is parked at zero scale.
+    const van = buildVanParts();
+    this.vanBodyMaterial = carMaterials(0xf0b000).body;
+    this.vanMeshes = [
+      instanced(van.body, this.vanBodyMaterial, this.count),
+      instanced(van.dark, this.darkMaterial, this.count),
+      instanced(van.glass, this.glassMaterial, this.count),
+      instanced(van.chrome, this.chromeMaterial, this.count),
+      instanced(van.plate, this.plateMaterial, this.count),
+      instanced(van.heads, this.headMaterial, this.count),
+      instanced(van.tails, this.tailMaterial, this.count),
+    ];
+    this.vanMeshes[0].castShadow = this.vanMeshes[1].castShadow = true;
+    for (const mesh of this.vanMeshes) scene.add(mesh);
+
     this._buildGlows();
     this._buildShadows();
 
@@ -113,7 +130,9 @@ export class Traffic {
     this.shadows = instanced(geometry, this.shadowMaterial, this.count);
   }
 
-  _spawn(car, travelled, initial = false) {
+  _spawn(car, travelled, initial = false, danfo = 0) {
+    // What kind of vehicle this slot is, from the place it turns up in.
+    car.kind = Math.random() < danfo ? 'van' : 'car';
     // Roughly a third of traffic comes the other way.
     car.oncoming = Math.random() < 0.38;
     car.lane = car.oncoming ? -LANE : LANE;
@@ -154,7 +173,7 @@ export class Traffic {
       car.s += (car.oncoming ? -car.speed : car.speed) * state.dt;
 
       const gap = car.s - travelled;
-      if (gap < behind || gap > ahead) this._spawn(car, travelled);
+      if (gap < behind || gap > ahead) this._spawn(car, travelled, false, live.danfo);
 
       // No collisions — traffic yields instead. Only same-direction cars can
       // linger alongside the player long enough for this to matter.
@@ -166,6 +185,7 @@ export class Traffic {
     }
 
     for (const mesh of this.meshes) mesh.instanceMatrix.needsUpdate = true;
+    for (const mesh of this.vanMeshes) mesh.instanceMatrix.needsUpdate = true;
     this.headGlow.instanceMatrix.needsUpdate = true;
     this.tailGlow.instanceMatrix.needsUpdate = true;
     this.shadows.instanceMatrix.needsUpdate = true;
@@ -191,7 +211,9 @@ export class Traffic {
     DUMMY.scale.setScalar(1);
     DUMMY.updateMatrix();
 
-    for (const mesh of this.meshes) mesh.setMatrixAt(index, DUMMY.matrix);
+    const isVan = car.kind === 'van';
+    for (const mesh of this.meshes) mesh.setMatrixAt(index, isVan ? HIDDEN : DUMMY.matrix);
+    for (const mesh of this.vanMeshes) mesh.setMatrixAt(index, isVan ? DUMMY.matrix : HIDDEN);
 
     DUMMY.position.y += 0.02;
     DUMMY.updateMatrix();

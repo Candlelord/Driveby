@@ -76,8 +76,16 @@ times the 128 km to Ibadan.
   sets. New props for them live in `props/regional.js` (baobab, acacia,
   cypress, termite mounds, Hausa mud houses, zinc-roofed bungalows, roadside
   stalls, mosques, Haussmann blocks, canal houses).
-- **Landmarks**: Zuma Rock just before Abuja, and the Eiffel Tower on the
-  skyline as you come into Paris.
+- **Cities as they really look**: the trip opens on the Third Mainland
+  Bridge (a real viaduct on piers over the lagoon, Makoko's stilt houses on
+  the water, Lagos Island's towers and the Lekki–Ikoyi Link Bridge across it),
+  then Lagos streets of balconied blocks with black rooftop water tanks, shop
+  rows under rusted awnings, yellow-and-black painted kerbs and yellow danfo
+  minibuses in the traffic. Kano has its earthen city walls and a gate you
+  drive through; Paris is continuous Haussmann street walls on both sides.
+- **Landmarks**, at real proportions: Lagos Island, Zuma Rock, Abuja's
+  National Mosque, Kano's city gate, Algiers' Maqam Echahid, the Eiffel Tower,
+  the Arc de Triomphe and the Atomium.
 - **On the way**: a route panel (leg, km to go, country, overall progress),
   green road-sign arrivals at every city, border-crossing signs, wet/dry
   seasons instead of four in the tropics and the desert, and a fade-to-black

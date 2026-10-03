@@ -23,9 +23,9 @@ const REFERENCE_REACH = 180;
 // size are fixed rather than jittered per slot.
 const FACING = new Set([
   'sign', 'mileMarker', 'billboard', 'cone', 'mailbox', 'busShelter', 'pierPost',
-  'stall', 'bungalow', 'mudHouse', 'canalHouses',
+  'stall', 'bungalow', 'mudHouse', 'canalHouses', 'lagosBlock', 'lagosBlockBlue', 'lagosShops', 'stiltHouse',
 ]);
-const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier']);
+const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier', 'haussmannRow', 'haussmannStreet', 'mudWall']);
 
 // Types with a dedicated placement pass, and therefore barred from the scatter
 // roll — otherwise a set would get both an orderly power line *and* a field of
@@ -123,7 +123,9 @@ export class Props {
     // One material per (palette slot, surface) pair actually used by the kit,
     // all re-coloured from the slot every frame. `shade` darkens a surface
     // relative to its slot — a crown's core sits in its own shadow.
-    this.slotMaterials = { a: [], b: [] };
+    // Foliage on the primary slot takes the set's foliage colour instead, so a
+    // white city can still have green trees.
+    this.slotMaterials = { a: [], b: [], f: [] };
     const slotCache = new Map();
     const materialFor = (part) => {
       if (part.color) return surfaceMaterial(part.surface ?? 'plain', part.color);
@@ -133,10 +135,11 @@ export class Props {
         return this.screenMaterial;
       }
       if (part.material === 'e') return this.materialE;
-      const key = `${part.material}:${part.surface ?? 'plain'}`;
+      const slot = part.material === 'a' && FOLIAGE_SURFACES.has(part.surface) ? 'f' : part.material;
+      const key = `${slot}:${part.surface ?? 'plain'}`;
       if (!slotCache.has(key)) {
         const material = surfaceMaterial(part.surface ?? 'plain');
-        this.slotMaterials[part.material].push(material);
+        this.slotMaterials[slot].push(material);
         slotCache.set(key, material);
       }
       return slotCache.get(key);
@@ -281,6 +284,7 @@ export class Props {
     const live = state.live;
     for (const material of this.slotMaterials.a) material.color.copy(live.propA).multiplyScalar(material.userData.shade);
     for (const material of this.slotMaterials.b) material.color.copy(live.propB).multiplyScalar(material.userData.shade);
+    for (const material of this.slotMaterials.f) material.color.copy(live.propF).multiplyScalar(material.userData.shade);
     // Basic materials have no lighting to dim, so "off" is just a black colour.
     this.materialE.color.copy(live.propE).multiplyScalar(live.propEmissive);
     this.lampPoleMaterial.color.copy(live.propB);
@@ -367,7 +371,10 @@ export class Props {
     if (appetite <= 0) return null;
 
     const runIndex = Math.floor(slot / RUN_SLOTS);
-    if (hash(runIndex * 13.3) >= Math.min(RUN_MAX_CHANCE, appetite * RUN_APPETITE)) return null;
+    // A set can insist on its runs — a Paris boulevard is a street wall with
+    // the odd square, not a fence with long gaps.
+    const chance = Math.min(set.runChance ?? RUN_MAX_CHANCE, appetite * RUN_APPETITE);
+    if (hash(runIndex * 13.3) >= chance) return null;
 
     // Choose among this set's linear types by their relative weights.
     let target = hash(runIndex * 31.1) * appetite;
@@ -779,6 +786,9 @@ function instanced(geometry, material, count) {
   for (let i = 0; i < count; i++) mesh.setMatrixAt(i, HIDDEN);
   return mesh;
 }
+
+// Surfaces that are plant matter, coloured from the set's foliage slot.
+const FOLIAGE_SURFACES = new Set(['leaf', 'needle', 'frond', 'core', 'grass']);
 
 // Surfaces whose geometry is alpha-tested cards with hand-set normals.
 const CARD_SURFACES = new Set(['leaf', 'needle', 'frond', 'grass']);

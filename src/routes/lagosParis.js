@@ -38,7 +38,13 @@ export const LAGOS_PARIS = {
   ],
   // legs[i] runs from stops[i] to stops[i + 1].
   legs: [
-    { km: 128, regions: [['lagosCity', 0], ['rainforestBelt', 0.3]] },
+    {
+      km: 128,
+      // Out of the city on the Third Mainland Bridge, Lagos Island across the
+      // lagoon, then up through the mainland onto the Lagos–Ibadan Expressway.
+      regions: [['lagosLagoon', 0], ['lagosCity', 0.16], ['rainforestBelt', 0.38]],
+      landmarks: [['lagosIsland', 0.09]],
+    },
     { km: 162, regions: [['rainforestBelt', 0], ['guineaSavanna', 0.55]] },
     {
       km: 500,
@@ -47,14 +53,22 @@ export const LAGOS_PARIS = {
       regions: [['guineaSavanna', 0], ['riverCrossing', 0.3], ['guineaSavanna', 0.42], ['abujaHills', 0.7]],
       landmarks: [['zumaRock', 0.86]],
     },
-    { km: 190, regions: [['abujaHills', 0], ['guineaSavanna', 0.25], ['sahelSavanna', 0.8]] },
-    { km: 230, regions: [['sahelSavanna', 0], ['kanoCity', 0.8]] },
+    {
+      km: 190,
+      regions: [['abujaHills', 0], ['guineaSavanna', 0.25], ['sahelSavanna', 0.8]],
+      landmarks: [['nationalMosque', 0.07]],
+    },
+    { km: 230, regions: [['sahelSavanna', 0], ['kanoCity', 0.8]], landmarks: [['kanoGate', 0.92]] },
     { km: 240, regions: [['sahelSavanna', 0]], border: 0.55 },
     { km: 450, regions: [['sahelSavanna', 0], ['saharaDunes', 0.55]] },
     { km: 940, regions: [['saharaDunes', 0], ['hoggarMountains', 0.72]], border: 0.45 },
     { km: 660, regions: [['hoggarMountains', 0], ['saharaDunes', 0.3]] },
     { km: 670, regions: [['saharaDunes', 0], ['mzabValley', 0.8]] },
-    { km: 600, regions: [['mzabValley', 0], ['terracedValley', 0.4], ['algiersCoast', 0.78]] },
+    {
+      km: 600,
+      regions: [['mzabValley', 0], ['terracedValley', 0.4], ['algiersCoast', 0.78]],
+      landmarks: [['martyrsMemorial', 0.94]],
+    },
     { km: 760, ferry: true, regions: [['lavenderFields', 0]], border: 0 },
     { km: 315, regions: [['lavenderFields', 0], ['orchardHills', 0.55]] },
     {
@@ -62,8 +76,18 @@ export const LAGOS_PARIS = {
       regions: [['wheatFields', 0], ['ruralCrossroads', 0.45], ['parisCity', 0.78]],
       landmarks: [['eiffelTower', 0.96]],
     },
-    { km: 315, regions: [['parisCity', 0], ['wheatFields', 0.15], ['ruralCrossroads', 0.5]], border: 0.7 },
-    { km: 210, regions: [['ruralCrossroads', 0], ['polder', 0.4]], border: 0.35 },
+    {
+      km: 315,
+      regions: [['parisCity', 0], ['wheatFields', 0.15], ['ruralCrossroads', 0.5]],
+      border: 0.7,
+      landmarks: [['arcDeTriomphe', 0.06]],
+    },
+    {
+      km: 210,
+      regions: [['ruralCrossroads', 0], ['polder', 0.4]],
+      border: 0.35,
+      landmarks: [['atomium', 0.05]],
+    },
   ],
 };
 

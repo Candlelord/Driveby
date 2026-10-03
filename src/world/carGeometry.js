@@ -167,6 +167,84 @@ export function buildCarParts({ staticWheels = false } = {}) {
 }
 
 /**
+ * A danfo: the yellow minibus that carries Lagos. A tall slab-sided van with
+ * a short bonnet, a band of side windows, and the two black stripes down each
+ * flank that every danfo wears. Wheels are merged in, as for traffic cars.
+ */
+export function buildVanParts() {
+  const width = 1.9;
+  const curveSegments = seg(6, 3);
+  const front = 1.62; // axle positions in profile X (nose is +X)
+  const rear = -1.5;
+
+  const shape = new THREE.Shape();
+  shape.moveTo(2.32, 0.3);
+  shape.lineTo(2.36, 0.92); // bumper and grille face
+  shape.quadraticCurveTo(2.34, 1.08, 2.16, 1.12); // short nose
+  shape.lineTo(1.78, 1.98); // raked screen
+  shape.quadraticCurveTo(1.6, 2.06, 1.3, 2.06);
+  shape.lineTo(-2.2, 2.06); // roof
+  shape.quadraticCurveTo(-2.36, 2.04, -2.36, 1.88);
+  shape.lineTo(-2.36, 0.32); // tail
+  shape.lineTo(-2.1, FLOOR);
+  arch(shape, rear);
+  arch(shape, front);
+  shape.lineTo(2.2, FLOOR);
+  shape.closePath();
+  const body = extrudeProfile(shape, width, 0.08, curveSegments);
+
+  // Glass: windscreen plus a band of side windows, a hair proud of the body.
+  const glassShape = new THREE.Shape();
+  glassShape.moveTo(2.12, 1.18);
+  glassShape.lineTo(1.76, 1.94);
+  glassShape.lineTo(-2.22, 1.94);
+  glassShape.lineTo(-2.22, 1.36);
+  glassShape.lineTo(1.6, 1.36);
+  glassShape.closePath();
+  const glass = extrudeProfile(glassShape, width + 0.03, 0.02, curveSegments);
+
+  const dark = [];
+  // The stripes: one broad, one thin, down both flanks and across the back.
+  dark.push(box(width + 0.04, 0.13, 4.5, 0, 1.02, -0.05));
+  dark.push(box(width + 0.04, 0.06, 4.5, 0, 1.2, -0.05));
+  dark.push(box(width * 1.02, 0.22, 0.2, 0, 0.4, -2.34)); // bumpers
+  dark.push(box(width * 1.02, 0.22, 0.2, 0, 0.4, 2.34));
+  for (const z of [-front, -rear]) {
+    dark.push(
+      new THREE.CylinderGeometry(ARCH_RADIUS - 0.02, ARCH_RADIUS - 0.02, width * 0.9, seg(14, 8), 1, true, 0, Math.PI)
+        .rotateZ(Math.PI / 2)
+        .translate(0, WHEEL_RADIUS, z)
+    );
+  }
+  const wheel = buildWheel();
+  const chrome = [];
+  for (const z of [-front, -rear]) {
+    for (const x of [-0.84, 0.84]) {
+      const mirror = x < 0 ? -1 : 1;
+      dark.push(wheel.tyre.clone().scale(mirror, 1, 1).translate(x, WHEEL_RADIUS, z));
+      chrome.push(wheel.rim.clone().scale(mirror, 1, 1).translate(x, WHEEL_RADIUS, z));
+    }
+  }
+
+  const heads = [];
+  const tails = [];
+  for (const side of [-1, 1]) {
+    heads.push(box(0.34, 0.2, 0.08, side * 0.66, 0.86, -2.37));
+    tails.push(box(0.16, 0.42, 0.06, side * 0.86, 0.95, 2.37));
+  }
+
+  return {
+    body,
+    dark: merge(dark),
+    glass,
+    chrome: merge(chrome),
+    plate: merge([box(0.52, 0.12, 0.02, 0, 0.62, 2.37)]),
+    heads: merge(heads),
+    tails: merge(tails),
+  };
+}
+
+/**
  * Cut a wheel arch into the bottom edge of the side profile while drawing it
  * from tail to nose: down to the floor, over the top of the wheel, back down.
  */

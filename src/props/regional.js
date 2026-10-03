@@ -175,7 +175,180 @@ function canalHouses() {
   return merge(parts);
 }
 
+// --- Lagos -----------------------------------------------------------------
+
+/**
+ * A Lagos apartment block: three storeys of rendered concrete with balconies
+ * across the front, a parapet roof, and the black plastic water tanks that sit
+ * on almost every roof in the city.
+ */
+const lagosWalls = () => merge([box(10, 9.6, 8).translate(0, 4.8, 0), box(10.3, 0.7, 8.3).translate(0, 9.95, 0)]);
+function lagosSlabs() {
+  const parts = [];
+  for (const floor of [1, 2]) parts.push(box(8.6, 0.22, 1.4).translate(0, floor * 3.2, 4.7));
+  return merge(parts);
+}
+function lagosTrim() {
+  const parts = [];
+  for (const floor of [1, 2]) parts.push(box(8.6, 0.95, 0.08).translate(0, floor * 3.2 + 0.58, 5.36));
+  // Water tanks on short steel stands.
+  for (const [x, z] of [[2.6, -1.2], [-1.8, -2.4]]) {
+    parts.push(cyl(0.78, 0.78, 1.6, 12).translate(x, 11.6, z));
+    parts.push(box(1.6, 0.5, 1.6).translate(x, 10.55, z));
+  }
+  return merge(parts);
+}
+// Roller shutters across the ground-floor shops.
+const lagosShutters = () => merge([box(3.4, 2.4, 0.1).translate(-2.4, 1.2, 4.03), box(3.4, 2.4, 0.1).translate(2.4, 1.2, 4.03)]);
+
+/** A two-storey shop row: rusted zinc awning over the pavement, signboards above. */
+const shopWalls = () => merge([box(14, 6.4, 7).translate(0, 3.2, 0), box(14.3, 0.5, 7.3).translate(0, 6.65, 0)]);
+const shopAwning = () => box(14, 0.12, 2.6).rotateX(0.22).translate(0, 3.25, 4.6);
+const shopSigns = () =>
+  merge([-4.6, 0, 4.6].map((x) => box(3.6, 1.0, 0.12).translate(x, 4.35, 3.58)));
+const shopTank = () => cyl(0.7, 0.7, 1.4, 12).translate(4.2, 7.6, -1.5);
+const shopShutters = () => merge([-4.6, 0, 4.6].map((x) => box(3.6, 2.5, 0.1).translate(x, 1.25, 3.53)));
+
+/**
+ * Makoko: timber houses on stilts standing in the lagoon. Rooted on the
+ * lagoon bed, which on the bridge stretch is about twelve metres below the
+ * deck, so the floor clears the water by a couple of metres.
+ */
+function stiltPoles() {
+  const parts = [];
+  for (const [x, z] of [[-2.2, -1.7], [2.2, -1.7], [-2.2, 1.7], [2.2, 1.7], [0, 0]]) {
+    parts.push(cyl(0.12, 0.14, 11.6, 5).translate(x, 5.8, z));
+  }
+  parts.push(box(5.2, 0.25, 4.2).translate(0, 11.5, 0)); // platform
+  return merge(parts);
+}
+const stiltWalls = () => box(4.4, 2.3, 3.4).translate(0, 12.8, 0);
+const stiltRoof = () => box(5.2, 0.1, 4.4).rotateX(0.12).translate(0, 14.1, 0);
+
+// --- Paris and Kano: linear street furniture -------------------------------
+
+/**
+ * A Paris street wall: three Haussmann blocks shoulder to shoulder along local
+ * X (the run system turns it to follow the road), each with its zinc mansard
+ * and chimney stacks. Built at true size in metres, so the facade shader's
+ * window bays come out right without any per-instance stretch.
+ */
+const HAUSSMANN_BLOCKS = [[-15, 17.5], [0, 18.6], [15, 17.2]];
+const haussmannRowWalls = () =>
+  merge(HAUSSMANN_BLOCKS.map(([x, h]) => box(14.9, h, 13).translate(x, h / 2, 0)));
+function haussmannRowRoofs() {
+  const parts = [];
+  for (const [x, h] of HAUSSMANN_BLOCKS) {
+    const shape = new THREE.Shape();
+    shape.moveTo(-6.5, 0);
+    shape.lineTo(6.5, 0);
+    shape.lineTo(4.4, 3.8);
+    shape.lineTo(-4.4, 3.8);
+    shape.closePath();
+    const roof = new THREE.ExtrudeGeometry(shape, { depth: 14.9, bevelEnabled: false });
+    roof.rotateY(Math.PI / 2).translate(x - 7.45, h, 0);
+    parts.push(roof);
+    for (const cx of [-4.5, 4.5]) parts.push(box(1.2, 2.4, 0.9).translate(x + cx, h + 4.2, 0));
+  }
+  return merge(parts);
+}
+// Wrought-iron balconies on the second and fifth floors, both street faces.
+function haussmannRowBalconies() {
+  const parts = [];
+  for (const [x, h] of HAUSSMANN_BLOCKS) {
+    for (const y of [h * 0.3, h * 0.82]) {
+      for (const z of [-6.62, 6.62]) parts.push(box(14.4, 0.9, 0.24).translate(x, y, z));
+    }
+  }
+  return merge(parts);
+}
+
+/**
+ * Both sides of a Paris street at once: the same three-block wall either side
+ * of the carriageway, so a boulevard is lined continuously left and right
+ * rather than one building at a time. Laid by the run system on the road's
+ * centreline (spread 0); local Z becomes the lateral offset.
+ */
+const STREET_SETBACK = 19.5;
+const streetSides = (build) => () =>
+  merge([build().translate(0, 0, STREET_SETBACK), build().translate(0, 0, -STREET_SETBACK)]);
+
+/**
+ * Kano's old city wall: rammed earth, thick at the base, with the rounded
+ * merlons along the top. Built along local X for the run system.
+ */
+function mudWallRun() {
+  const parts = [box(14, 4.6, 2.6).translate(0, 2.3, 0), box(14, 0.6, 3.2).translate(0, 0.3, 0)];
+  for (let i = 0; i < 9; i++) {
+    parts.push(new THREE.CylinderGeometry(0.32, 0.55, 1.1, 7).translate(-6.4 + i * 1.6, 5.15, 0));
+  }
+  return merge(parts);
+}
+
 export const REGIONAL_KIT = {
+  lagosBlock: {
+    parts: [
+      { geometry: lagosWalls, material: 'a', surface: 'facade' },
+      { geometry: lagosSlabs, color: 0xb4aea2 },
+      { geometry: lagosTrim, color: 0x1b1c1f },
+      { geometry: lagosShutters, color: 0x6a6e72, surface: 'metal' },
+    ],
+    spread: 17,
+    jitter: 12,
+  },
+  lagosBlockBlue: {
+    parts: [
+      { geometry: lagosWalls, color: 0x9cbccc, surface: 'facade' },
+      { geometry: lagosSlabs, color: 0xb4aea2 },
+      { geometry: lagosTrim, color: 0x1b1c1f },
+      { geometry: lagosShutters, color: 0x6a6e72, surface: 'metal' },
+    ],
+    spread: 17,
+    jitter: 14,
+  },
+  lagosShops: {
+    parts: [
+      { geometry: shopWalls, material: 'a', surface: 'facade' },
+      { geometry: shopAwning, color: 0x7e5d4a, surface: 'metal' }, // rusted zinc
+      { geometry: shopSigns, material: 'e', surface: 'screen' },
+      { geometry: shopTank, color: 0x1b1c1f },
+      { geometry: shopShutters, color: 0x5e6266, surface: 'metal' },
+    ],
+    spread: 15.5,
+    jitter: 6,
+  },
+  stiltHouse: {
+    parts: [
+      { geometry: stiltPoles, color: 0x5a4a3c },
+      { geometry: stiltWalls, color: 0x7a6650 },
+      { geometry: stiltRoof, color: 0x7a5c48, surface: 'metal' },
+    ],
+    spread: 40,
+    jitter: 140,
+  },
+  haussmannRow: {
+    parts: [
+      { geometry: haussmannRowWalls, material: 'a', surface: 'facade' },
+      { geometry: haussmannRowRoofs, color: 0x5d646c, surface: 'metal' },
+      { geometry: haussmannRowBalconies, color: 0x1e2226 },
+    ],
+    spread: 18.5,
+    jitter: 0,
+  },
+  haussmannStreet: {
+    parts: [
+      { geometry: streetSides(haussmannRowWalls), material: 'a', surface: 'facade' },
+      { geometry: streetSides(haussmannRowRoofs), color: 0x5d646c, surface: 'metal' },
+      { geometry: streetSides(haussmannRowBalconies), color: 0x1e2226 },
+    ],
+    spread: 0,
+    jitter: 0,
+  },
+  mudWall: {
+    parts: [{ geometry: mudWallRun, color: 0xa77a52 }],
+    spread: 14,
+    jitter: 0,
+  },
   baobab: {
     parts: [
       { geometry: baobabTrunk, material: 'b', surface: 'bark' },

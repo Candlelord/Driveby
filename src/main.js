@@ -224,7 +224,7 @@ function tick(now) {
 
   terrain.update(state, frame);
   road.update(state, frame);
-  features.update(state, frame);
+  features.update(state, frame, environment);
   route?.update(state);
   landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
