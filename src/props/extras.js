@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg, subdiv } from './detail.js';
+import { leafCards, crownCore, grassCards } from './foliage.js';
 
 /**
  * The second half of the prop kit: the small stuff that makes a roadside look
@@ -46,29 +47,12 @@ function railFence() {
   return merge(parts);
 }
 
-function hedgeRun() {
-  const parts = [];
-  for (let i = 0; i < 4; i++) {
-    parts.push(ico(1.05).translate((i - 1.5) * 1.7, 0.85, 0));
-  }
-  return merge(parts);
-}
-
-const shrub = () =>
-  merge([
-    ico(0.78).translate(0, 0.62, 0),
-    ico(0.54).translate(0.55, 0.44, 0.24),
-  ]);
-
-function reeds() {
-  const parts = [];
-  for (let i = 0; i < 7; i++) {
-    const blade = box(0.05, 1.7, 0.05).translate(0, 0.85, 0);
-    blade.rotateZ((i - 3) * 0.09);
-    parts.push(blade.translate((i - 3) * 0.16, 0, (i % 3) * 0.14));
-  }
-  return merge(parts);
-}
+const HEDGE_LOBES = [0, 1, 2, 3].map((i) => [1.05, (i - 1.5) * 1.7, 0.85, 0]);
+const SHRUB_LOBES = [
+  [0.78, 0, 0.62, 0],
+  [0.54, 0.55, 0.44, 0.24],
+  [0.5, -0.45, 0.4, -0.2],
+];
 
 // --- agriculture ------------------------------------------------------------
 
@@ -203,9 +187,24 @@ export const EXTRA_KIT = {
   },
   // 8 long on a stride of 2 slots (9u) leaves a post-sized gap between runs.
   fence: { stride: 2, parts: [{ geometry: railFence, material: 'b' }], spread: 12, jitter: 0 },
-  hedge: { stride: 2, parts: [{ geometry: hedgeRun, material: 'a' }], spread: 12.5, jitter: 0 },
-  shrub: { parts: [{ geometry: shrub, material: 'a' }], spread: 11, jitter: 28 },
-  reeds: { parts: [{ geometry: reeds, material: 'a' }], spread: 11, jitter: 18 },
+  hedge: {
+    stride: 2,
+    parts: [
+      { geometry: () => leafCards(HEDGE_LOBES, { perLobe: 18, size: 0.9, seed: 23 }), material: 'a', surface: 'leaf' },
+      { geometry: () => crownCore(HEDGE_LOBES, 0.8), material: 'a', surface: 'core' },
+    ],
+    spread: 12.5,
+    jitter: 0,
+  },
+  shrub: {
+    parts: [
+      { geometry: () => leafCards(SHRUB_LOBES, { perLobe: 14, size: 0.95, seed: 29 }), material: 'a', surface: 'leaf' },
+      { geometry: () => crownCore(SHRUB_LOBES, 0.7), material: 'a', surface: 'core' },
+    ],
+    spread: 11,
+    jitter: 28,
+  },
+  reeds: { parts: [{ geometry: () => grassCards(5, 1.0, 1.9, 31), material: 'a', surface: 'grass' }], spread: 11, jitter: 18 },
   hayBale: { parts: [{ geometry: hayBale, material: 'a' }], spread: 16, jitter: 26 },
   waterTower: {
     scale: 0.62,

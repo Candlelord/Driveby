@@ -12,9 +12,23 @@ const SCRATCH = new THREE.Vector3();
  * drop the zero-width quads between duplicated columns that give crisp edges.
  */
 export class Ribbon {
-  constructor({ columns, rows, material, skipQuads = [], vertexColors = false }) {
+  constructor({
+    columns,
+    rows,
+    material,
+    skipQuads = [],
+    vertexColors = false,
+    uv = null,
+    smoothNormals = false,
+  }) {
     this.columns = columns;
     this.rows = rows;
+    // `uv` is `{ u: (w) => number, length }`: u is fixed per column, v runs
+    // along the road at one tile per `length` units. Textures need a stable
+    // mapping even though every vertex is rewritten each frame, so v is
+    // measured from a whole-tile origin and only ever shifts by integers.
+    this.uvSpec = uv;
+    this.smoothNormals = smoothNormals;
 
     const vertexCount = rows * columns.length;
     this.positions = new Float32Array(vertexCount * 3);
@@ -27,6 +41,14 @@ export class Ribbon {
     const normals = new Float32Array(vertexCount * 3);
     for (let i = 1; i < normals.length; i += 3) normals[i] = 1;
     geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+
+    if (uv) {
+      this.uvs = new Float32Array(vertexCount * 2);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns.length; c++) this.uvs[(r * columns.length + c) * 2] = uv.u(columns[c]);
+      }
+      geometry.setAttribute('uv', new THREE.BufferAttribute(this.uvs, 2));
+    }
 
     if (vertexColors) {
       this.colors = new Float32Array(vertexCount * 3);
@@ -62,11 +84,16 @@ export class Ribbon {
    * @param {(w:number, s:number, height:number) => THREE.Color} [colorForColumn]
    */
   update(frame, distanceForRow, heightForColumn, colorForColumn) {
-    const { columns, positions, colors } = this;
+    const { columns, positions, colors, uvs, uvSpec } = this;
+    const origin = uvSpec ? Math.floor(distanceForRow(0) / uvSpec.length) * uvSpec.length : 0;
     let p = 0;
     for (let r = 0; r < this.rows; r++) {
       const s = distanceForRow(r);
       frame.setRow(s);
+      if (uvs) {
+        const v = (s - origin) / uvSpec.length;
+        for (let c = 0; c < columns.length; c++) uvs[(r * columns.length + c) * 2 + 1] = v;
+      }
       for (let c = 0; c < columns.length; c++) {
         const w = columns[c];
         const height = heightForColumn(w, s, r);
@@ -84,6 +111,9 @@ export class Ribbon {
     }
     this.geometry.attributes.position.needsUpdate = true;
     if (colors) this.geometry.attributes.color.needsUpdate = true;
+    if (uvs) this.geometry.attributes.uv.needsUpdate = true;
+    // Smooth shading needs real normals; cheap at ribbon vertex counts.
+    if (this.smoothNormals) this.geometry.computeVertexNormals();
   }
 
   dispose() {

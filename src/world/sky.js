@@ -320,7 +320,7 @@ export class Sky {
       // this they read as flat cut-out bands rather than distance.
       // Thicker air hazes distant landforms harder — without tying this to fog
       // density, ridges stay crisp in weather that has swallowed everything else.
-      const haze = l === 0 ? 0.45 + live.fogDensity * 25 : 0.22 + live.fogDensity * 20;
+      const haze = l === 0 ? 0.66 + live.fogDensity * 25 : 0.46 + live.fogDensity * 20;
       ridge.material.color
         .copy(l === 0 ? live.ridgeFarColor : live.ridgeNearColor)
         .lerp(live.fogColor, Math.min(haze, 0.92));

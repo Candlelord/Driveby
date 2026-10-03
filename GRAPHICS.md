@@ -49,7 +49,7 @@ checked in a browser; **Listed** items are specified but not built.
 | 30 | Recomputed water normals so the sun track moves with the swell | **Done** |
 | 31 | Terrain sharpness exponent for jagged peaks vs. rounded dunes | **Done** (earlier pass) |
 | 32 | Foam where water meets the shore | Listed |
-| 33 | Planar reflection on water | Listed |
+| 33 | Planar reflection on water | Partial — sky reflection via the environment map |
 | 34 | Triplanar-style slope blending on steep terrain | Listed |
 
 ## Particles and life
@@ -74,10 +74,29 @@ checked in a browser; **Listed** items are specified but not built.
 | 45 | Split-tone grade, vignette, grain, chromatic aberration — all per-mood | **Done** (earlier pass) |
 | 46 | Headlight pool and fog-gated beam shafts | **Done** (earlier pass) |
 | 47 | Tunnel lighting that replaces the sky's fill rather than dimming it | **Done** (earlier pass) |
-| 48 | Real shadow map for the car, replacing the blob | Listed |
-| 49 | FXAA for tiers where MSAA is off | Listed |
+| 48 | Real shadow map for the car, replacing the blob | **Done** (and props on high/medium) |
+| 49 | FXAA for tiers where MSAA is off | **Done** (MSAA on high) |
 | 50 | Depth of field on the far field | Listed |
 
-**36 done, 14 listed.** The listed items are all real work rather than
-placeholders — the four most valuable are a car shadow map (48), water
-reflection (33), god rays (11) and FXAA on the low tier (49).
+**38 done, 1 partial, 11 listed.**
+
+## Realism pass
+
+The look moved from painterly low-poly to photographic. Done in this pass:
+
+| Area | Change |
+|---|---|
+| Light | Painterly wrap/band shading removed; plain PBR |
+| Light | Image-based lighting from the live sky (PMREM env map, refreshed on a timer) |
+| Light | ACES filmic tone mapping; grade, bloom and fringing turned down |
+| Light | Shadow box widened on high/medium so roadside props cast onto the road |
+| Surfaces | Procedural asphalt: aggregate, wheel-track wear, normal + roughness maps |
+| Surfaces | Gravel shoulders, worn line paint, textured ground with anti-tiling macro noise |
+| Surfaces | Smooth-shaded terrain with real normals, ~2x the columns |
+| Surfaces | Reflective dielectric water |
+| Vegetation | Leaf-card crowns, needle-bough conifers, textured palm fronds, bark |
+| Vegetation | Noise-displaced rocks and boulders |
+| Vegetation | Instanced verge grass (thousands of tufts), wind-swayed, per-set density |
+| Car | Wheel arches, tapered plan, tumblehome, creased normals |
+| Car | Clearcoat metallic paint, glass, chrome, spoked alloys, plate, exhausts |
+| Render | 4x MSAA on high (the composer previously had no AA at all), FXAA elsewhere |

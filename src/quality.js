@@ -13,7 +13,11 @@ export const TIERS = {
     pixelRatio: 2,
     bloom: true,
     detail: 1.55, // geometry segment multiplier
-    shadows: 1024, // shadow map size; 0 = blob only
+    shadows: 2048, // shadow map size; 0 = blob only
+    shadowReach: 46, // half-size of the shadow box; big enough for roadside props
+    propShadows: true, // scenery casts into the map, not just the car
+    textureSize: 512, // procedural surface textures
+    grass: 2600, // grass tufts along the verges; 0 = none
     headlamps: 2, // real spot lights on the car; 1 still lights the road
     lampLights: 3, // street lamps that actually cast, walked along the nearest
     cloudOctaves: 4,
@@ -21,7 +25,7 @@ export const TIERS = {
     waterNormals: true,
     atmosphere: true,
     segmentsAhead: 96,
-    terrainColumns: 24,
+    terrainColumns: 44,
     terrainRowStride: 1,
     propSlots: 92,
     lampSlots: 16,
@@ -37,7 +41,11 @@ export const TIERS = {
     pixelRatio: 1.5,
     bloom: true,
     detail: 1.0,
-    shadows: 768,
+    shadows: 1024,
+    shadowReach: 26,
+    propShadows: true,
+    textureSize: 512,
+    grass: 1400,
     headlamps: 2,
     lampLights: 1,
     cloudOctaves: 3,
@@ -45,8 +53,8 @@ export const TIERS = {
     waterNormals: true,
     atmosphere: true,
     segmentsAhead: 74,
-    terrainColumns: 14,
-    terrainRowStride: 2,
+    terrainColumns: 26,
+    terrainRowStride: 1,
     propSlots: 70,
     lampSlots: 12,
     trafficSlots: 5,
@@ -64,6 +72,9 @@ export const TIERS = {
     // per-frame water normal recomputation, and the extra particle systems.
     detail: 0.6,
     shadows: 0,
+    // Generated once at load; below 512 the asphalt grain turns to mush.
+    textureSize: 512,
+    grass: 500,
     headlamps: 1,
     lampLights: 0,
     cloudOctaves: 2,
@@ -71,7 +82,7 @@ export const TIERS = {
     waterNormals: false,
     atmosphere: false,
     segmentsAhead: 58,
-    terrainColumns: 10,
+    terrainColumns: 14,
     terrainRowStride: 3,
     propSlots: 50,
     lampSlots: 9,

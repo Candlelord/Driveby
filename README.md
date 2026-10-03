@@ -371,25 +371,40 @@ for (const [axis, id] of [[e.mood,'hiphop'], [e.terrain,'city'], [e.climate,'sno
 
 ## Art direction
 
-The target is a drivable animated film — Ghibli / Shinkai / BotW territory —
-and the build approaches it through light rather than texture, because that is
-what actually distinguishes those frames:
+The target is photographic: a dashcam-follow shot of a real road trip. Moods
+still own the light and the grade, but everything underneath them is built to
+behave like the real thing. Everything is procedural, so the game still ships
+with no binary assets:
 
-- **Painterly light falloff** (`style/painterly.js`): the shared lighting chunk
-  is rewritten once at startup so every standard material's diffuse term wraps
-  (shade stays coloured instead of going to black) and banks (most of the
-  transition lives in a soft band at the terminator — the two-tone read of a
-  cel ramp without the hard step). Specular is untouched, so wet roads keep
-  their PBR sheen: painted light on physical materials.
-- **Bounced colour instead of grey ambient**: the fill is a hemisphere — sky
-  colour from above, ground colour from below — so the underside of everything
-  carries the terrain's hue. The cheapest convincing fake of global
-  illumination.
-- **Shadows are never black**: the grade lifts the darkest values toward the
-  mood's shadow hue, hardest where the frame is darkest.
+- **Physically based light.** Standard PBR shading with no stylised falloff,
+  ACES filmic tone mapping, and image-based lighting (`world/envLight.js`):
+  a small copy of the live sky dome over a ground-coloured lower half is
+  re-rendered into a PMREM environment map every second or so, so car paint,
+  glass, wet asphalt and water reflect the sky that is actually overhead. A
+  weakened hemisphere light remains as fill so night moods are not black.
+- **Real shadows.** A soft shadow map that on high and medium covers the
+  roadside as well as the car, so trees, fences and traffic throw shade across
+  the road.
+- **Surface detail** (`world/surfaces.js`): tileable noise generates asphalt
+  (aggregate, polished wheel tracks in each lane, normal and roughness maps —
+  a wet road shines first where the tyres run), gravel verges, worn line
+  paint, soil/grass ground detail, bark and rock. Albedo maps are near-white,
+  so the set's palette still decides every colour. A second, large-scale noise
+  sample breaks up visible tiling on road and terrain.
+- **Foliage as cards** (`props/foliage.js`): broadleaf crowns are leaf-card
+  clouds over a dark core, conifers are drooping needle boughs, palms have
+  textured fronds. Card normals point out of the crown, so it shades as one
+  mass. Rocks are noise-displaced and smooth-shaded. Thousands of grass tufts
+  (`world/grass.js`) line the verges, coloured from the ground they grow on.
+- **The car** (`world/carGeometry.js`): extruded profile with real wheel
+  arches, plan-view taper and tumblehome, creased normals, clearcoat metallic
+  paint, mirror-smooth glass, and spoked alloys in rounded tyres.
+- **A camera, not a painting.** The mood grade is kept but turned down —
+  lighter split-toning, little colour fringing, subtle bloom, a touch of film
+  grain — and anti-aliasing is real: 4x MSAA on high, FXAA elsewhere.
 
-Real GI, SSR, TAA and depth of field are deliberately absent — at this budget
-they would cost the frame rate that the whole calm of the game depends on.
+Real GI, SSR, TAA and depth of field are still absent — at this budget they
+would cost the frame rate that the whole calm of the game depends on.
 
 ## Graphics
 

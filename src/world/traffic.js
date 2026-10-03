@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { heading } from '../path.js';
 import { buildCarParts } from './carGeometry.js';
+import { carMaterials } from './car.js';
 import { softDotTexture } from './textures.js';
 
 const DUMMY = new THREE.Object3D();
@@ -37,9 +38,12 @@ export class Traffic {
 
     const parts = buildCarParts({ staticWheels: true });
 
-    this.bodyMaterial = flat(0xffffff, 0.55, 0.15);
-    this.darkMaterial = flat(0x181b20, 0.7, 0.1);
-    this.glassMaterial = flat(0x1e2630, 0.25, 0.4);
+    const materials = carMaterials(0xffffff);
+    this.bodyMaterial = materials.body;
+    this.darkMaterial = materials.dark;
+    this.glassMaterial = materials.glass;
+    this.chromeMaterial = materials.chrome;
+    this.plateMaterial = materials.plate;
     this.headMaterial = new THREE.MeshBasicMaterial({ color: 0xfff3d4 });
     this.tailMaterial = new THREE.MeshBasicMaterial({ color: 0xff2a18 });
 
@@ -47,10 +51,12 @@ export class Traffic {
     this.body = instanced(parts.body, this.bodyMaterial, this.count);
     this.dark = instanced(parts.dark, this.darkMaterial, this.count);
     this.glass = instanced(parts.glass, this.glassMaterial, this.count);
+    this.chrome = instanced(parts.chrome, this.chromeMaterial, this.count);
+    this.plate = instanced(parts.plate, this.plateMaterial, this.count);
     this.heads = instanced(parts.heads, this.headMaterial, this.count);
     this.tails = instanced(parts.tails, this.tailMaterial, this.count);
 
-    this.meshes = [this.body, this.dark, this.glass, this.heads, this.tails];
+    this.meshes = [this.body, this.dark, this.glass, this.chrome, this.plate, this.heads, this.tails];
     // Traffic near the player sits inside the car's shadow frustum and casts too.
     this.body.castShadow = true;
     this.dark.castShadow = true;
@@ -166,7 +172,7 @@ export class Traffic {
 
     const on = live.headlights;
     this.headMaterial.color.setRGB(1, 0.94, 0.8).multiplyScalar(0.35 + on * 1.8);
-    this.tailMaterial.color.setRGB(1, 0.28, 0.12).multiplyScalar(0.95 + on * 0.8);
+    this.tailMaterial.color.setRGB(1, 0.05, 0.025).multiplyScalar(0.5 + on * 2.4);
     this.headGlowMaterial.opacity = on * 0.55;
     this.tailGlowMaterial.opacity = on * 0.4;
     this.shadowMaterial.opacity = 0.06 + 0.2 * (1 - live.lampIntensity);
@@ -219,11 +225,3 @@ function instanced(geometry, material, count) {
   return mesh;
 }
 
-function flat(color, roughness, metalness) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness,
-    metalness,
-    flatShading: true,
-  });
-}

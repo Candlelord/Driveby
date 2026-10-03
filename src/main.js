@@ -4,7 +4,7 @@ import './style.css';
 import { CONFIG, applyTier } from './config.js';
 import { detectTier, tierFromQuery } from './quality.js';
 import { setDetail } from './props/detail.js';
-import { applyPainterlyShading } from './style/painterly.js';
+import { setSurfaceSize } from './world/surfaces.js';
 import { PathFrame, heading } from './path.js';
 import { Environment } from './environment.js';
 import { CarPhysics } from './physics.js';
@@ -29,14 +29,15 @@ import { Features } from './world/features.js';
 import { Landmarks } from './world/landmarks.js';
 import { EventVisuals } from './world/eventVisuals.js';
 import { Atmosphere } from './world/atmosphere.js';
+import { EnvironmentLight } from './world/envLight.js';
+import { Grass } from './world/grass.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
 // Must run before any geometry is constructed.
 setDetail(tier.detail ?? 1);
-// And this before the first material compiles: it rewrites the shared lighting
-// chunk so every standard material gets the painterly falloff.
-applyPainterlyShading();
+// Procedural textures are generated at a size the device can afford.
+setSurfaceSize(tier.textureSize ?? 512);
 
 const container = document.getElementById('scene');
 
@@ -49,6 +50,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.pixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.autoUpdate = true;
 container.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -68,24 +70,29 @@ const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(60, 90, -40);
 scene.add(sun, sun.target);
 
-// One real cast shadow, for the car alone. The frustum is a tight box around
-// the origin — where the car always is — so the map stays sharp at a small
-// size, and the long soft shadow anchors the car to the road the way the
-// concept art's does. Traffic passing through the box picks it up for free.
+// Real cast shadows. The frustum is a box centred a little up the road from
+// the car — where the camera is looking — sized by tier: on high it covers the
+// near roadside so trees, fences and traffic all throw shade across the road;
+// lower tiers keep a tight box around the car alone so the map stays sharp at
+// a small size.
+const SHADOW_CENTRE = new THREE.Vector3(0, 0, -(tier.shadowReach ?? 16) * 0.55);
 if (tier.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   sun.castShadow = true;
   sun.shadow.mapSize.set(tier.shadows, tier.shadows);
+  const reach = tier.shadowReach ?? 16;
   const frustum = sun.shadow.camera;
-  frustum.left = -16;
-  frustum.right = 16;
-  frustum.top = 16;
-  frustum.bottom = -16;
-  frustum.near = 40;
-  frustum.far = 220;
-  sun.shadow.bias = -0.0006;
-  sun.shadow.radius = 4;
+  frustum.left = -reach;
+  frustum.right = reach;
+  frustum.top = reach;
+  frustum.bottom = -reach;
+  frustum.near = 1;
+  frustum.far = 400;
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.04;
+  sun.shadow.radius = 3;
+  sun.target.position.copy(SHADOW_CENTRE);
 }
 
 const environment = new Environment();
@@ -105,6 +112,8 @@ const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
 const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps });
 const weather = new Weather(scene, tier);
+const grass = tier.grass ? new Grass(scene, tier) : null;
+const envLight = new EnvironmentLight(renderer, scene, sky.domeMaterial, tier);
 
 const input = new Input(renderer.domElement, {
   stick: document.getElementById('stick'),
@@ -200,12 +209,14 @@ function tick(now) {
   updateCamera(dt);
   sky.update(state, camera);
   applyLighting();
+  envLight.update(state, sky);
 
   terrain.update(state, frame);
   road.update(state, frame);
   features.update(state, frame);
   landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
+  grass?.update(state, frame, environment);
   traffic.update(state, frame);
   car.update(state, frame);
   weather.update(state);
@@ -244,7 +255,12 @@ function applyLighting() {
   // Bounce is the ground colour pulled toward the sky's, so it always agrees
   // with whatever terrain and weather are underneath.
   ambient.groundColor.copy(live.groundColor).lerp(live.ambientColor, 0.35);
-  ambient.intensity = live.ambientIntensity;
+  // Most of the fill now comes from the sky itself through the environment
+  // map, which also carries direction (bright toward the sun, ground-coloured
+  // below). The hemisphere stays as a fraction, so the moods' authored ambient
+  // still lifts night scenes the sky alone would leave black.
+  ambient.intensity = live.ambientIntensity * 0.42;
+  scene.environmentIntensity = ENV_INTENSITY;
 
   sun.color.copy(live.sunColor);
   sun.intensity = live.sunIntensity;
@@ -252,8 +268,10 @@ function applyLighting() {
   // Keep the key light locked to the visible sun, counter-rotated with the road
   // so shading stays consistent as the car turns.
   sunDirection.copy(sky.sunDirection).applyAxisAngle(THREE.Object3D.DEFAULT_UP, state.heading);
-  sun.position.copy(sunDirection).multiplyScalar(120);
+  sun.position.copy(sunDirection).multiplyScalar(160).add(SHADOW_CENTRE);
 }
+
+const ENV_INTENSITY = 0.85;
 
 function updateCamera(dt) {
   const lag = 1 - Math.exp(-CONFIG.camLag * dt);

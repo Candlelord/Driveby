@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { Ribbon } from './ribbon.js';
+import { groundMaps, withMacroVariation } from './surfaces.js';
 
 const INNER_EDGE = CONFIG.roadHalfWidth + CONFIG.shoulderWidth;
 
@@ -81,13 +82,23 @@ export class Terrain {
     this.rowStride = tier.terrainRowStride;
     this.rows = Math.ceil((CONFIG.segmentsBehind + CONFIG.segmentsAhead) / this.rowStride) + 1;
 
-    this.material = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 1,
-      metalness: 0,
-      flatShading: true,
-      vertexColors: true,
-    });
+    // Smooth-shaded, with soil/grass grain from a tiling detail map and a much
+    // larger second sample of noise on top so the tiles never line up into a
+    // visible grid. The per-vertex height colouring still carries the hue.
+    const ground = groundMaps();
+    this.material = withMacroVariation(
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.95,
+        metalness: 0,
+        vertexColors: true,
+        map: ground.map,
+        normalMap: ground.normalMap,
+        normalScale: new THREE.Vector2(0.85, 0.85),
+      }),
+      [5, 5],
+      0.22
+    );
 
     const columns = buildColumns(tier.terrainColumns);
     this.ribbon = new Ribbon({
@@ -96,6 +107,8 @@ export class Terrain {
       material: this.material,
       skipQuads: [columns.length / 2 - 1], // the road covers this span
       vertexColors: true,
+      uv: { u: (w) => w / GROUND_TILE, length: GROUND_TILE },
+      smoothNormals: true,
     });
 
     this.ribbon.mesh.receiveShadow = true;
@@ -139,6 +152,8 @@ Terrain.prototype._shade = function shade(w, s, height, live) {
 };
 
 const SHADE = new THREE.Color();
+// World units per tile of ground detail.
+const GROUND_TILE = 7;
 
 function clamp(x, min, max) {
   return x < min ? min : x > max ? max : x;

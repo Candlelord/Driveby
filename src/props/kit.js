@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg, subdiv } from './detail.js';
 import { EXTRA_KIT } from './extras.js';
+import {
+  leafCards, crownCore, needleCards, coniferCore, palmFrondCards, rockGeometry, grassCards,
+} from './foliage.js';
 
 /**
  * The roadside prop kit.
@@ -14,6 +17,10 @@ import { EXTRA_KIT } from './extras.js';
  * Parts are pre-translated so one instance matrix (ground position + yaw +
  * scale) places the whole prop, and each part becomes its own InstancedMesh
  * sharing that matrix.
+ *
+ * A part may also name a `surface` — leaf, needle, frond, grass, core, bark or
+ * rock — which picks the texture set and shading it gets on top of its palette
+ * colour (see SURFACES in world/props.js).
  */
 
 const cyl = (rt, rb, h, s = 6) => new THREE.CylinderGeometry(rt, rb, h, seg(s));
@@ -69,64 +76,32 @@ function deadTreeGeometry() {
 }
 
 /**
- * A conifer as stacked, shrinking tiers rather than one cone.
- *
- * The single-cone tree is the thing that most gives a low-poly scene away —
- * three tiers cost eight more triangles and read as an actual species.
+ * A broadleaf crown as overlapping lobes at different heights, [radius, x, y, z].
+ * One sphere is a lollipop; offset lobes have a silhouette. The lobes are
+ * filled with leaf cards over a dark core — see foliage.js.
  */
-function conifer() {
-  const parts = [];
-  for (const [radius, height, y] of [
-    [1.5, 2.1, 1.6],
-    [1.16, 1.95, 2.65],
-    [0.82, 1.8, 3.75],
-  ]) {
-    parts.push(cone(radius, height, 7).translate(0, y, 0));
-  }
-  return merge(parts);
-}
+const BROADLEAF_LOBES = [
+  [1.32, 0, 2.95, 0],
+  [0.94, 0.98, 2.42, 0.36],
+  [0.86, -0.82, 2.58, -0.48],
+  [0.72, 0.18, 3.62, -0.55],
+  [0.66, -0.5, 3.3, 0.62],
+];
 
-/**
- * A broadleaf canopy as overlapping lobes at different heights. One sphere is
- * a lollipop; four offset lobes have a silhouette.
- */
-function broadleaf(scale = 1) {
-  const lobes = [
-    [1.32, 0, 2.95, 0],
-    [0.94, 0.98, 2.42, 0.36],
-    [0.86, -0.82, 2.58, -0.48],
-    [0.72, 0.18, 3.62, -0.55],
-    [0.66, -0.5, 3.3, 0.62],
-  ];
-  return merge(
-    lobes.map(([r, x, y, z]) =>
-      ico(r * scale).translate(x * scale, y * scale, z * scale)
-    )
-  );
-}
+const scaleLobes = (lobes, k, lift = 0) => lobes.map(([r, x, y, z]) => [r * k, x * k, y * k + lift, z * k]);
+
+/** Conifer tiers, [radius, height, centre y]: shrinking toward the top. */
+const CONIFER_TIERS = [
+  [1.5, 2.1, 1.6],
+  [1.16, 1.95, 2.65],
+  [0.82, 1.8, 3.75],
+];
 
 /** A trunk that forks, rather than a plain post under a ball of leaves. */
 function forkedTrunk(height = 1.9, radius = 0.19) {
   const parts = [cyl(radius * 0.8, radius * 1.25, height, 6).translate(0, height / 2, 0)];
   parts.push(limb(0, height * 0.72, 0, 0.42, height * 1.5, 0.16, 0.1));
   parts.push(limb(0, height * 0.8, 0, -0.36, height * 1.55, -0.2, 0.09));
-  return merge(parts);
-}
-
-function palmFronds() {
-  const parts = [];
-  for (let i = 0; i < 7; i++) {
-    const angle = (i / 7) * Math.PI * 2;
-    // Two segments per frond, the outer one angled down, so they arch over.
-    const inner = box(0.3, 0.08, 1.3).translate(0, 0, -0.65);
-    inner.rotateX(-0.3);
-    const outer = box(0.22, 0.07, 1.3).translate(0, 0, -0.65);
-    outer.rotateX(0.42);
-    outer.translate(0, -0.38, -1.24);
-    const frond = merge([inner, outer]);
-    frond.rotateY(angle);
-    parts.push(frond.translate(0, 5.4, 0));
-  }
   return merge(parts);
 }
 
@@ -146,17 +121,6 @@ function guardrailGeometry() {
     box(0.14, 1.0, 0.14).translate(1.6, 0.5, 0),
     box(3.6, 0.24, 0.1).translate(0, 0.85, 0),
   ];
-  return merge(parts);
-}
-
-function grassTuft() {
-  const parts = [];
-  for (let i = 0; i < 5; i++) {
-    const blade = box(0.06, 0.9, 0.02).translate(0, 0.45, 0);
-    blade.rotateZ((Math.random() - 0.5) * 0.5);
-    blade.rotateY(i * 1.3);
-    parts.push(blade.translate((i - 2) * 0.12, 0, (i % 2) * 0.1));
-  }
   return merge(parts);
 }
 
@@ -277,37 +241,44 @@ function barnRoof() {
 const CORE_KIT = {
   round: {
     parts: [
-      { geometry: () => broadleaf(1), material: 'a' },
-      { geometry: () => forkedTrunk(1.9, 0.19), material: 'b' },
+      { geometry: () => leafCards(BROADLEAF_LOBES, { seed: 11 }), material: 'a', surface: 'leaf' },
+      { geometry: () => crownCore(BROADLEAF_LOBES), material: 'a', surface: 'core' },
+      { geometry: () => forkedTrunk(1.9, 0.19), material: 'b', surface: 'bark' },
     ],
     spread: 15,
     jitter: 26,
   },
   pine: {
     parts: [
-      { geometry: conifer, material: 'a' },
-      { geometry: () => at(cyl(0.15, 0.24, 1.7, 6), 0, 0.85, 0), material: 'b' },
+      { geometry: () => needleCards(CONIFER_TIERS, { seed: 4 }), material: 'a', surface: 'needle' },
+      { geometry: () => coniferCore(CONIFER_TIERS), material: 'a', surface: 'core' },
+      { geometry: () => at(cyl(0.15, 0.24, 4.4, 7), 0, 2.2, 0), material: 'b', surface: 'bark' },
     ],
     spread: 12,
     jitter: 24,
   },
   deadTree: {
-    parts: [{ geometry: deadTreeGeometry, material: 'b' }],
+    parts: [{ geometry: deadTreeGeometry, material: 'b', surface: 'bark' }],
     spread: 15,
     jitter: 30,
   },
   palm: {
     parts: [
-      { geometry: () => at(cyl(0.22, 0.34, 5.4), 0, 2.7, 0), material: 'b' },
-      { geometry: palmFronds, material: 'a' },
+      { geometry: () => at(cyl(0.2, 0.32, 5.4, 9), 0, 2.7, 0), material: 'b', surface: 'bark' },
+      { geometry: () => palmFrondCards(10, 5.4, 3.0), material: 'a', surface: 'frond' },
     ],
     spread: 13,
     jitter: 12,
   },
   redwood: {
     parts: [
-      { geometry: () => at(cyl(1.0, 1.5, 22, 8), 0, 11, 0), material: 'b' },
-      { geometry: () => at(cone(3.0, 9, 7), 0, 24, 0), material: 'a' },
+      { geometry: () => at(cyl(1.0, 1.5, 22, 12), 0, 11, 0), material: 'b', surface: 'bark' },
+      {
+        geometry: () => needleCards([[3.0, 5, 21], [2.6, 4.6, 24.2], [1.9, 4, 27.4]], { seed: 8, density: 1.4 }),
+        material: 'a',
+        surface: 'needle',
+      },
+      { geometry: () => coniferCore([[3.0, 5, 21], [2.6, 4.6, 24.2], [1.9, 4, 27.4]]), material: 'a', surface: 'core' },
     ],
     spread: 12,
     jitter: 14,
@@ -315,8 +286,9 @@ const CORE_KIT = {
   birch: {
     parts: [
       // Slimmer and higher than the broadleaf — birches carry their crown up top.
-      { geometry: () => broadleaf(0.78).translate(0, 3.1, 0), material: 'a' },
-      { geometry: () => at(cyl(0.11, 0.17, 6.8, 5), 0, 3.4, 0), material: 'b' },
+      { geometry: () => leafCards(scaleLobes(BROADLEAF_LOBES, 0.78, 3.1), { seed: 17, size: 1.0 }), material: 'a', surface: 'leaf' },
+      { geometry: () => crownCore(scaleLobes(BROADLEAF_LOBES, 0.78, 3.1)), material: 'a', surface: 'core' },
+      { geometry: () => at(cyl(0.11, 0.17, 6.8, 8), 0, 3.4, 0), material: 'b', surface: 'bark' },
     ],
     spread: 12,
     jitter: 24,
@@ -330,7 +302,7 @@ const CORE_KIT = {
     // 5.2 long on a single-slot stride (4.5u), so sections overlap slightly and
     // the run reads as continuous drystone rather than as separate blocks.
     stride: 1,
-    parts: [{ geometry: stoneWall, material: 'b' }],
+    parts: [{ geometry: stoneWall, material: 'b', surface: 'rock' }],
     spread: 12.5,
     jitter: 0,
   },
@@ -361,7 +333,7 @@ const CORE_KIT = {
     jitter: 45,
   },
   seaStack: {
-    parts: [{ geometry: seaStack, material: 'b' }],
+    parts: [{ geometry: seaStack, material: 'b', surface: 'rock' }],
     spread: 40,
     jitter: 55,
   },
@@ -371,12 +343,12 @@ const CORE_KIT = {
     jitter: 26,
   },
   rock: {
-    parts: [{ geometry: () => at(dod(1.3), 0, 0.45, 0), material: 'b' }],
+    parts: [{ geometry: () => at(rockGeometry(1.3, 3, 0.65), 0, 0.35, 0), material: 'b', surface: 'rock' }],
     spread: 15,
     jitter: 28,
   },
   boulder: {
-    parts: [{ geometry: () => at(ico(2.6), 0, 0.9, 0), material: 'b' }],
+    parts: [{ geometry: () => at(rockGeometry(2.6, 7, 0.72), 0, 0.7, 0), material: 'b', surface: 'rock' }],
     spread: 17,
     jitter: 26,
   },
@@ -457,7 +429,7 @@ const CORE_KIT = {
     jitter: 0,
   },
   grass: {
-    parts: [{ geometry: grassTuft, material: 'a' }],
+    parts: [{ geometry: () => grassCards(4, 1.3, 1.1, 21), material: 'a', surface: 'grass' }],
     spread: 11,
     jitter: 30,
   },

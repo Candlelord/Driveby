@@ -121,18 +121,20 @@ export class Features {
   }
 
   /**
-   * Two large quads flanking the road, dropped to the set's water level. Flat
-   * shaded and unlit, coloured from the set — a real reflection would cost a
-   * second render pass and would not match the low-poly look anyway.
+   * Two large quads flanking the road, dropped to the set's water level.
+   * Smooth, near-mirror and dielectric: the sky comes back off it through the
+   * environment map with real Fresnel — dark where you look down into it,
+   * bright toward the horizon — which is most of what makes water read as
+   * water, at no cost beyond the env map the scene already has.
    */
   _buildWater(scene) {
     this.waterMaterial = new THREE.MeshStandardMaterial({
       color: 0x35505e,
-      roughness: 0.12,
-      metalness: 0.5,
+      roughness: 0.07,
+      metalness: 0,
       transparent: true,
       opacity: 0,
-      flatShading: true,
+      envMapIntensity: 1.3,
     });
 
     this.water = new THREE.Group();

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildCarParts, WHEEL_RADIUS } from './carGeometry.js';
+import { buildCarParts, WHEEL_RADIUS, FRONT_AXLE, REAR_AXLE, TRACK } from './carGeometry.js';
 import { beamTexture } from './textures.js';
 
 const AHEAD = new THREE.Vector3();
@@ -20,18 +20,24 @@ export class Car {
 
     const parts = buildCarParts();
 
-    this.bodyMaterial = flat(0xc4503c, 0.55, 0.15);
-    this.darkMaterial = flat(0x181b20, 0.7, 0.1);
-    this.glassMaterial = flat(0x1e2630, 0.25, 0.4);
-    this.tyreMaterial = flat(0x141619, 0.95, 0);
+    const materials = carMaterials(0xa3201a);
+    this.bodyMaterial = materials.body;
+    this.darkMaterial = materials.dark;
+    this.glassMaterial = materials.glass;
+    this.chromeMaterial = materials.chrome;
+    this.tyreMaterial = materials.tyre;
+    this.plateMaterial = materials.plate;
 
     for (const [geometry, material] of [
       [parts.body, this.bodyMaterial],
       [parts.dark, this.darkMaterial],
       [parts.glass, this.glassMaterial],
+      [parts.chrome, this.chromeMaterial],
+      [parts.plate, this.plateMaterial],
     ]) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = realShadow;
+      mesh.receiveShadow = realShadow;
       this.group.add(mesh);
     }
 
@@ -48,19 +54,28 @@ export class Car {
     this.spin = 0;
   }
 
-  _buildWheels(geometry) {
+  _buildWheels({ tyre, rim }) {
     this.wheels = [];
     for (const [x, z, steers] of [
-      [-0.92, -1.42, true],
-      [0.92, -1.42, true],
-      [-0.92, 1.46, false],
-      [0.92, 1.46, false],
+      [-TRACK, FRONT_AXLE, true],
+      [TRACK, FRONT_AXLE, true],
+      [-TRACK, REAR_AXLE, false],
+      [TRACK, REAR_AXLE, false],
     ]) {
-      const wheel = new THREE.Mesh(geometry, this.tyreMaterial);
-      wheel.castShadow = this.realShadow;
+      // Steering yaws the outer group; the spin happens on the inner one, so
+      // the two rotations never fight over Euler order.
+      const wheel = new THREE.Group();
       wheel.position.set(x, WHEEL_RADIUS, z);
-      wheel.rotation.order = 'YXZ';
+      const spinner = new THREE.Group();
+      // Geometry is authored with its face outward on +X; mirror the left side.
+      spinner.scale.x = x < 0 ? -1 : 1;
+      const tyreMesh = new THREE.Mesh(tyre, this.tyreMaterial);
+      const rimMesh = new THREE.Mesh(rim, this.chromeMaterial);
+      tyreMesh.castShadow = rimMesh.castShadow = this.realShadow;
+      spinner.add(tyreMesh, rimMesh);
+      wheel.add(spinner);
       wheel.userData.steers = steers;
+      wheel.userData.spinner = spinner;
       this.group.add(wheel);
       this.wheels.push(wheel);
     }
@@ -148,7 +163,7 @@ export class Car {
 
     this.spin -= (state.speed / WHEEL_RADIUS) * state.dt;
     for (const wheel of this.wheels) {
-      wheel.rotation.x = this.spin;
+      wheel.userData.spinner.rotation.x = this.spin;
       if (wheel.userData.steers) wheel.rotation.y = state.steer * 0.35;
     }
 
@@ -156,7 +171,7 @@ export class Car {
     const on = live.headlights;
 
     this.headlightMaterial.color.setRGB(1, 0.94, 0.8).multiplyScalar(0.35 + on * 1.5);
-    this.taillightMaterial.color.setRGB(1, 0.28, 0.12).multiplyScalar(1.05 + on * 0.7);
+    this.taillightMaterial.color.setRGB(1, 0.05, 0.025).multiplyScalar(0.5 + on * 2.4);
     // With a real shadow map the blob is just a faint contact patch under the
     // sills; without one it carries the whole grounding job as before.
     const blob = this.realShadow ? 0.35 : 1;
@@ -227,11 +242,48 @@ function buildBeamQuad() {
   return geometry;
 }
 
-function flat(color, roughness, metalness) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness,
-    metalness,
-    flatShading: true,
-  });
+/**
+ * Automotive materials, shared with traffic.
+ *
+ * The paint is the one that sells it: a metallic base under a glossy clearcoat
+ * gives the two-layer look of real car paint — a soft coloured sheen from the
+ * flake, with sharp sky reflections sliding over the top. Glass is near-black
+ * and almost mirror-smooth, so the windows are mostly reflection, as they are
+ * on a real car seen from outside in daylight.
+ */
+export function carMaterials(paint) {
+  return {
+    body: new THREE.MeshPhysicalMaterial({
+      color: paint,
+      metalness: 0.45,
+      roughness: 0.42,
+      clearcoat: 1,
+      clearcoatRoughness: 0.05,
+      envMapIntensity: 1.1,
+    }),
+    dark: new THREE.MeshStandardMaterial({
+      color: 0x0c0d10,
+      roughness: 0.45,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }),
+    glass: new THREE.MeshPhysicalMaterial({
+      color: 0x05070a,
+      roughness: 0.03,
+      metalness: 0,
+      ior: 1.52,
+      specularIntensity: 1,
+      clearcoat: 1,
+      clearcoatRoughness: 0.02,
+      envMapIntensity: 1.4,
+    }),
+    chrome: new THREE.MeshStandardMaterial({
+      color: 0xc6cad0,
+      roughness: 0.22,
+      metalness: 1,
+      side: THREE.DoubleSide,
+    }),
+    tyre: new THREE.MeshStandardMaterial({ color: 0x151618, roughness: 0.88, metalness: 0 }),
+    plate: new THREE.MeshStandardMaterial({ color: 0xe9e7df, roughness: 0.4, metalness: 0.1 }),
+  };
 }

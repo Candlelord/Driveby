@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { Ribbon } from './ribbon.js';
+import { asphaltMaps, gravelMaps, paintMap, withMacroVariation } from './surfaces.js';
 
 const NEAR_LEFT = new THREE.Vector3();
 const NEAR_RIGHT = new THREE.Vector3();
@@ -26,18 +27,36 @@ export class Road {
 
     this.rows = CONFIG.segmentsBehind + CONFIG.segmentsAhead + 1;
 
-    this.surfaceMaterial = flat(0x3a4048);
-    this.lineMaterial = flat(0xffffff);
+    // Asphalt carries the most screen area in every frame, so it gets the full
+    // set: aggregate albedo, a normal map for the grain, and a roughness map
+    // whose polished wheel tracks are what a wet road lights up first.
+    const asphalt = asphaltMaps();
+    this.surfaceMaterial = withMacroVariation(
+      surface(0x3a4048, { ...asphalt, normalScale: new THREE.Vector2(0.3, 0.3) }),
+      [1, 9],
+      0.14
+    );
+    const paint = paintMap();
+    this.lineMaterial = surface(0xffffff, { map: paint, roughness: 0.62 });
     // Centre dashes take their own colour — the concept frames run yellow
     // dashes against white edge lines, and that little difference is a
     // surprising amount of what makes the road read as a highway.
-    this.dashMaterial = flat(0xf2c94c);
-    this.shoulderMaterial = flat(0x4a5058);
+    this.dashMaterial = surface(0xf2c94c, { roughness: 0.6 });
+    const gravel = gravelMaps();
+    this.shoulderMaterial = withMacroVariation(
+      surface(0x4a5058, { ...gravel, normalScale: new THREE.Vector2(0.9, 0.9) }),
+      [1, 7],
+      0.2
+    );
 
+    // u spans the carriageway exactly once, so the wheel tracks baked into the
+    // asphalt land in the lanes; v repeats every ROAD_TILE units.
     this.surface = new Ribbon({
       columns: [-inner, inner],
       rows: this.rows,
       material: this.surfaceMaterial,
+      uv: { u: (w) => (w + inner) / (2 * inner), length: ROAD_TILE },
+      smoothNormals: true,
     });
 
     // Two edge stripes in one ribbon; quad 1 (the gap across the road) is dropped.
@@ -46,6 +65,8 @@ export class Road {
       rows: this.rows,
       material: this.lineMaterial,
       skipQuads: [1],
+      uv: { u: (w) => w * 0.5, length: 5 },
+      smoothNormals: true,
     });
 
     this.shoulders = new Ribbon({
@@ -53,6 +74,8 @@ export class Road {
       rows: this.rows,
       material: this.shoulderMaterial,
       skipQuads: [1],
+      uv: { u: (w) => w / 3, length: 3 },
+      smoothNormals: true,
     });
 
     this.surface.mesh.receiveShadow = true;
@@ -104,10 +127,13 @@ export class Road {
 
     // Wet moods drop the roughness so the key light lays a sheen down the
     // asphalt — the cheapest "it has been raining" cue there is.
+    // The roughness map multiplies this, so a wet road goes glassy in the
+    // polished wheel tracks first and stays matte in the grain between.
     this.surfaceMaterial.roughness = live.roadRoughness;
-    // Kept well below mirror-like, per the art direction: wet road should read
-    // as a soft sheen, not as a reflective surface competing with the sky.
-    this.surfaceMaterial.metalness = (1 - live.roadRoughness) * 0.18;
+    // Water on asphalt is a dielectric film, not metal; the environment map
+    // supplies the reflected sky, so metalness stays at zero.
+    this.surfaceMaterial.metalness = 0;
+    this.lineMaterial.roughness = 0.45 + live.roadRoughness * 0.25;
   }
 
   _updateDashes(frame, firstIndex) {
@@ -151,11 +177,13 @@ function writeVertex(array, offset, v) {
   return offset + 3;
 }
 
-function flat(color) {
+const ROAD_TILE = 12;
+
+function surface(color, maps = {}) {
   return new THREE.MeshStandardMaterial({
     color,
     roughness: 1,
     metalness: 0,
-    flatShading: true,
+    ...maps,
   });
 }

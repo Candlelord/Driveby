@@ -90,6 +90,9 @@ const BASE = {
   ridgeOpacity: 0.7,
   ridgeHeight: 1,
   seasonReach: 1,
+  // Verge grass density (not blended — grass, like props, belongs to whichever
+  // set laid down that stretch of road). 0 for paved and barren places.
+  grass: 1,
 };
 
 const set = (values) => ({ ...BASE, ...values });
@@ -146,6 +149,7 @@ export const TERRAIN_SETS = {
   }),
 
   burnedForest: set({
+    grass: 0.3,
     seasonReach: 0.3,
     label: 'burned forest',
     climate: 'ash',
@@ -273,6 +277,7 @@ export const TERRAIN_SETS = {
 
   // -------------------------------------------------------------- HAPPY
   wheatFields: set({
+    grass: 1.3,
     label: 'wheat fields',
     climate: 'clear',
     propMix: [['grass', 0.38], ['windmill', 0.08], ['silo', 0.12], ['hayBale', 0.18], ['fence', 0.1], ['scarecrow', 0.06], ['waterTower', 0.04], ['windTurbine', 0.04]],
@@ -290,6 +295,7 @@ export const TERRAIN_SETS = {
   }),
 
   palmHighway: set({
+    grass: 0.6,
     seasonReach: 0.25,
     label: 'palm highway',
     climate: 'clear',
@@ -310,6 +316,7 @@ export const TERRAIN_SETS = {
   }),
 
   desertBloom: set({
+    grass: 0.55,
     seasonReach: 0.2,
     label: 'desert bloom',
     climate: 'clear',
@@ -351,6 +358,7 @@ export const TERRAIN_SETS = {
 
   // ------------------------------------------------------------ HIP-HOP
   skylineDrive: set({
+    grass: 0,
     seasonReach: 0.3,
     label: 'skyline drive',
     climate: 'wetNight',
@@ -371,6 +379,7 @@ export const TERRAIN_SETS = {
   }),
 
   neonUnderpass: set({
+    grass: 0,
     seasonReach: 0.15,
     label: 'neon underpass',
     climate: 'wetNight',
@@ -390,6 +399,7 @@ export const TERRAIN_SETS = {
   }),
 
   rooftopSkybridge: set({
+    grass: 0,
     seasonReach: 0.15,
     label: 'rooftop skybridge',
     climate: 'wetNight',
@@ -410,6 +420,7 @@ export const TERRAIN_SETS = {
   }),
 
   warehouseDistrict: set({
+    grass: 0.15,
     seasonReach: 0.35,
     label: 'warehouse district',
     climate: 'wetNight',
@@ -436,6 +447,7 @@ export const TERRAIN_SETS = {
   // out on the headland. Ground colour splits by the height banding — the
   // accent keeps the verge green while the climbing hillside dries to tan.
   coastalHighway: set({
+    grass: 0.8,
     seasonReach: 0.55,
     label: 'coastal highway',
     climate: 'clear',
@@ -467,6 +479,7 @@ export const TERRAIN_SETS = {
   // Long enclosed stretches with daylight at either end. The audio layer keys
   // off the same coverage function, so the wind drops as the mouth swallows you.
   tunnelRun: set({
+    grass: 0.5,
     seasonReach: 0.1,
     label: 'tunnel run',
     climate: 'clearNight',
@@ -513,6 +526,7 @@ export const TERRAIN_SETS = {
   // The emptiest set in the game: a mirror-flat pan, almost nothing on it, and
   // as much sky as the camera can hold.
   saltFlats: set({
+    grass: 0,
     seasonReach: 0.05,
     label: 'salt flats',
     climate: 'clear',
@@ -554,6 +568,7 @@ export const TERRAIN_SETS = {
   }),
 
   highlandMoor: set({
+    grass: 1.3,
     seasonReach: 0.6,
     label: 'highland moor',
     climate: 'mist',
@@ -576,6 +591,7 @@ export const TERRAIN_SETS = {
   }),
 
   lavenderFields: set({
+    grass: 1.1,
     label: 'lavender fields',
     climate: 'clear',
     propMix: [['lavender', 0.54], ['farmhouse', 0.08], ['round', 0.1], ['hedge', 0.12], ['fence', 0.1], ['hayBale', 0.06]],
@@ -596,6 +612,7 @@ export const TERRAIN_SETS = {
   }),
 
   refineryCoast: set({
+    grass: 0.2,
     seasonReach: 0.3,
     label: 'refinery coast',
     climate: 'wetNight',
@@ -620,6 +637,7 @@ export const TERRAIN_SETS = {
   }),
 
   canyonRoad: set({
+    grass: 0.25,
     seasonReach: 0.25,
     label: 'canyon road',
     climate: 'clear',
@@ -644,6 +662,7 @@ export const TERRAIN_SETS = {
   }),
 
   iceRoad: set({
+    grass: 0.08,
     seasonReach: 0.1,
     label: 'ice road',
     climate: 'frozen',
@@ -712,6 +731,7 @@ export const TERRAIN_SETS = {
   }),
 
   bioluminescentValley: set({
+    grass: 0.7,
     seasonReach: 0.2,
     label: 'bioluminescent valley',
     climate: 'clearNight',

@@ -5,6 +5,8 @@ import { terrainHeight } from './terrain.js';
 import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { leafCard, needleCard, frondCard, grassCard, barkMaps, rockMaps, keepCardNormals } from './surfaces.js';
 
 // Distance at which ~15% of an object still shows through clear-weather fog.
 const REFERENCE_REACH = 180;
@@ -112,13 +114,27 @@ export class Props {
     this.slots = tier.propSlots;
     this.lampSlots = tier.lampSlots;
 
-    this.materialA = flat(0x4d7a48);
-    this.materialB = flat(0x46403a);
     this.materialE = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
-    this.lampPoleMaterial = flat(0x2a2f36);
+    this.lampPoleMaterial = surfaceMaterial('metal', 0x2a2f36);
     this.lampHeadMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, fog: true });
 
-    const materials = { a: this.materialA, b: this.materialB, e: this.materialE };
+    // One material per (palette slot, surface) pair actually used by the kit,
+    // all re-coloured from the slot every frame. `shade` darkens a surface
+    // relative to its slot — a crown's core sits in its own shadow.
+    this.slotMaterials = { a: [], b: [] };
+    const slotCache = new Map();
+    const materialFor = (part) => {
+      if (part.color) return surfaceMaterial(part.surface ?? 'plain', part.color);
+      if (part.material === 'e') return this.materialE;
+      const key = `${part.material}:${part.surface ?? 'plain'}`;
+      if (!slotCache.has(key)) {
+        const material = surfaceMaterial(part.surface ?? 'plain');
+        this.slotMaterials[part.material].push(material);
+        slotCache.set(key, material);
+      }
+      return slotCache.get(key);
+    };
+    const castsShadow = Boolean(tier.propShadows && tier.shadows);
 
     // One entry per prop type, each holding its parts' instanced meshes.
     this.types = {};
@@ -129,7 +145,11 @@ export class Props {
       // to give it a number.
       let footprint = 0;
       const meshes = def.parts.map((part) => {
-        const geometry = part.geometry();
+        let geometry = part.geometry();
+        // Cards author their own normals (pointing out of the crown); every
+        // solid part gets creased ones — smooth round a trunk or a tank,
+        // sharp at a roof ridge or a box corner.
+        if (!CARD_SURFACES.has(part.surface)) geometry = creased(geometry);
         geometry.computeBoundingBox();
         const box = geometry.boundingBox;
         footprint = Math.max(
@@ -139,9 +159,11 @@ export class Props {
         );
         // A part may carry a fixed colour instead of a palette slot — a
         // lighthouse is red and white whatever set it stands in.
-        const material = part.color ? flat(part.color) : materials[part.material];
+        const material = materialFor(part);
         const mesh = instanced(geometry, material, this.slots);
         mesh.visible = false;
+        mesh.castShadow = castsShadow && part.material !== 'e';
+        mesh.receiveShadow = Boolean(tier.shadows);
         // Per-instance colour: identical props in a row is the single biggest
         // tell that a scene is instanced. A small deterministic jitter around
         // the set's colour breaks it up for one attribute.
@@ -250,8 +272,8 @@ export class Props {
     this._updateLamps(state, frame);
 
     const live = state.live;
-    this.materialA.color.copy(live.propA);
-    this.materialB.color.copy(live.propB);
+    for (const material of this.slotMaterials.a) material.color.copy(live.propA).multiplyScalar(material.userData.shade);
+    for (const material of this.slotMaterials.b) material.color.copy(live.propB).multiplyScalar(material.userData.shade);
     // Basic materials have no lighting to dim, so "off" is just a black colour.
     this.materialE.color.copy(live.propE).multiplyScalar(live.propEmissive);
     this.lampPoleMaterial.color.copy(live.propB);
@@ -746,13 +768,43 @@ function instanced(geometry, material, count) {
   return mesh;
 }
 
-function flat(color) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 1,
-    metalness: 0,
-    flatShading: true,
+// Surfaces whose geometry is alpha-tested cards with hand-set normals.
+const CARD_SURFACES = new Set(['leaf', 'needle', 'frond', 'grass']);
+
+/**
+ * The material behind each prop surface. Albedo maps are near-white so the
+ * set's palette colour still decides the hue; `shade` scales that colour.
+ */
+function surfaceMaterial(surface, color = 0xffffff) {
+  const card = (map) => ({
+    map,
+    alphaTest: 0.45,
+    side: THREE.DoubleSide,
+    roughness: 0.78,
+    shade: 1.15,
   });
+  const spec = {
+    plain: { roughness: 0.82, shade: 1 },
+    metal: { roughness: 0.5, metalness: 0.6, shade: 1 },
+    leaf: card(leafCard()),
+    needle: card(needleCard()),
+    frond: card(frondCard()),
+    grass: { ...card(grassCard()), alphaTest: 0.5 },
+    core: { roughness: 0.95, shade: 0.32 },
+    bark: { ...barkMaps(), roughness: 0.95, shade: 1 },
+    rock: { ...rockMaps(), roughness: 0.92, shade: 1.05 },
+  }[surface] ?? { roughness: 0.82, shade: 1 };
+
+  const { shade, ...params } = spec;
+  const material = new THREE.MeshStandardMaterial({ color, metalness: 0, ...params });
+  material.userData.shade = shade;
+  if (CARD_SURFACES.has(surface)) keepCardNormals(material);
+  return material;
+}
+
+function creased(geometry) {
+  const source = geometry.index ? geometry.toNonIndexed() : geometry;
+  return toCreasedNormals(source, THREE.MathUtils.degToRad(42));
 }
 
 function clamp01(x) {

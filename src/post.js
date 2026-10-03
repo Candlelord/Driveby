@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAPass } from 'three/examples/jsm/postprocessing/FXAAPass.js';
 import { CONFIG } from './config.js';
 
 /**
@@ -110,10 +111,24 @@ export class Post {
 
     // Highlights need headroom above 1.0 for bloom to have anything to pick up,
     // so tone mapping happens after it rather than in the base render.
-    renderer.toneMapping = THREE.NeutralToneMapping;
+    //
+    // ACES rather than Neutral: its toe and shoulder are the filmic response a
+    // camera has, which is a large part of why a frame reads as photographed
+    // rather than rendered — deep but not crushed shadows, and highlights that
+    // roll off into the sky instead of clipping.
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
 
-    this.composer = new EffectComposer(renderer);
+    // The composer renders into its own targets, so the canvas's `antialias`
+    // flag never reached the scene. Multisample the scene target where the
+    // device can take it; everything else gets FXAA at the end of the chain.
+    // Half-float keeps bloom's headroom and stops banding in the sky.
+    const msaa = tier.name === 'high' ? 4 : 0;
+    const target = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+      type: THREE.HalfFloatType,
+      samples: msaa,
+    });
+    this.composer = new EffectComposer(renderer, target);
     this.composer.addPass(new RenderPass(scene, camera));
 
     this.bloom = new UnrealBloomPass(
@@ -128,8 +143,12 @@ export class Post {
     this.composer.addPass(this.output);
 
     this.grade = new ShaderPass(GradeShader);
-    this.grade.renderToScreen = true;
     this.composer.addPass(this.grade);
+
+    if (!msaa) {
+      this.fxaa = new FXAAPass();
+      this.composer.addPass(this.fxaa);
+    }
 
     this.bloomEnabled = true;
     this.setSize(window.innerWidth, window.innerHeight);
@@ -162,13 +181,17 @@ export class Post {
 
     // Exposure is applied before tone mapping, so it rolls highlights off the
     // way a real stop change does instead of just lifting the whole image.
+    // The moods were authored against a painterly look; a photographic one
+    // wants the same intent at a lower volume. Split-toning, colour fringing
+    // and saturation are all scaled back toward what a camera and a light
+    // grade would actually produce.
     this.renderer.toneMappingExposure = live.exposureFinal;
-    u.uContrast.value = live.contrast;
-    u.uSaturation.value = live.saturation;
-    u.uTintStrength.value = live.tintStrength;
-    u.uVignette.value = live.vignette;
-    u.uGrain.value = live.grain;
-    u.uAberration.value = live.aberration;
+    u.uContrast.value = 1 + (live.contrast - 1) * 0.6;
+    u.uSaturation.value = 1 + (live.saturation - 1) * 0.5;
+    u.uTintStrength.value = live.tintStrength * 0.45;
+    u.uVignette.value = live.vignette * 0.8 + 0.06;
+    u.uGrain.value = live.grain + 0.012;
+    u.uAberration.value = live.aberration * 0.35;
 
     // Normalise tints to a pure hue shift — an un-normalised colour would
     // darken the image as well as tint it.
@@ -177,13 +200,15 @@ export class Post {
 
     // Shadow lift rides the same mood hue as the split-tone, scaled well down.
     u.uShadowLift.value.set(
-      live.shadowTint.r * 0.055,
-      live.shadowTint.g * 0.055,
-      live.shadowTint.b * 0.055
+      live.shadowTint.r * 0.015,
+      live.shadowTint.g * 0.015,
+      live.shadowTint.b * 0.015
     );
 
-    this.bloom.strength = live.bloomStrengthFinal ?? live.bloomStrength;
-    this.bloom.threshold = live.bloomThreshold;
+    // A camera blooms only what is genuinely bright; the moods' halos were
+    // part of the painted look, so they are kept but made much subtler.
+    this.bloom.strength = (live.bloomStrengthFinal ?? live.bloomStrength) * 0.55;
+    this.bloom.threshold = Math.max(live.bloomThreshold, 0.9);
     this.bloom.radius = live.bloomRadius;
 
     this._watchPerformance(state.dt);
