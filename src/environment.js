@@ -164,9 +164,21 @@ export class Environment {
       mood: this.mood.label,
       set: this.set.label,
       climate: this.climate.label,
-      season: seasonAt(this.travelled, CONFIG.seasonLength).label,
+      season: this._seasonLabel(),
       event: this.events.label,
     };
+  }
+
+  /**
+   * Where the four-season year does not apply — the tropics, the desert — the
+   * year is wet or dry instead, and the climate says which.
+   */
+  _seasonLabel() {
+    if (TERRAIN_SETS[this.set.toId].seasonReach > 0.05) {
+      return seasonAt(this.travelled, CONFIG.seasonLength).label;
+    }
+    const climate = this.climate.toId;
+    return climate === 'humid' || climate === 'rain' ? 'rainy season' : 'dry season';
   }
 
   get isTransitioning() {
@@ -279,6 +291,20 @@ export class Environment {
     if (this.regionSet === setId) return;
     this.regionSet = setId;
     this._applySet(setId, travelled);
+  }
+
+  /**
+   * Be somewhere, now: no crossfade and no scenery boundary up the road. Only
+   * for cuts the player cannot see — behind a title card or a ferry crossing.
+   */
+  jumpToRegion(setId) {
+    this.regionSet = setId;
+    for (const axis of [this.set, this.climate]) axis.transition = 1;
+    this.set.fromId = this.set.toId = setId;
+    const climate = TERRAIN_SETS[setId].climate;
+    this.climate.fromId = this.climate.toId = climate;
+    this.setSegments = [{ from: -Infinity, setId }];
+    this.sceneTime = 0;
   }
 
   /** Release the hold and let the playlist choose a place again. */

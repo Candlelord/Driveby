@@ -31,6 +31,8 @@ import { EventVisuals } from './world/eventVisuals.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { EnvironmentLight } from './world/envLight.js';
 import { Grass } from './world/grass.js';
+import { RouteDirector } from './routes/director.js';
+import { ROUTES } from './routes/lagosParis.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -134,6 +136,15 @@ const startAudio = () => {
 window.addEventListener('pointerdown', startAudio);
 window.addEventListener('keydown', startAudio);
 
+// A route, if the player chose one, takes over where the road goes; the music
+// keeps the light.
+let route = null;
+session.onStart = (trip) => {
+  if (!ROUTES[trip]) return;
+  route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
+  route.start(state.travelled);
+};
+
 // Real track ends replace the mock song timer once a library is connected.
 session.player.onTrackEnd(() => environment.songFinished(state.travelled));
 session.begin();
@@ -214,6 +225,7 @@ function tick(now) {
   terrain.update(state, frame);
   road.update(state, frame);
   features.update(state, frame);
+  route?.update(state);
   landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
   grass?.update(state, frame, environment);
@@ -368,7 +380,7 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'r' || event.key === 'R') {
     session.showReview();
   } else if (event.key === 'l' || event.key === 'L') {
-    landmarks.force((landmarks.activeIndex + 1) % 6, state.travelled);
+    landmarks.force((landmarks.activeIndex + 1) % landmarks.groups.length, state.travelled);
   }
 });
 
@@ -395,6 +407,9 @@ if (import.meta.env.DEV) {
     atmosphere,
     sfx,
     session,
+    get route() {
+      return route;
+    },
     MOOD_PROFILES,
     TERRAIN_SETS,
     TERRAIN_POOLS,

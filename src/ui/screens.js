@@ -1,4 +1,5 @@
 import { MOODS } from '../spotify/genreMap.js';
+import { ROUTES } from '../routes/lagosParis.js';
 
 const MOOD_LABELS = { sad: 'Sad', chill: 'Chill', happy: 'Happy', hiphop: 'Hip-Hop' };
 
@@ -16,6 +17,39 @@ export class Screens {
     this.onSkip = () => {};
     this.onDone = () => {};
     this.library = null;
+    // Which trip the player picked: 'endless' (the playlist chooses the
+    // places) or a route id. `?route=lagos-paris` preselects one.
+    const requested = new URLSearchParams(window.location.search).get('route');
+    this.trip = ROUTES[requested] ? requested : 'endless';
+  }
+
+  _tripPicker() {
+    const options = [
+      { id: 'endless', title: 'Endless drive', sub: 'Your music picks the places. No destination.' },
+      ...Object.values(ROUTES).map((route) => ({ id: route.id, title: route.title, sub: route.subtitle })),
+    ];
+    return `<div class="trip" role="radiogroup" aria-label="Trip">
+      ${options
+        .map(
+          (option) => `<button class="trip-option${option.id === this.trip ? ' is-on' : ''}" role="radio"
+            aria-checked="${option.id === this.trip}" data-trip="${option.id}">
+            <b>${escapeHtml(option.title)}</b><span>${escapeHtml(option.sub)}</span></button>`
+        )
+        .join('')}
+    </div>`;
+  }
+
+  _wireTripPicker() {
+    this.root.querySelector('.trip')?.addEventListener('click', (event) => {
+      const button = event.target.closest('.trip-option');
+      if (!button) return;
+      this.trip = button.dataset.trip;
+      for (const option of this.root.querySelectorAll('.trip-option')) {
+        const on = option === button;
+        option.classList.toggle('is-on', on);
+        option.setAttribute('aria-checked', String(on));
+      }
+    });
   }
 
   hide() {
@@ -34,6 +68,7 @@ export class Screens {
         <h1>Endless Road Trip</h1>
         <p class="lede">Your library becomes the road. Songs play in mood blocks,
         and the country and the weather change with them.</p>
+        ${this._tripPicker()}
         ${
           configured
             ? `<button class="primary" data-action="connect">Connect Spotify</button>`
@@ -51,6 +86,7 @@ export class Screens {
       </div>
     `);
 
+    this._wireTripPicker();
     this.root.querySelector('[data-action="connect"]')?.addEventListener('click', () => this.onConnect());
     this.root.querySelector('[data-action="skip"]').addEventListener('click', () => this.onSkip());
   }
@@ -107,6 +143,7 @@ export class Screens {
           ).join('')}
         </div>
         <ul class="rows">${rows}</ul>
+        ${this._tripPicker()}
         <button class="primary" data-action="done">Start driving</button>
       </div>
     `);
@@ -122,6 +159,7 @@ export class Screens {
       }
     });
 
+    this._wireTripPicker();
     this.root.querySelector('[data-action="done"]').addEventListener('click', () => this.onDone());
   }
 

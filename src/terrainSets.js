@@ -774,6 +774,282 @@ export const TERRAIN_SETS = {
     groundFogAmount: 0.4,
     speedScale: 0.9,
   }),
+
+  // ------------------------------------------------------------ ROUTE
+  // Places on the Lagos → Paris road trip (routes/). They are in no mood's
+  // pool: the route holds them, and the music only sets the light.
+
+  lagosCity: set({
+    label: 'Lagos',
+    climate: 'humid',
+    grass: 0.35,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['building', 0.22], ['bungalow', 0.16], ['stall', 0.14], ['billboard', 0.12], ['palm', 0.14], ['warehouse', 0.08], ['busShelter', 0.06], ['pole', 0.08]],
+    groundColorBase: 0x7a5e48, // red laterite under the dust
+    groundAccent: 0x5e4a3c,
+    propA: 0xd8c8a8, // painted render, faded by the sun
+    propB: 0x5a4a3c,
+    propE: 0xffc070,
+    propEmissive: 0.8,
+    skyNudge: 0xe8dcc0,
+    skyNudgeStrength: 0.18,
+    ridgeNearColor: 0x8a8070,
+    ridgeFarColor: 0xa8a49a,
+    waterColor: 0x3a5a58, // the lagoon
+    hillHeight: 0.6,
+    water: 0.85,
+    waterSide: -1,
+    waterLevel: -1.8,
+    propDensity: 0.82,
+    lightPollution: 0.5,
+    ridgeOpacity: 0.3,
+    speedScale: 0.92, // it is Lagos
+  }),
+
+  rainforestBelt: set({
+    label: 'rainforest belt',
+    climate: 'humid',
+    grass: 1.25,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['palm', 0.3], ['round', 0.3], ['shrub', 0.14], ['bungalow', 0.08], ['stall', 0.06], ['grass', 0.08], ['pole', 0.04]],
+    groundColorBase: 0x8a4e32, // laterite: the red soil of the south
+    groundAccent: 0x4e6a34,
+    propA: 0x3e7a34,
+    propB: 0x5a4234,
+    propE: 0xffd08a,
+    propEmissive: 0.3,
+    ridgeNearColor: 0x3e5a38,
+    ridgeFarColor: 0x7a9488,
+    hillHeight: 5,
+    hillScale: 0.9,
+    propDensity: 0.93,
+    propScale: 1.2,
+    shafts: 0.25,
+    shaftColor: 0xfff0c8,
+  }),
+
+  guineaSavanna: set({
+    label: 'Guinea savanna',
+    climate: 'clear',
+    grass: 1.4,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['round', 0.18], ['acacia', 0.16], ['grass', 0.2], ['boulder', 0.12], ['termiteMound', 0.1], ['shrub', 0.1], ['mudHouse', 0.04], ['stall', 0.04], ['pole', 0.06]],
+    groundColorBase: 0x9a8a52, // tall grass going gold
+    groundAccent: 0x8a5a38,
+    propA: 0x5e7a3a,
+    propB: 0x5a4636,
+    ridgeNearColor: 0x7a7a5a,
+    ridgeFarColor: 0x9aa4a0,
+    hillHeight: 4,
+    hillScale: 0.8,
+    propDensity: 0.62,
+    propScale: 1.1,
+    ridgeHeight: 1.4,
+    speedScale: 1.05,
+  }),
+
+  abujaHills: set({
+    label: 'Abuja hills',
+    climate: 'clear',
+    grass: 1.0,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['boulder', 0.26], ['rock', 0.12], ['acacia', 0.12], ['round', 0.12], ['building', 0.1], ['mosque', 0.04], ['grass', 0.14], ['sign', 0.05], ['pole', 0.05]],
+    groundColorBase: 0x8e7e52,
+    groundAccent: 0x7a5a3e,
+    propA: 0x6a7a44,
+    propB: 0x6e6660, // granite
+    propE: 0xffe0a8,
+    propEmissive: 0.5,
+    ridgeNearColor: 0x6a6460,
+    ridgeFarColor: 0x8e94a0,
+    hillHeight: 10,
+    hillSharpness: 1.4,
+    hillScale: 0.9,
+    propDensity: 0.6,
+    propScale: 1.4,
+    ridgeHeight: 2.0,
+    ridgeOpacity: 0.95,
+  }),
+
+  sahelSavanna: set({
+    label: 'Sahel',
+    climate: 'harmattan',
+    grass: 0.7,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['acacia', 0.22], ['baobab', 0.14], ['mudHouse', 0.12], ['termiteMound', 0.08], ['shrub', 0.12], ['grass', 0.14], ['pole', 0.06], ['stall', 0.04], ['mileMarker', 0.04]],
+    groundColorBase: 0xc0a070,
+    groundAccent: 0xa4794c,
+    propA: 0x7a7a44,
+    propB: 0x6a5240,
+    propE: 0xffd08a,
+    propEmissive: 0.3,
+    ridgeNearColor: 0xb09a7a,
+    ridgeFarColor: 0xc8b8a0,
+    hillHeight: 1.6,
+    hillScale: 0.6,
+    propDensity: 0.45,
+    propScale: 1.15,
+    ridgeOpacity: 0.5,
+    speedScale: 1.08,
+  }),
+
+  kanoCity: set({
+    label: 'Kano',
+    climate: 'harmattan',
+    grass: 0.15,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['mudHouse', 0.36], ['mosque', 0.08], ['stall', 0.16], ['wall', 0.12], ['round', 0.12], ['pole', 0.08], ['billboard', 0.04], ['cattle', 0.04]],
+    groundColorBase: 0xb48c62,
+    groundAccent: 0x9a7048,
+    propA: 0x3e8a5a, // green domes and umbrellas
+    propB: 0xa47c56, // mud walls
+    propE: 0xffc070,
+    propEmissive: 0.6,
+    ridgeNearColor: 0xa48e72,
+    ridgeFarColor: 0xc0b098,
+    hillHeight: 0.8,
+    propDensity: 0.8,
+    lightPollution: 0.35,
+    ridgeOpacity: 0.35,
+    speedScale: 0.95,
+  }),
+
+  saharaDunes: set({
+    label: 'Sahara',
+    climate: 'desertHeat',
+    grass: 0,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['rock', 0.3], ['mileMarker', 0.3], ['deadTree', 0.1], ['sign', 0.1], ['barrel', 0.1], ['acacia', 0.1]],
+    groundColorBase: 0xe0a868,
+    groundAccent: 0xc88a50,
+    propA: 0x8a8a52,
+    propB: 0x8a5a38,
+    skyNudge: 0xf0d8b0,
+    skyNudgeStrength: 0.15,
+    ridgeNearColor: 0xd8a068,
+    ridgeFarColor: 0xe8c49a,
+    // Long smooth dunes: big, slow, and rounded rather than peaked.
+    hillHeight: 11,
+    hillSharpness: 0.65,
+    hillScale: 0.55,
+    propDensity: 0.14,
+    ridgeHeight: 1.3,
+    ridgeOpacity: 0.85,
+    speedScale: 1.12,
+  }),
+
+  hoggarMountains: set({
+    label: 'Hoggar mountains',
+    climate: 'desertHeat',
+    grass: 0,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['boulder', 0.4], ['rock', 0.36], ['mileMarker', 0.12], ['sign', 0.06], ['acacia', 0.06]],
+    groundColorBase: 0x7a5a48, // dark volcanic rock over sand
+    groundAccent: 0x5a4238,
+    propA: 0x7a7a52,
+    propB: 0x4e3e36,
+    ridgeNearColor: 0x5a443a,
+    ridgeFarColor: 0x8a6a58,
+    hillHeight: 22,
+    hillSharpness: 1.8,
+    hillScale: 1.05,
+    propDensity: 0.4,
+    propScale: 1.4,
+    ridgeHeight: 2.6,
+    ridgeOpacity: 1,
+    roughness: 1.3,
+    speedScale: 0.92,
+  }),
+
+  mzabValley: set({
+    label: 'M’zab valley',
+    climate: 'desertHeat',
+    grass: 0.2,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['palm', 0.34], ['mudHouse', 0.22], ['mosque', 0.06], ['wall', 0.14], ['rock', 0.1], ['stall', 0.06], ['sign', 0.04], ['cypress', 0.04]],
+    groundColorBase: 0xc89a68,
+    groundAccent: 0xa87a4c,
+    propA: 0x5a8a4a,
+    propB: 0xb08a68,
+    propE: 0xffd8a0,
+    propEmissive: 0.4,
+    ridgeNearColor: 0xb48a62,
+    ridgeFarColor: 0xd0b090,
+    hillHeight: 6,
+    hillSharpness: 1.3,
+    propDensity: 0.62,
+    ridgeHeight: 1.6,
+  }),
+
+  algiersCoast: set({
+    label: 'Algiers coast',
+    climate: 'clear',
+    grass: 0.6,
+    seasonReach: 0, // the tropics and the desert keep no four-season year
+    propMix: [['building', 0.22], ['bungalow', 0.12], ['palm', 0.2], ['cypress', 0.14], ['round', 0.1], ['mosque', 0.04], ['wall', 0.08], ['busShelter', 0.04], ['sign', 0.06]],
+    groundColorBase: 0x9a8a62,
+    groundAccent: 0x7a6a4a,
+    propA: 0xece6d8, // la Blanche: white walls
+    propB: 0x6a5a4a,
+    propE: 0xffe0a8,
+    propEmissive: 0.6,
+    ridgeNearColor: 0x8a8a74,
+    ridgeFarColor: 0xa8b4bc,
+    waterColor: 0x1f6a8a,
+    hillHeight: 7,
+    hillScale: 0.85,
+    water: 0.95,
+    waterSide: -1,
+    waterLevel: -6,
+    cliffSide: 1,
+    cliffHeight: 14,
+    propDensity: 0.7,
+    lightPollution: 0.3,
+  }),
+
+  parisCity: set({
+    label: 'Paris',
+    climate: 'clear',
+    grass: 0.15,
+    seasonReach: 0.6,
+    propMix: [['haussmann', 0.56], ['round', 0.24], ['busShelter', 0.06], ['mailbox', 0.04], ['sign', 0.06], ['billboard', 0.04]],
+    groundColorBase: 0x8e8a80, // pale stone and gravel
+    groundAccent: 0x6e7a5a,
+    propA: 0xe2d6bc, // Lutetian limestone
+    propB: 0x4a4038,
+    propE: 0xffd8a0,
+    propEmissive: 0.9,
+    ridgeNearColor: 0x8a8a8a,
+    ridgeFarColor: 0xa8acb4,
+    hillHeight: 0.8,
+    propDensity: 0.95,
+    groundGloss: 0.25,
+    lightPollution: 0.75,
+    ridgeOpacity: 0.3,
+    speedScale: 0.95,
+  }),
+
+  polder: set({
+    label: 'polder',
+    climate: 'clear',
+    grass: 1.3,
+    seasonReach: 0.8,
+    propMix: [['windmill', 0.16], ['cattle', 0.16], ['canalHouses', 0.08], ['fence', 0.12], ['reeds', 0.16], ['round', 0.12], ['grass', 0.14], ['pole', 0.06]],
+    groundColorBase: 0x6a8a48,
+    groundAccent: 0x5a7440,
+    propA: 0x8a3a2e, // brick and windmill sails
+    propB: 0x5e3a2e,
+    ridgeNearColor: 0x7a8a78,
+    ridgeFarColor: 0x9aa8b0,
+    waterColor: 0x4a6a78,
+    hillHeight: 0.3,
+    water: 0.9,
+    waterSide: 1,
+    waterLevel: -1.2,
+    propDensity: 0.6,
+    ridgeOpacity: 0.2,
+    speedScale: 1.05,
+  }),
 };
 
 /** Which sets each mood draws from. The bonus sets appear in two pools each. */

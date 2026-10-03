@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg, subdiv } from './detail.js';
 import { EXTRA_KIT } from './extras.js';
+import { REGIONAL_KIT } from './regional.js';
 import {
   leafCards, crownCore, needleCards, coniferCore, palmFrondCards, rockGeometry, grassCards,
 } from './foliage.js';
@@ -161,15 +162,6 @@ function cactusGeometry() {
   return merge(parts);
 }
 
-function lavenderClump() {
-  const parts = [];
-  for (let i = 0; i < 4; i++) {
-    const stalk = box(0.5, 0.7, 0.22).translate((i - 1.5) * 0.34, 0.35, 0);
-    parts.push(stalk);
-  }
-  return merge(parts);
-}
-
 /** A dry stone wall: a low run with an uneven cap, so it is not a plain box. */
 function stoneWall() {
   const parts = [box(5.2, 0.72, 0.5).translate(0, 0.36, 0)];
@@ -294,7 +286,7 @@ const CORE_KIT = {
     jitter: 24,
   },
   lavender: {
-    parts: [{ geometry: lavenderClump, material: 'a' }],
+    parts: [{ geometry: () => grassCards(7, 1.8, 1.1, 53), material: 'a', surface: 'grass' }],
     spread: 11,
     jitter: 30,
   },
@@ -445,7 +437,7 @@ const CORE_KIT = {
   },
 };
 
-/** Trees and landforms in kit.js, everything smaller in extras.js. */
-export const PROP_KIT = { ...CORE_KIT, ...EXTRA_KIT };
+/** Trees and landforms in kit.js, everything smaller in extras.js, route regions in regional.js. */
+export const PROP_KIT = { ...CORE_KIT, ...EXTRA_KIT, ...REGIONAL_KIT };
 
 export const PROP_NAMES = Object.keys(PROP_KIT);

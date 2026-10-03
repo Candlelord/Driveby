@@ -46,8 +46,48 @@ still run against a stand-in library.
 | `R` | Reopen the mood review screen |
 | `L` | Cycle to the next landmark |
 
+In route mode the HUD's top-right panel shows the leg and distance left.
+
 The car drives itself forward at a constant speed. Steering only moves it across
 the road, and it clamps at the lane edges — there is nothing to crash into.
+
+## Route mode: Lagos → Paris
+
+Pick **Lagos → Paris** on the start screen (or open the game with
+`?route=lagos-paris`) and the trip has a destination. The road follows the
+real Trans-Saharan Highway:
+
+Lagos → Ibadan → Ilorin → Abuja → Kaduna → Kano → Zinder (Niger) → Agadez →
+Tamanrasset (Algeria) → In Salah → Ghardaïa → Algiers → *ferry* → Marseille
+(France) → Lyon → Paris → Brussels (Belgium) → Amsterdam (Netherlands).
+
+That is 6,075 km by road, compressed to about 48 minutes at cruise (holding
+boost shortens it). Long legs still feel long — distance is square-root
+compressed, so the 940 km Saharan crossing is the longest stretch but not ten
+times the 128 km to Ibadan.
+
+- **The route picks the place, the music keeps the light.** Your playlist
+  still sets the mood — sky, time of day, colour grade — but the country is
+  held by the route, so Kano follows Kaduna whatever comes on next.
+- **Regions** (`terrainSets.js`, ROUTE section): Lagos, the rainforest belt,
+  Guinea savanna, the Abuja hills, the Sahel under Harmattan dust, Kano's mud
+  city, Saharan dunes, the Hoggar, the M'zab valley, the Algiers coast, Paris
+  and the Dutch polder, with Provence and northern France reusing existing
+  sets. New props for them live in `props/regional.js` (baobab, acacia,
+  cypress, termite mounds, Hausa mud houses, zinc-roofed bungalows, roadside
+  stalls, mosques, Haussmann blocks, canal houses).
+- **Landmarks**: Zuma Rock just before Abuja, and the Eiffel Tower on the
+  skyline as you come into Paris.
+- **On the way**: a route panel (leg, km to go, country, overall progress),
+  green road-sign arrivals at every city, border-crossing signs, wet/dry
+  seasons instead of four in the tropics and the desert, and a fade-to-black
+  ferry crossing from Algiers to Marseille (the Algeria–Morocco border has
+  been closed since 1994).
+- Reaching Amsterdam ends the trip and hands the road back to the playlist.
+
+Routes are data (`routes/lagosParis.js`): stops, leg distances, the regions
+each leg passes through, borders and landmarks. Adding another route is a new
+file in the same shape, registered in `ROUTES`.
 
 ## The environment system
 

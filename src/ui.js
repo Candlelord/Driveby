@@ -29,6 +29,54 @@ export class Ui {
     this._lastBanner = null;
     this._lastFlash = -1;
     this._hintHidden = false;
+
+    this.route = document.getElementById('route');
+    this.routeFrom = document.getElementById('route-from');
+    this.routeTo = document.getElementById('route-to');
+    this.routeLeft = document.getElementById('route-left');
+    this.routeCountry = document.getElementById('route-country');
+    this.routeFill = document.getElementById('route-fill');
+    this.routeTotal = document.getElementById('route-total');
+    this.toastRoot = document.getElementById('toast');
+    this.fadeRoot = document.getElementById('fade');
+    this._routeText = '';
+  }
+
+  setRouteVisible(visible) {
+    this.route.hidden = !visible;
+  }
+
+  setRoute({ from, to, left, country, total, progress }) {
+    const text = [from, to, left, country, total].join('|');
+    if (text !== this._routeText) {
+      this._routeText = text;
+      this.routeFrom.textContent = from;
+      this.routeTo.textContent = to;
+      this.routeLeft.textContent = left;
+      this.routeCountry.textContent = country;
+      this.routeTotal.textContent = total;
+    }
+    this.routeFill.style.width = `${(progress * 100).toFixed(2)}%`;
+  }
+
+  /** A road-sign moment: a place name, held for a few seconds. */
+  toast(title, sub, seconds = 5) {
+    this.toastRoot.querySelector('.toast-title').textContent = title;
+    this.toastRoot.querySelector('.toast-sub').textContent = sub ?? '';
+    this.toastRoot.classList.add('is-live');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.toastRoot.classList.remove('is-live'), seconds * 1000);
+  }
+
+  /** Full-screen fade, with an optional title card. `card` null clears it. */
+  setFade(opacity, card) {
+    this.fadeRoot.style.opacity = opacity.toFixed(3);
+    if (card !== undefined) this.setFadeCard(card);
+  }
+
+  setFadeCard(card) {
+    this.fadeRoot.querySelector('.fade-title').textContent = card?.title ?? '';
+    this.fadeRoot.querySelector('.fade-sub').textContent = card?.sub ?? '';
   }
 
   /** Debug: briefly name a force-triggered event even before its label lands. */

@@ -23,6 +23,7 @@ const REFERENCE_REACH = 180;
 // size are fixed rather than jittered per slot.
 const FACING = new Set([
   'sign', 'mileMarker', 'billboard', 'cone', 'mailbox', 'busShelter', 'pierPost',
+  'stall', 'bungalow', 'mudHouse', 'canalHouses',
 ]);
 const ALONG = new Set(['fence', 'wall', 'guardrail', 'hedge', 'barrier']);
 
@@ -78,7 +79,7 @@ const LAMP_LIGHT_POWER = 210;
 
 const SWAYS = new Set([
   'grass', 'reeds', 'lavender', 'flowers', 'shrub', 'glowPlant', 'birch',
-  'round', 'palm', 'hedge',
+  'round', 'palm', 'hedge', 'acacia', 'cypress',
 ]);
 
 // Placement memory for the separation pass. Slots are 4.5 units apart, which is

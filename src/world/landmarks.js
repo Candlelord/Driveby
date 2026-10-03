@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { terrainHeight } from './terrain.js';
+import { rockGeometry } from '../props/foliage.js';
+import { rockMaps } from './surfaces.js';
 
 const POSITION = new THREE.Vector3();
 
@@ -259,7 +261,118 @@ function suspensionBridge() {
   };
 }
 
-const BUILDERS = [greatWall, stonehenge, moai, pyramids, torii, suspensionBridge];
+/**
+ * Zuma Rock: the granite monolith beside the Abuja–Kaduna expressway, a
+ * kilometre long and three hundred metres high, dark-streaked down its faces
+ * where the rain runs off.
+ */
+function zumaRock() {
+  const rock = rockGeometry(1, 31, 1.0);
+  // Elongate, lift so the base sits half-buried, and scale up to size.
+  rock.scale(190, 150, 120).translate(0, 55, 0);
+  const shoulder = rockGeometry(1, 33, 0.8).scale(90, 70, 70).translate(-150, 18, 40);
+  return {
+    name: 'zumaRock',
+    label: 'Zuma Rock',
+    parts: [{ geometry: merge([rock, shoulder]), material: 'granite' }],
+    offset: 330,
+    height: 0,
+  };
+}
+
+/** A square-section beam between two points, for lattice work. */
+function beam(a, b, thickness) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const length = dir.length();
+  const geometry = box(thickness, length, thickness).translate(0, length / 2, 0);
+  geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
+  return geometry.translate(a.x, a.y, a.z);
+}
+
+/**
+ * The Eiffel Tower, at its real size (about 125 m across the base, 300 m to
+ * the top of the mast). Four lattice legs curving in to a single shaft, the
+ * arches between the legs at the bottom, the two platforms, and cross-bracing
+ * on every face — which is what makes it read as iron lace rather than as a
+ * solid spike from a few kilometres off.
+ */
+function eiffelTower() {
+  const iron = [];
+  // Half-width of the leg centres at each height, from base to summit.
+  const profile = [
+    [0, 62], [57, 38], [115, 21], [160, 13], [210, 8.5], [276, 4],
+  ];
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const at = (level, [sx, sz]) => {
+    const [y, w] = profile[level];
+    return new THREE.Vector3(sx * w, y, sz * w);
+  };
+
+  for (let level = 0; level < profile.length - 1; level++) {
+    const thickness = 7 - level * 1.15;
+    for (let c = 0; c < 4; c++) {
+      const a = at(level, corners[c]);
+      const b = at(level + 1, corners[c]);
+      iron.push(beam(a, b, thickness));
+      // Bracing: an X on each face, more of them as the shaft narrows.
+      if (level === 0) continue;
+      const next = corners[(c + 1) % 4];
+      const a2 = at(level, next);
+      const b2 = at(level + 1, next);
+      const steps = level >= 3 ? 3 : 2;
+      for (let k = 0; k < steps; k++) {
+        const t0 = k / steps;
+        const t1 = (k + 1) / steps;
+        const p0 = a.clone().lerp(b, t0);
+        const p1 = a.clone().lerp(b, t1);
+        const q0 = a2.clone().lerp(b2, t0);
+        const q1 = a2.clone().lerp(b2, t1);
+        iron.push(beam(p0, q1, 1.1), beam(q0, p1, 1.1));
+      }
+    }
+  }
+
+  // The great arches between the legs, up to the first platform.
+  for (let c = 0; c < 4; c++) {
+    const a = at(0, corners[c]);
+    const b = at(0, corners[(c + 1) % 4]);
+    const SEGMENTS = 10;
+    let previous = null;
+    for (let i = 0; i <= SEGMENTS; i++) {
+      const t = i / SEGMENTS;
+      const p = a.clone().lerp(b, t);
+      // Pull the arch in with the legs as it rises.
+      const rise = Math.sin(t * Math.PI);
+      p.multiplyScalar(1 - rise * 0.32);
+      p.y = 8 + rise * 31;
+      if (previous) iron.push(beam(previous, p, 2.2));
+      previous = p;
+    }
+  }
+
+  const decks = [
+    box(84, 5, 84).translate(0, 57, 0),
+    box(46, 4, 46).translate(0, 115, 0),
+    box(14, 7, 14).translate(0, 279, 0),
+    cyl(1.4, 0.4, 22, 8).translate(0, 293, 0),
+  ];
+
+  return {
+    name: 'eiffelTower',
+    label: 'the Eiffel Tower',
+    parts: [
+      { geometry: merge(iron), material: 'iron' },
+      { geometry: merge(decks), material: 'iron' },
+    ],
+    // Well back from the road, so it stands over the rooftops for the whole
+    // approach rather than looming as a single leg.
+    offset: 300,
+    height: 0,
+    approach: 1150,
+  };
+}
+
+const BUILDERS = [greatWall, stonehenge, moai, pyramids, torii, suspensionBridge, zumaRock, eiffelTower];
 
 export class Landmarks {
   constructor(scene, config) {
@@ -274,7 +387,14 @@ export class Landmarks {
       stoneDark: flat(0x8e8677),
       accent: flat(0xc4402e),
       accentDark: flat(0x8e2e21),
+      // Smooth-shaded and textured: a monolith is one rounded mass, not facets.
+      granite: new THREE.MeshStandardMaterial({ color: 0x8c8278, roughness: 0.9, ...repeated(rockMaps(), 6, 3) }),
+      // Puddle-iron paint, the tower's own bronze-brown, lit gold at night.
+      // Out of the scene fog: at 300 m tall the tower is meant to be seen over
+      // the city long before you reach it, so it is hazed by hand below.
+      iron: new THREE.MeshStandardMaterial({ color: 0x6e5644, roughness: 0.6, metalness: 0.35, fog: false }),
     };
+    this.schedule = null;
 
     for (const build of BUILDERS) {
       const spec = build();
@@ -292,6 +412,21 @@ export class Landmarks {
     this.nextAt = config.landmarkFirstAt;
     this.label = null;
     this.regionHeld = false;
+  }
+
+  /**
+   * Hand the timetable to a route: an ordered list of { name, at } with
+   * absolute distances. While a schedule is set nothing random turns up, and
+   * no landmark holds its own region — the route already owns the country.
+   * `null` returns to the random schedule.
+   */
+  useSchedule(schedule) {
+    this._hideAll();
+    this.activeIndex = -1;
+    this.label = null;
+    this.regionHeld = false;
+    this.schedule = schedule ? [...schedule] : null;
+    this.nextAt = schedule ? Infinity : this.config.landmarkFirstAt;
   }
 
   /** Debug/manual: put a specific landmark just up the road. */
@@ -313,9 +448,18 @@ export class Landmarks {
 
     // Pick the next one much earlier than it is needed, because the country it
     // belongs to has to arrive first — see the region hold below.
-    if (this.activeIndex < 0 && travelled > this.nextAt - this.config.landmarkRegionLead) {
+    if (this.schedule) {
+      if (this.activeIndex < 0 && this.schedule.length) {
+        const next = this.schedule.shift();
+        this.activeIndex = this.groups.findIndex((group) => group.userData.name === next.name);
+        this.nextAt = next.at;
+      }
+    } else if (this.activeIndex < 0 && travelled > this.nextAt - this.config.landmarkRegionLead) {
       this._hideAll();
-      this.activeIndex = Math.floor(Math.random() * this.groups.length);
+      // Route-only landmarks never turn up at random: Zuma Rock belongs on
+      // the way to Abuja, not in a Scottish moor.
+      const pool = this.groups.filter((group) => group.userData.region);
+      this.activeIndex = this.groups.indexOf(pool[Math.floor(Math.random() * pool.length)]);
     }
 
     if (this.activeIndex < 0) {
@@ -330,7 +474,7 @@ export class Landmarks {
     // Hold this landmark's country for the whole approach, so you drive
     // through Egypt for the best part of a minute before the pyramids are on
     // the horizon rather than meeting them in whatever field came up next.
-    if (!this.regionHeld && spec.region && environment) {
+    if (!this.schedule && !this.regionHeld && spec.region && environment) {
       environment.enterRegion(spec.region, travelled);
       this.regionHeld = true;
     }
@@ -344,15 +488,19 @@ export class Landmarks {
         environment?.leaveRegion(travelled);
         this.regionHeld = false;
       }
-      this.nextAt =
-        travelled + this.config.landmarkSpacing * (0.65 + Math.random() * 0.7);
+      this.nextAt = this.schedule
+        ? Infinity
+        : travelled + this.config.landmarkSpacing * (0.65 + Math.random() * 0.7);
       return;
     }
 
-    // The structure itself only builds once it is close enough to be seen.
-    group.visible = gap < this.config.landmarkApproach;
+    // The structure itself only builds once it is close enough to be seen. A
+    // landmark can ask for a longer approach — the Eiffel Tower is the point
+    // of the whole trip and should be on the skyline from a kilometre out.
+    const approach = spec.approach ?? this.config.landmarkApproach;
+    group.visible = gap < approach;
     // Announce it only once it is genuinely in sight.
-    this.label = gap < this.config.landmarkApproach * 0.6 && gap > -40 ? spec.label : null;
+    this.label = gap < approach * 0.6 && gap > -40 ? spec.label : null;
 
     // Sample the ground under the landmark rather than trusting a fixed
     // height — a wall pinned to road level floats over a plain and buries
@@ -365,6 +513,13 @@ export class Landmarks {
     const live = state.live;
     this.materials.stone.color.set(0xb8ae9c).lerp(live.groundColor, 0.25);
     this.materials.stoneDark.color.set(0x8e8677).lerp(live.groundColor, 0.3);
+    // Aerial perspective for the fog-exempt iron: thinner than the scene fog,
+    // so the tower reads as far away rather than vanishing.
+    const distance = Math.hypot(spec.offset, gap);
+    const haze = 1 - Math.exp(-((distance * live.fogDensity * 0.4) ** 2));
+    this.materials.iron.color.set(0x6e5644).lerp(live.fogColor, haze);
+    // The tower's sodium floodlighting comes on with the street lamps.
+    this.materials.iron.emissive.setRGB(1, 0.62, 0.28).multiplyScalar(live.lampIntensity * 0.55 * (1 - haze * 0.6));
   }
 }
 
@@ -375,4 +530,16 @@ function flat(color) {
     metalness: 0,
     flatShading: true,
   });
+}
+
+/** Copies of a set of maps with their own repeat, for very large surfaces. */
+function repeated(maps, u, v) {
+  const out = {};
+  for (const [key, texture] of Object.entries(maps)) {
+    const copy = texture.clone();
+    copy.repeat.set(u, v);
+    copy.needsUpdate = true;
+    out[key] = copy;
+  }
+  return out;
 }

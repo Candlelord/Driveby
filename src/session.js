@@ -95,7 +95,7 @@ export class Session {
       const blocks = this.library.buildBlocks(BLOCK_ORDER);
       if (blocks.length) this.environment.useBlocks(blocks, (track) => this._play(track));
     }
-    this.onStart?.();
+    this.onStart?.(this.screens.trip);
   }
 
   async _play(track) {

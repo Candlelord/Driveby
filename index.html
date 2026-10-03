@@ -38,6 +38,16 @@
     </div>
 
     <div id="flash" aria-hidden="true"></div>
+
+    <!-- Route mode: where you are on the trip, arrivals, and the ferry cut. -->
+    <div id="route" aria-hidden="true" hidden>
+      <div class="route-leg"><span id="route-from"></span><span class="route-arrow">&rarr;</span><span id="route-to"></span></div>
+      <div class="route-meta"><span id="route-left"></span><span class="hud-sep">&middot;</span><span id="route-country"></span></div>
+      <div class="route-bar"><div class="route-bar-fill" id="route-fill"></div></div>
+      <div class="route-total" id="route-total"></div>
+    </div>
+    <div id="toast" aria-live="polite"><div class="toast-title"></div><div class="toast-sub"></div></div>
+    <div id="fade" aria-hidden="true"><div class="fade-card"><div class="fade-title"></div><div class="fade-sub"></div></div></div>
     <div id="screens"></div>
     <div id="hint" data-touch="drag to steer" data-keys="arrow keys / a-d &middot; drag to steer">arrow keys / a-d &middot; drag to steer</div>
     <div id="stick" aria-hidden="true"><i></i><b></b></div>

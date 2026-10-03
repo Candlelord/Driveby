@@ -224,6 +224,57 @@ export const CLIMATE_PROFILES = {
     groundTintStrength: 0.7,
   }),
 
+  // --- route climates ---------------------------------------------------
+
+  // Coastal West Africa: thick warm air, a soft haze that never quite clears,
+  // and a road that is often still damp from the last downpour.
+  humid: climate({
+    label: 'humid',
+    veilColor: 0xe0dcc8,
+    veilStrength: 0.18,
+    fogDensityBase: 0.0095,
+    lightDamp: 0.85,
+    ambientScale: 1.1,
+    hazeColor: 0xf0e6c8,
+    haze: 0.22,
+    hazeSize: 2.0,
+    wind: 0.12,
+    roadRoughness: 0.7,
+  }),
+
+  // The Harmattan: Saharan dust carried south on the trade wind from late
+  // November. A pale, flat sky, the sun a dim disc, everything ochre.
+  harmattan: climate({
+    label: 'harmattan',
+    veilColor: 0xd8b48a,
+    veilStrength: 0.5,
+    fogDensityBase: 0.0145,
+    lightDamp: 0.55,
+    ambientScale: 1.2,
+    hazeColor: 0xe0bc8c,
+    haze: 0.55,
+    hazeSize: 2.6,
+    wind: 0.35,
+    roadRoughness: 1,
+    groundTint: 0xc8a070,
+    groundTintStrength: 0.18,
+  }),
+
+  // Deep Sahara: bone-dry, enormous visibility, hard light.
+  desertHeat: climate({
+    label: 'dry heat',
+    veilColor: 0xf0dcc0,
+    veilStrength: 0.12,
+    fogDensityBase: 0.0042,
+    lightDamp: 1.1,
+    ambientScale: 1.05,
+    hazeColor: 0xf6e2c0,
+    haze: 0.12,
+    hazeSize: 1.6,
+    wind: 0.25,
+    roadRoughness: 1,
+  }),
+
   // Only ever reached through the storm event.
   storm: climate({
     label: 'storm',
