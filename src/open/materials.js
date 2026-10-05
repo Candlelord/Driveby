@@ -83,7 +83,13 @@ function buildingMaterial() {
         varying float vStyle;
         varying float vSeed;
         varying vec2 vWall;
-        float bHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }`
+        float bHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        float bNoise(vec2 p) {
+          vec2 i = floor(p), f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(bHash(i), bHash(i + vec2(1.0, 0.0)), f.x),
+            mix(bHash(i + vec2(0.0, 1.0)), bHash(i + vec2(1.0)), f.x), f.y);
+        }`
       )
       .replace(
         '#include <map_fragment>',
@@ -112,15 +118,34 @@ function buildingMaterial() {
           }
           bLit = step(bHash(id * 1.7 + 11.0), vStyle < 1.5 ? 0.45 : 0.3) * bWin;
           vec3 glass = mix(vec3(0.07, 0.09, 0.11), vec3(0.2, 0.28, 0.34), vStyle > 0.5 && vStyle < 1.5 ? 0.7 : 0.15);
+          // A darker recess under the lintel and varied reflected sky per pane.
+          glass *= 0.65 + 0.45 * smoothstep(0.35, 0.7, f.y) + bHash(id + 6.0) * 0.2;
+          glass += vec3(0.045, 0.055, 0.065) * smoothstep(0.3, 0.9, f.y);
+          float curtain = step(0.66, bHash(id + 4.7)) * step(vStyle, 0.5);
+          glass = mix(glass, vec3(0.28, 0.24, 0.18) * (0.8 + 0.2 * sin(f.x * 65.0)), curtain * 0.6);
+          float mullion = 1.0 - smoothstep(0.009, 0.022, abs(f.x - 0.5));
+          glass = mix(glass, vec3(0.36, 0.36, 0.32), mullion * 0.75);
           diffuseColor.rgb = mix(diffuseColor.rgb, glass, bWin);
         }
         // Grime at the foot of the walls, and a little patchiness everywhere.
-        if (vStyle < 8.5) diffuseColor.rgb *= 0.82 + 0.18 * smoothstep(0.0, 1.6, vWall.y);
-        diffuseColor.rgb *= 0.93 + 0.14 * bHash(floor(vWall * vec2(0.5, 0.33)) + vSeed);`
+        float wear = bNoise(vWall * vec2(0.7, 0.19) + vSeed * 43.0);
+        float grain = bNoise(vWall * 35.0 + vSeed * 71.0);
+        if (vStyle < 8.5) {
+          // Damp rising from the pavement, runoff streaks and uneven plaster.
+          float damp = 1.0 - smoothstep(0.1, 1.8 + wear * 1.1, vWall.y);
+          diffuseColor.rgb *= 1.0 - damp * 0.25;
+          diffuseColor.rgb *= 0.91 + wear * 0.13 + grain * 0.035;
+          float runoff = smoothstep(0.64, 0.86, bNoise(vec2(vWall.x * 4.0, vSeed * 39.0)));
+          diffuseColor.rgb *= 1.0 - runoff * (0.04 + wear * 0.08) * (1.0 - bWin);
+        } else {
+          // Roof seams and mottled patches replace the solid grey cap.
+          float seam = 1.0 - smoothstep(0.015, 0.05, min(fract(vWall.x * 0.85), 1.0 - fract(vWall.x * 0.85)));
+          diffuseColor.rgb *= 0.83 + wear * 0.22 + grain * 0.035 - seam * 0.1;
+        }`
       )
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, bWin);')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += uWarm * bLit * uNight * 1.6;');
   };
-  material.customProgramCacheKey = () => 'open-buildings';
+  material.customProgramCacheKey = () => 'open-buildings-depth-v2';
   return material;
 }

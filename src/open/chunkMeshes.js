@@ -359,6 +359,18 @@ export function buildingMeshes(world, chunk) {
   const tanks = []; // rooftop water tanks (Lagos)
   const wall = new THREE.Color();
   const roof = new THREE.Color();
+  const face = (points, paint, st, s, direction) => {
+    let p = points;
+    const a = new THREE.Vector3(...p[0]), c = new THREE.Vector3(...p[1]), d = new THREE.Vector3(...p[2]);
+    const n = c.sub(a).cross(d.sub(a)).normalize();
+    if (n.dot(direction) < 0) { p = p.slice().reverse(); n.negate(); }
+    const start = position.length / 3;
+    for (const [x, y, z] of p) {
+      position.push(x - ox, y, z - oz); normal.push(n.x, n.y, n.z);
+      uv.push(x - ox, z - oz); color.push(paint.r, paint.g, paint.b); style.push(st); seed.push(s);
+    }
+    for (let k = 1; k < p.length - 1; k++) index.push(start, start + k, start + k + 1);
+  };
 
   for (const b of chunk.buildings) {
     const ring = b.ring;
@@ -392,14 +404,14 @@ export function buildingMeshes(world, chunk) {
       const [x1, z1] = pts[(i + 1) % pts.length];
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 0.05) continue;
-      const nx = (z1 - z0) / len;
-      const nz = -(x1 - x0) / len;
+      const nx = -(z1 - z0) / len;
+      const nz = (x1 - x0) / len;
       const v0 = position.length / 3;
       const lx0 = x0 - ox;
       const lz0 = z0 - oz;
       const lx1 = x1 - ox;
       const lz1 = z1 - oz;
-      for (const [px, pz, pu] of [[lx0, lz0, u], [lx1, lz1, u + len]]) {
+      for (const [px, pz, pu] of [[lx0, lz0, 0], [lx1, lz1, len]]) {
         for (const [py, pv] of [[base, base - minY], [top, top - minY]]) {
           position.push(px, py, pz);
           normal.push(nx, 0, nz);
@@ -443,8 +455,32 @@ export function buildingMeshes(world, chunk) {
       seed.push(s);
     }
     for (const [a, c, d] of tris) index.push(r0 + a, r0 + d, r0 + c);
+    // Modest rectangular homes get a zinc gable above the original flat cap.
+    // Irregular footprints and towers retain their flat concrete roof.
+    let pitched = false;
+    if (b.kind === 0 && b.h < 10 && pts.length === 4 && s < 0.45) {
+      let corners = pts.slice();
+      const distance = (a, c) => Math.hypot(a[0] - c[0], a[1] - c[1]);
+      if (distance(corners[0], corners[1]) < distance(corners[1], corners[2])) corners.push(corners.shift());
+      const [a, c, d, e] = corners;
+      const length = distance(a, c), width = distance(c, d);
+      const perpendicular = Math.abs((c[0] - a[0]) * (d[0] - c[0]) + (c[1] - a[1]) * (d[1] - c[1])) / (length * width);
+      if (length > 4 && length < 35 && width > 4 && width < 20 && perpendicular < 0.1 && Math.abs(distance(d, e) - length) < 0.5 && Math.abs(distance(e, a) - width) < 0.5) {
+        const rise = Math.min(2.8, width * 0.28);
+        const rA = [(a[0] + e[0]) / 2, top + rise, (a[1] + e[1]) / 2];
+        const rB = [(c[0] + d[0]) / 2, top + rise, (c[1] + d[1]) / 2];
+        const at = (p) => [p[0], top, p[1]];
+        const up = new THREE.Vector3(0, 1, 0);
+        face([at(a), at(c), rB, rA], roof, 9, s, up);
+        face([rA, rB, at(d), at(e)], roof, 9, s, up);
+        const axis = new THREE.Vector3(c[0] - a[0], 0, c[1] - a[1]).normalize();
+        face([at(a), rA, at(e)], wall, 4, s, axis.clone().negate());
+        face([at(c), at(d), rB], wall, 4, s, axis);
+        pitched = true;
+      }
+    }
     // Lagos: black plastic water tanks on a lot of the roofs.
-    if (b.kind === 0 && world.inLagos(ring[0][0], ring[0][1]) && hash1(s * 13) < 0.45 && b.h < 20) {
+    if (!pitched && b.kind === 0 && world.inLagos(ring[0][0], ring[0][1]) && hash1(s * 13) < 0.45 && b.h < 20) {
       let cx = 0;
       let cz = 0;
       for (const [x, z] of ring) {

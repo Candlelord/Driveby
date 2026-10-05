@@ -112,3 +112,14 @@ Bridge and lagoon, fuel station accessibility, Kano close-up and journal
 layout. The current continuation has no connected browser. Build and data
 checks do not establish those visual results. See `HANDOFF.md` for the latest
 cache coverage and checks. `GRAPHICS.md` is a historical graphics checklist.
+
+## Building architecture
+
+Street-facing buildings now include batched 3D window surrounds, lintels,
+sills, floor bands, entrances, parapets, selected balconies and air conditioners.
+Small rectangular houses can have pitched zinc roofs. The facade shader adds
+window reflections, curtain variation, plaster grain, damp and runoff marks.
+Close-up architecture fades out by chunk distance; quality tiers cap the extra
+instances to keep dense streets bounded. Footprints and collision shells stay
+in map coordinates. Run `node scripts/test-building-details.mjs` to check
+placement, winding, deterministic streaming rebuilds and geometry budgets.

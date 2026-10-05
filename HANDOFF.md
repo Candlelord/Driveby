@@ -35,3 +35,13 @@ Unfinished:
   `claude/new-session-ccla6k`, `main` and `claude/modest-maxwell-l4cpzv`.
   Fresh visual checks remain pending: native Chrome was found, but computer-use
   stopped because it could not reliably identify the browser URL.
+
+## Building pass
+
+Added physical street-facing facade details, varied roof silhouettes and richer
+procedural surface/glass shading. Corrected wall shading normals to agree with
+face winding. New architecture uses four instanced material batches per chunk,
+with a quality-scaled part limit and distance visibility. Geometry checks pass
+for outside placement, positive transform determinants, both footprint windings,
+deterministic rebuilds, roof slopes and normals matching triangles. A fresh
+interactive visual check is still pending; these are geometry/build results.

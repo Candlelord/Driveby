@@ -3,6 +3,7 @@ import { CHUNK, chunkKey } from './geo.js';
 import { terrainMesh, roadMeshes, buildingMeshes } from './chunkMeshes.js';
 import { floraMeshes } from './flora.js';
 import { streetMeshes } from './streets.js';
+import { buildingDetailMeshes } from './buildingDetails.js';
 
 /**
  * Keeps the world built around the car.
@@ -107,6 +108,7 @@ export class Streamer {
     tag('ground')(terrainMesh(this.world, chunk));
     roadMeshes(this.world, chunk).forEach(tag('road'));
     buildingMeshes(this.world, chunk).forEach(tag('building'));
+    buildingDetailMeshes(this.world, chunk).forEach(tag('architecture'));
     streetMeshes(this.world, chunk).forEach(tag('street'));
     floraMeshes(this.world, chunk, this.floraDensity).forEach(tag('flora'));
     this._detail(group, chunk, this.lastX ?? 0, this.lastZ ?? 0);
@@ -119,6 +121,7 @@ export class Streamer {
     for (const mesh of group.children) {
       const layer = mesh.userData.layer;
       if (layer === 'flora') mesh.visible = d < this.radius * 0.6;
+      else if (layer === 'architecture') mesh.visible = d < Math.min(700, this.radius * 0.6);
       else if (layer === 'street') mesh.visible = d < this.radius * 0.5;
       mesh.castShadow = Boolean(mesh.userData.shadow) && d < 330;
     }
