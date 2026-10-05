@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { getBounds } from '@gltf-transform/functions';
+import { MeshoptDecoder } from 'meshoptimizer';
+import { Garage } from '../src/garage.js';
+import { CAR_MODELS } from '../src/world/carModels.js';
+let saved = JSON.stringify({cash:844,owned:['carrera'],selected:'carrera',paints:{carrera:123}});
+globalThis.window = { localStorage: {getItem:()=>saved,setItem:(key,value)=>{saved=value;}} };
+const garage = new Garage();
+assert.equal(garage.cash,844);
+assert.equal(garage.paintOf('carrera'),123);
+assert.equal(garage.owned.size,Object.keys(CAR_MODELS).length);
+for (const id of Object.keys(CAR_MODELS)) assert.equal(garage.select(id),true);
+assert.equal(garage.select('missing'),false);
+assert.equal(new Garage().selected,garage.selected);
+assert.equal(garage.cash,844,'test access must not spend player cash');
+await MeshoptDecoder.ready;
+const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
+const manifest=JSON.parse(await readFile('src/world/model-manifest.json','utf8'));
+for (const id of ['retroGT','retroCompact']) {
+  const def=CAR_MODELS[id], doc=await io.read('public/models/'+manifest[def.model]);
+  const scene=doc.getRoot().listScenes()[0], bounds=getBounds(scene);
+  const head=doc.getRoot().listNodes().find(n=>n.getMesh()?.listPrimitives().some(p=>def.head.test(p.getMaterial()?.getName()??'')));
+  assert.ok(head,'headlight material must be present');
+  assert.ok(doc.getRoot().listMaterials().some(m=>def.paint.test(m.getName())),'paint selection must match the asset');
+  const lamp=getBounds(head), centre=bounds.min.map((v,i)=>(v+bounds.max[i])/2);
+  const x=(lamp.min[0]+lamp.max[0])/2-centre[0], z=(lamp.min[2]+lamp.max[2])/2-centre[2];
+  assert.ok(-Math.sin(def.yaw)*x+Math.cos(def.yaw)*z<0,'headlights must face the driving direction -Z');
+  assert.ok(def.length>=3 && def.length<=5,'road scale must fit an ordinary passenger car');
+}
+console.log('Garage checks passed: nine cars, existing-save full access, selections, cash/paint preservation, model paint and forward direction.');

@@ -11,6 +11,16 @@ import { tuneModel, materialsNamed, nodeNamed, nodesMatching, mountWheel, cloneM
 export function buildCarModel(scene, def, { shadows = false } = {}) {
   const root = tuneModel(cloneModel(scene), { shadows });
   root.rotation.y = def.yaw;
+  if (def.length) {
+    root.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(root);
+    const length = bounds.max.z - bounds.min.z;
+    root.scale.multiplyScalar(def.length / length);
+    root.updateMatrixWorld(true);
+    const centre = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+    root.position.x -= centre.x;
+    root.position.z -= centre.z;
+  }
   const group = new THREE.Group();
   group.add(root);
   group.updateMatrixWorld(true);

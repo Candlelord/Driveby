@@ -258,3 +258,5 @@ Ground-floor facade pass: single-storey homes now receive framed windows, with e
 Rendered local Obalende scene verified through Windows Chrome: terrain, roads, player car and pedestrians render. Facades still read flat. Architecture allocation now caps each building's share so an early tower cannot exhaust a whole chunk's detail budget. Building checks and production build pass; broader visual quality remains unfinished.
 
 Shell-window material pass: painted windows now include 9cm surrounds and lintel recess shading, with masks matching house/office/industrial/mud openings and occupancy. Shared shader retains chunk batching. Production build and material loading checks pass; browser shader rendering remains to be verified.
+
+Vehicle roster: temporary ALL_CARS_UNLOCKED grants all nine cars on new/existing saves without spending cash. Atlantic GT and Palm Compact use optimized CC BY assets with normalized length/centre and verified forward direction; combined wheels remain static. Harmattan GT Rally and Sahel Circuit share existing models with race tunes. Garage checks and production build pass.

@@ -85,4 +85,35 @@ export const CAR_MODELS = {
   },
 };
 
+CAR_MODELS.retroGT = {
+  id: 'retroGT', name: 'Atlantic GT',
+  blurb: 'A classic grand tourer with a long bonnet and relaxed rear-wheel-drive handling.',
+  spec: ['Classic GT', '240 hp', '1,300 kg', 'RWD'],
+  model: 'car-retro-gt', yaw: Math.PI, length: 4.6,
+  wheels: [], paint: /^Body$/, head: /^Headlights$/, tail: /^BrakeLights$/,
+  stats: { grip: 1.02, speed: 1.14, tank: 1.1 }, price: 2800,
+  paints: [0x215b70, 0xc8221b, 0xe9e6dc, 0x20252b, 0xe3a21a],
+};
+CAR_MODELS.retroCompact = {
+  id: 'retroCompact', name: 'Palm Compact',
+  blurb: 'A compact vintage saloon, light on fuel and easy to place through the city.',
+  spec: ['Classic compact', '75 hp', '850 kg', 'RWD'],
+  model: 'car-retro-compact', yaw: Math.PI / 2, length: 3.9,
+  wheels: [], paint: /^Material\.001$/, head: /^Headlights$/, tail: [],
+  stats: { grip: 1.08, speed: 0.94, tank: 1.3 }, price: 1500,
+  paints: [0x69a3a8, 0xe9e6dc, 0xc8221b, 0x214a78, 0xe3a21a],
+};
+CAR_MODELS.carreraRace = {
+  ...CAR_MODELS.carrera, id: 'carreraRace', name: 'Harmattan GT Rally',
+  blurb: 'The GT with a rally tune: sharper grip, more pace and a smaller fuel reserve.',
+  spec: ['Race tune', '280 hp', '980 kg', 'RWD'],
+  stats: { grip: 1.14, speed: 1.2, tank: 0.9 }, price: 5000,
+};
+CAR_MODELS.conceptRace = {
+  ...CAR_MODELS.concept, id: 'conceptRace', name: 'Sahel Circuit',
+  blurb: 'A circuit tune of the Concept with a higher top speed and high tarmac grip.',
+  spec: ['Race tune', '480 hp', '1,360 kg', 'AWD'],
+  stats: { grip: 1.3, speed: 1.3, tank: 0.85 }, price: 6500,
+};
+
 export const DEFAULT_CAR = 'carrera';

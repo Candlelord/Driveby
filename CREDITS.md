@@ -30,3 +30,6 @@ The facades are rendered from those models into textures (`npm run models -- bld
 
 Everything else in the game — roads, terrain, trees, buildings, people, other
 cars, sky and sound — is generated in code.
+
+- Atlantic GT: Retro Car by dylanheyes, CC BY 4.0, https://sketchfab.com/3d-models/retro-car-4ddec407d79c42f58bff02512da89e4b; simplified and compressed.
+- Palm Compact: Retro Car by dylanheyes, CC BY 4.0, https://sketchfab.com/3d-models/retro-car-e2a2aee55f514db5ad5c1e82c8f4235b; simplified and compressed.

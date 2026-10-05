@@ -1,6 +1,8 @@
 import { CAR_MODELS, DEFAULT_CAR } from './world/carModels.js';
 
 const KEY = 'driveby.garage.v1';
+// Temporary full access for testing the vehicle roster.
+export const ALL_CARS_UNLOCKED = true;
 
 /**
  * What you own and how you have set the car up: money, the cars you have
@@ -21,6 +23,7 @@ export class Garage {
     this.postcards = []; // ids of collected postcards
     this._listeners = new Set();
     this._load();
+    if (ALL_CARS_UNLOCKED) this.owned = new Set(Object.keys(CAR_MODELS));
   }
 
   onChange(fn) {
