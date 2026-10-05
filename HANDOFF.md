@@ -173,3 +173,14 @@ OSM supplies no measured height. Rebuilt all 1599 chunks from the local cache;
 checks, driving regression, cache checks and production build passed.
 Reference: https://wiki.openstreetmap.org/wiki/Key:height
 The final realism goal still requires rendered in-game review.
+
+## Generated plaster surface asset
+
+Added a generated weathered plaster bitmap to building walls at a three-metre
+repeat, excluding glass and roofs. Its seed offset varies by building and its
+neutral detail modulates paint without replacing it. Until the asset finishes
+loading, or if unavailable, the existing wall shading remains the fallback.
+The compressed 512px WebP is 67KB and is Vite-fingerprinted for cache updates.
+Source prompt and preparation instructions are in src/assets/README.md.
+Asset inspected directly; production build passed. The final game rendering
+still needs visual review.

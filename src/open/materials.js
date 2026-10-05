@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { asphaltMaps, gravelMaps, groundMaps } from '../world/surfaces.js';
 import { applyRoadWear } from './roadWear.js';
+import plasterUrl from '../assets/plaster-weathered-v1.webp';
 
 /**
  * Shared materials for the open world: ground, roads, buildings, water.
@@ -85,10 +86,18 @@ function dashTexture() {
  * UVs are metres: u along the wall, v up it.
  */
 function buildingMaterial() {
+  const plasterReady = { value: 0 };
+  const plaster = new THREE.TextureLoader().load(plasterUrl, () => { plasterReady.value = 1; });
+  plaster.wrapS = plaster.wrapT = THREE.RepeatWrapping;
+  plaster.anisotropy = 4;
+  // Sample this neutral surface as detail data, preserving per-building paint.
+  plaster.colorSpace = THREE.NoColorSpace;
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.02 });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uNight = NIGHT;
     shader.uniforms.uWarm = { value: WARM };
+    shader.uniforms.uPlaster = { value: plaster };
+    shader.uniforms.uPlasterReady = plasterReady;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aStyle;\nattribute float aSeed;\nvarying float vStyle;\nvarying float vSeed;\nvarying vec2 vWall;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvStyle = aStyle;\nvSeed = aSeed;\nvWall = uv;');
@@ -98,6 +107,8 @@ function buildingMaterial() {
         `#include <common>
         uniform float uNight;
         uniform vec3 uWarm;
+        uniform sampler2D uPlaster;
+        uniform float uPlasterReady;
         varying float vStyle;
         varying float vSeed;
         varying vec2 vWall;
@@ -149,6 +160,9 @@ function buildingMaterial() {
         float wear = bNoise(vWall * vec2(0.7, 0.19) + vSeed * 43.0);
         float grain = bNoise(vWall * 35.0 + vSeed * 71.0);
         if (vStyle < 8.5) {
+          float plasterDetail = texture2D(uPlaster, vWall / 3.0 + vec2(vSeed * 2.7, vSeed * 1.3)).r;
+          float plasterTint = clamp(plasterDetail * 1.2, 0.72, 1.1);
+          diffuseColor.rgb *= mix(1.0, plasterTint, uPlasterReady * (1.0 - bWin) * 0.75);
           // Damp rising from the pavement, runoff streaks and uneven plaster.
           float damp = 1.0 - smoothstep(0.1, 1.8 + wear * 1.1, vWall.y);
           diffuseColor.rgb *= 1.0 - damp * 0.25;
@@ -164,6 +178,6 @@ function buildingMaterial() {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, bWin);')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += uWarm * bLit * uNight * 1.6;');
   };
-  material.customProgramCacheKey = () => 'open-buildings-depth-v2';
+  material.customProgramCacheKey = () => 'open-buildings-plaster-v3';
   return material;
 }
