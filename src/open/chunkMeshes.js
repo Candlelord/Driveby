@@ -16,8 +16,8 @@ const TERRAIN_N = CHUNK / TERRAIN_STEP;
 // Ground colours by what the ground is (Lagos) and by biome (the north).
 const GROUND_COLOURS = {
   [GROUND.WATER]: 0x4a5a4e,
-  [GROUND.LAND]: 0x8a6c4c,
-  [GROUND.RESIDENTIAL]: 0x8e6a4a, // red laterite, swept dirt
+  [GROUND.LAND]: 0x86705a,
+  [GROUND.RESIDENTIAL]: 0x84776a, // swept compound dirt and broken concrete
   [GROUND.COMMERCIAL]: 0x8a857c,
   [GROUND.INDUSTRIAL]: 0x7c7870,
   [GROUND.PARK]: 0x5f7c3a,
@@ -95,7 +95,7 @@ export function terrainMesh(world, chunk) {
   return mesh;
 }
 
-function groundColour(world, x, z, y, out) {
+export function groundColour(world, x, z, y, out) {
   const noise = fbm(x * 0.02, z * 0.02, 3);
   if (z > NORTH_EDGE || y > -50) {
     if (z > NORTH_EDGE && world.inLagos(x, z)) {
@@ -333,7 +333,8 @@ class Builder {
 // Wall colours: Lagos's painted render, offices, sheds, churches and mosques,
 // mud brick, round huts, city walls.
 const PAINT = {
-  0: [0xe6d9bf, 0xd8c09c, 0xc7d4da, 0xdfb69c, 0xefede6, 0xb8a385, 0xc9d6b6, 0xd4a576, 0xe8c8b0, 0xa9b8c4],
+  // Lagos houses: painted render in creams and pastels, and plenty of bare grey block.
+  0: [0xe6d9bf, 0xd8c09c, 0xc7d4da, 0xdfb69c, 0xefede6, 0xb8a385, 0xc9d6b6, 0xd4a576, 0xe8c8b0, 0xa9b8c4, 0xa7a299, 0x9b968d, 0xb3aea4, 0xe0a07a, 0x8fb4a8],
   1: [0x8ea2b2, 0xbdb8ae, 0x9fb0b8, 0xd2cdc2, 0x6f8494],
   2: [0xa8a9a5, 0x9a958c, 0xb4ae9e],
   3: [0xf2f0e8, 0xe8e0d0],

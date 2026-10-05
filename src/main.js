@@ -34,6 +34,8 @@ import { Gameplay } from './open/gameplay.js';
 import { Traffic } from './open/traffic.js';
 import { Pedestrians } from './open/peds.js';
 import { Landmarks3D } from './open/landmarks3d.js';
+import { FarTerrain } from './open/farTerrain.js';
+import { updateStreets } from './open/streets.js';
 import { PauseMenu, Journal } from './open/menus.js';
 import { NIGHT } from './open/materials.js';
 import { biomeAt, KANO_CENTRE } from './open/north.js';
@@ -61,7 +63,7 @@ document.getElementById('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x000000, 0.004);
-const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.3, RADIUS * 1.8);
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.3, 9000);
 
 const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1);
 const sun = new THREE.DirectionalLight(0xffffff, 1);
@@ -116,6 +118,7 @@ let gameplay = null;
 let traffic = null;
 let peds = null;
 let landmarks = null;
+let far = null;
 let layers = null;
 let minimap = null;
 let bigMap = null;
@@ -160,6 +163,7 @@ async function boot() {
   traffic = new Traffic(scene, { world, graph, count: tier.name === 'low' ? 12 : 26 });
   peds = new Pedestrians(scene, { world, graph, count: tier.name === 'low' ? 20 : 44 });
   landmarks = new Landmarks3D(scene, world);
+  far = new FarTerrain(scene, world);
   minimap = new Minimap(layers, hud.el.miniCanvas);
   bigMap = new BigMap(layers, {
     onWaypoint: (wp) => {
@@ -408,6 +412,7 @@ function tick(now) {
   // The world around the car.
   streamer.update(vehicle.x, vehicle.z, vehicle.yaw);
   landmarks.update(vehicle.x, vehicle.z);
+  far.update(vehicle.x, vehicle.z, environment.live);
 
   if (mode === 'menu') {
     // Drift slowly round the start while the menu is up.
@@ -465,6 +470,7 @@ function tick(now) {
   session.update();
   // Windows light up from dusk, not under an overcast noon.
   NIGHT.value = Math.max(0, Math.min(1, (environment.live.lampIntensity - 0.35) / 0.4));
+  updateStreets();
   post.render();
 }
 
@@ -491,7 +497,10 @@ const SUN_DIR = new THREE.Vector3();
 function applyLighting() {
   const live = state.live;
   scene.fog.color.copy(live.fogColor);
-  scene.fog.density = Math.min(live.fogDensity, 0.012) * 0.38;
+  // Thinner than the old road's fog: there is a horizon to see now. The
+  // city's haze thickens it again.
+  const haze = vehicle.z > NORTH_EDGE ? 1.5 : 1;
+  scene.fog.density = Math.min(0.0045, Math.max(0.00055, live.fogDensity * 0.15 * haze));
   ambient.color.copy(live.ambientColor);
   ambient.groundColor.copy(live.groundColor).lerp(live.ambientColor, 0.35);
   ambient.intensity = live.ambientIntensity * 0.42;

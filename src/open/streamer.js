@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CHUNK, chunkKey } from './geo.js';
 import { terrainMesh, roadMeshes, buildingMeshes } from './chunkMeshes.js';
 import { floraMeshes } from './flora.js';
+import { streetMeshes } from './streets.js';
 
 /**
  * Keeps the world built around the car.
@@ -96,6 +97,7 @@ export class Streamer {
     group.add(terrainMesh(this.world, chunk));
     for (const mesh of roadMeshes(this.world, chunk)) group.add(mesh);
     for (const mesh of buildingMeshes(this.world, chunk)) group.add(mesh);
+    for (const mesh of streetMeshes(this.world, chunk)) group.add(mesh);
     for (const mesh of floraMeshes(this.world, chunk, this.floraDensity)) group.add(mesh);
     this.scene.add(group);
     this.live.set(chunk.key, { group, chunk });
