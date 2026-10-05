@@ -76,6 +76,22 @@ for (const [name, spec] of Object.entries(config.models)) {
     }
   }
 
+  // 0c. Hue changes baked into a texture: pixels inside a colour box are
+  // scaled per channel (an orange van becomes a yellow danfo).
+  for (const rule of spec.recolor ?? []) {
+    for (const texture of doc.getRoot().listTextures()) {
+      const { data, info } = await sharp(Buffer.from(texture.getImage())).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      for (let i = 0; i < data.length; i += 3) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        if (r >= rule.minR && g >= rule.minG && g <= rule.maxG && b <= rule.maxB && r > g * rule.rOverG) {
+          data[i + 1] = Math.min(255, g * rule.mul[1]);
+          data[i + 2] = Math.min(255, b * rule.mul[2]);
+        }
+      }
+      texture.setImage(await sharp(data, { raw: info }).png().toBuffer()).setMimeType('image/png');
+    }
+  }
+
   // 1. Strip parts by name.
   const strip = (spec.strip ?? []).map((p) => new RegExp(p, 'i'));
   let removed = 0;

@@ -4,6 +4,7 @@ import { heading } from '../path.js';
 import { buildCarParts, buildVanParts } from './carGeometry.js';
 import { carMaterials } from './car.js';
 import { softDotTexture } from './textures.js';
+import { loadTrafficModels, TRAFFIC_MODELS } from './trafficModels.js';
 
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
@@ -43,6 +44,8 @@ export class Traffic {
   constructor(scene, tier) {
     this.count = tier.trafficSlots;
     this.cars = [];
+    // Real vehicle models, added as they load; a slot picks among them.
+    this.modelKinds = [];
 
     const parts = buildCarParts({ staticWheels: true });
 
@@ -88,6 +91,18 @@ export class Traffic {
 
     this._buildGlows();
     this._buildShadows();
+    if (tier.facades) {
+      loadTrafficModels((spec, parts) => {
+        const meshes = parts.map((part) => {
+          const mesh = instanced(part.geometry, part.material, this.count);
+          mesh.castShadow = true;
+          mesh.userData.isPaint = part.isPaint;
+          scene.add(mesh);
+          return mesh;
+        });
+        this.modelKinds.push({ spec, meshes });
+      });
+    }
 
     for (const mesh of this.meshes) scene.add(mesh);
     scene.add(this.headGlow, this.tailGlow, this.shadows);
@@ -140,7 +155,8 @@ export class Traffic {
 
   _spawn(car, travelled, initial = false, danfo = 0) {
     // What kind of vehicle this slot is, from the place it turns up in.
-    car.kind = Math.random() < danfo ? 'van' : 'car';
+    car.kind = this._pickKind(danfo);
+    car.paint = Math.floor(Math.random() * PAINT.length);
     // Roughly a third of traffic comes the other way.
     car.oncoming = Math.random() < 0.38;
     car.lane = car.oncoming ? -LANE : LANE;
@@ -168,6 +184,21 @@ export class Traffic {
       if (this._hasRoom(car)) break;
     }
     return car;
+  }
+
+  /** What a slot becomes: a danfo where Lagos wants one, else a car, a van or one of the loaded models. */
+  _pickKind(danfo) {
+    const loaded = (id) => this.modelKinds.find((k) => k.spec.id === id);
+    if (Math.random() < danfo) return loaded('danfo') ? 'danfo' : 'van';
+    // Procedural cars hold a share, so the road is not all the same few models.
+    let total = 3;
+    for (const k of this.modelKinds) total += k.spec.weight;
+    let roll = Math.random() * total;
+    for (const k of this.modelKinds) {
+      roll -= k.spec.weight;
+      if (roll <= 0) return k.spec.id;
+    }
+    return 'car';
   }
 
   _hasRoom(car) {
@@ -218,6 +249,12 @@ export class Traffic {
 
     for (const mesh of this.meshes) mesh.instanceMatrix.needsUpdate = true;
     for (const mesh of this.vanMeshes) mesh.instanceMatrix.needsUpdate = true;
+    for (const kind of this.modelKinds) {
+      for (const mesh of kind.meshes) {
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
+    }
     this.headGlow.instanceMatrix.needsUpdate = true;
     this.tailGlow.instanceMatrix.needsUpdate = true;
     this.shadows.instanceMatrix.needsUpdate = true;
@@ -341,8 +378,19 @@ export class Traffic {
     DUMMY.updateMatrix();
 
     const isVan = car.kind === 'van';
-    for (const mesh of this.meshes) mesh.setMatrixAt(index, isVan ? HIDDEN : DUMMY.matrix);
+    const isCar = car.kind === 'car';
+    for (const mesh of this.meshes) mesh.setMatrixAt(index, isCar ? DUMMY.matrix : HIDDEN);
     for (const mesh of this.vanMeshes) mesh.setMatrixAt(index, isVan ? DUMMY.matrix : HIDDEN);
+    for (const kind of this.modelKinds) {
+      const mine = kind.spec.id === car.kind;
+      for (const mesh of kind.meshes) {
+        mesh.setMatrixAt(index, mine ? DUMMY.matrix : HIDDEN);
+        if (mine && mesh.userData.isPaint) {
+          COLOR.set(PAINT[car.paint % PAINT.length]);
+          mesh.setColorAt(index, COLOR);
+        }
+      }
+    }
 
     DUMMY.position.y += 0.02;
     DUMMY.updateMatrix();

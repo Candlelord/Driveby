@@ -198,7 +198,9 @@ export class CarPhysics {
 
     // Acceleration falls off as the car approaches its cap, so the last few
     // units per second take the longest — a torque curve without the maths.
-    const headroom = Math.max(0.12, 1 - this.speed / (this.targetSpeed * 1.35));
+    // (A held car has a target of zero; dividing by it would turn a speed of
+    // exactly zero into NaN and take the whole world with it.)
+    const headroom = this.targetSpeed > 0.01 ? Math.max(0.12, 1 - this.speed / (this.targetSpeed * 1.35)) : 1;
     // Steering slackens off as the car gains speed, the way a real one does at
     // motorway pace, so flat out is a committed straight line rather than the
     // same twitchy lane-change with a bigger number attached.

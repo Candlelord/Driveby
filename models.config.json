@@ -169,6 +169,28 @@
       "maxTexture": 1024,
       "license": "CC BY 4.0",
       "credit": "\"Tent_Shop_Market_21_MB\" by Mehdi Shahsavan (https://sketchfab.com/ahmagh2e), CC-BY-4.0, https://sketchfab.com/3d-models/tent-shop-market-21-mb-909cad203ea64624bbd496d0379c6dbc — simplified, compressed"
+    },
+    "traffic-danfo": {
+      "src": "retro_anime_vintage_volkswagen_van/scene.gltf",
+      "simplify": 0.12,
+      "error": 0.05,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Retro Anime Vintage Volkswagen Van\" by Jungle Jim (https://sketchfab.com/jungle_jim), CC-BY-4.0, https://sketchfab.com/3d-models/retro-anime-vintage-volkswagen-van-5772dc675e5347e09979998bfcf54938 — simplified, compressed (recoloured yellow for the Lagos minibus)",
+      "recolor": [
+        {
+          "minR": 150,
+          "minG": 70,
+          "maxG": 175,
+          "maxB": 115,
+          "rOverG": 1.22,
+          "mul": [
+            1,
+            1.7,
+            0.75
+          ]
+        }
+      ]
     }
   }
 }
