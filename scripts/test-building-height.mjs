@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { metres, buildingHeight } from './building-height.mjs';
+assert.equal(metres('10 m'), 10);
+assert.equal(metres('30 ft'), 9.144);
+assert.ok(Math.abs(metres('30\'6"') - 9.2964) < 1e-8);
+assert.equal(metres('300 cm'), 3);
+assert.equal(metres('12;15'), null, 'ambiguous measurements must not become a fake exact height');
+assert.equal(buildingHeight({ height: '10', 'building:levels': '5' }, 0, 100, 0.5), 10);
+assert.equal(buildingHeight({ 'building:levels': '2', 'roof:height': '3' }, 0, 100, 0.5), 9.4);
+assert.equal(buildingHeight({ 'building:levels': '2', 'roof:levels': '1' }, 0, 100, 0.5), 9.4);
+assert.ok(buildingHeight({ building: 'bungalow' }, 0, 100, 0.9) < 4.2);
+assert.equal(buildingHeight({ height: '9999' }, 0, 100, 0.5), 250);
+console.log('Building height checks passed: units, measured precedence, roof levels, explicit low-rise uses and bounds.');

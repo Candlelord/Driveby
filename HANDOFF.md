@@ -161,3 +161,15 @@ normal handling is preserved, and custom depth materials apply identical
 deformation to alpha-cutout shadows. A shared time uniform updates once per
 frame. Hand-placed landmark groves use the same wind materials. Production
 build passes; the final foliage movement needs rendered visual review.
+
+## Source building height accuracy
+
+World baking now parses metre/feet/inch/centimetre heights, honours explicit
+height before floor estimates and includes tagged roof heights/levels in floor
+estimates. Explicit bungalow/cabin/hut/garage/carport uses get low-rise defaults
+instead of random multi-storey heights. These defaults remain estimates where
+OSM supplies no measured height. Rebuilt all 1599 chunks from the local cache;
+33 chunk files changed, with building count unchanged at 209186. Height unit
+checks, driving regression, cache checks and production build passed.
+Reference: https://wiki.openstreetmap.org/wiki/Key:height
+The final realism goal still requires rendered in-game review.

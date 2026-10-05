@@ -15,6 +15,7 @@
 import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
 import sharp from 'sharp';
 import { bridgeDecks } from './bridge-decks.mjs';
+import { buildingHeight } from './building-height.mjs';
 
 const ORIGIN = { lat: 6.455, lon: 3.39 };
 const BBOX = { south: 6.41, west: 3.34, north: 6.6, east: 3.5 };
@@ -312,15 +313,7 @@ for (const name of files.filter((f) => f.startsWith('buildings_'))) {
     if (ring.length < 3) continue;
     const kind = KIND(t);
     const seed = (el.id % 997) / 997;
-    let h = Number.parseFloat(t.height);
-    const levels = Number.parseFloat(t['building:levels']);
-    if (!(h > 0)) h = levels > 0 ? levels * 3.2 + 1 : null;
-    if (!h) {
-      // Lagos defaults: low houses, mid-rise commerce, the odd taller block.
-      const big = area > 600;
-      h = kind === 1 ? 10 + seed * (big ? 30 : 12) : kind === 2 ? 7 + seed * 5 : kind === 3 ? 12 + seed * 8 : kind === 7 ? 5 : 3.4 + Math.floor(seed * 3.2) * 3.2 + (big ? 3.2 : 0);
-    }
-    h = Math.min(h, 250);
+    const h = buildingHeight(t, kind, area, seed);
     let cx = 0;
     let cz = 0;
     for (const [x, z] of ring) {
