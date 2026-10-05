@@ -36,6 +36,10 @@ import { Collisions } from './collisions.js';
 import { RouteDirector } from './routes/director.js';
 import { ROUTES } from './routes/lagosParis.js';
 import { loadSave, writeSave, savedAgo } from './save.js';
+import { Garage } from './garage.js';
+import { RallyUi } from './rally/ui.js';
+import { StageRunner } from './rally/stages.js';
+import { Gates } from './rally/gates.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -115,7 +119,9 @@ const eventVisuals = new EventVisuals(scene, tier);
 // every frame; the lowest tier does without them.
 const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
-const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps });
+const garage = new Garage();
+const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps, model: garage.selected });
+car.setPaint(garage.paintOf());
 const weather = new Weather(scene, tier);
 const grass = tier.grass ? new Grass(scene, tier) : null;
 const people = new People(scene, tier);
@@ -126,6 +132,10 @@ const input = new Input(renderer.domElement, {
   tiltButton: document.getElementById('tilt-btn'),
 });
 const ui = new Ui();
+const rallyUi = new RallyUi();
+ui.rally = rallyUi;
+input.bindButtons(rallyUi.buttons);
+const gates = new Gates(scene);
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
 const collisions = new Collisions({ physics, props, sfx });
@@ -144,6 +154,7 @@ window.addEventListener('keydown', startAudio);
 // A route, if the player chose one, takes over where the road goes; the music
 // keeps the light.
 let route = null;
+let stages = null; // the timed-stage runner, route mode only
 let trip = null; // set once driving starts: 'endless' or a route id
 let saveTimer = 0;
 
@@ -169,6 +180,9 @@ session.onStart = (picked) => {
   if (ROUTES[trip]) {
     route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
     route.start(physics.travelled, resume?.route ?? null);
+    input.buttonMode = rallyUi.touch;
+    stages = new StageRunner({ director: route, physics, ui: rallyUi, sfx, wallet: garage });
+    stages.start(resume?.route?.stages ?? null);
   }
   saveGame();
 };
@@ -182,7 +196,7 @@ function saveGame() {
     trip: onRoute ? trip : 'endless',
     travelled: physics.travelled,
     blockIndex: environment.blockIndex,
-    route: onRoute ? route.snapshot(physics.travelled) : null,
+    route: onRoute ? { ...route.snapshot(physics.travelled), stages: stages?.snapshot() } : null,
   });
   if (ok) ui.flashSaved();
 }
@@ -271,10 +285,14 @@ function tick(now) {
   road.update(state, frame);
   features.update(state, frame, environment);
   route?.update(state);
+  stages?.update(state);
+  gates.update(state, frame, stages?.gates ?? null);
+  rallyUi.update(state);
   landmarks.update(state, frame, environment);
   props.update(state, frame, environment);
   grass?.update(state, frame, environment);
   people.update(state, frame, environment);
+  traffic.closed = Boolean(stages?.closed);
   traffic.update(state, frame, physics, sfx);
   car.update(state, frame);
   weather.update(state);
@@ -472,6 +490,12 @@ if (import.meta.env.DEV) {
     sfx,
     session,
     collisions,
+    garage,
+    rallyUi,
+    gates,
+    get stages() {
+      return stages;
+    },
     get route() {
       return route;
     },

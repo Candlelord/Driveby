@@ -276,6 +276,23 @@ export class Sfx {
    * A collision: a hard low thump, a burst of crumpling metal, and a tinkle of
    * glass on the big ones. `strength` is 0..1.
    */
+  /** A plain tone: the countdown beeps. */
+  beep(frequency = 600, seconds = 0.15, level = 0.2) {
+    const ctx = this.context;
+    if (!ctx || !this.master) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(level * 0.5, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    osc.connect(gain).connect(this.master);
+    osc.start(now);
+    osc.stop(now + seconds + 0.05);
+  }
+
   crash(strength = 0.5) {
     if (!this.started) return;
     const ctx = this.context;

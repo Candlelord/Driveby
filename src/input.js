@@ -43,6 +43,14 @@ export class Input {
   constructor(target, { tiltButton, stick } = {}) {
     this.keyboard = 0;
     this.touch = 0;
+    /** On-screen left/right arrows: -1, 0 or 1. */
+    this.button = 0;
+    this._buttonLeft = false;
+    this._buttonRight = false;
+    this._pedalHeld = false;
+    // With a pedal on screen a finger on the road is only steering, not also
+    // asking for speed.
+    this.buttonMode = false;
     this.tilt = 0;
     this.tiltEnabled = false;
     this.hasInput = false;
@@ -80,7 +88,7 @@ export class Input {
     // Linear rather than exponential, so holding for twice as long really does
     // get you twice as far up the range and letting go coasts down at a
     // predictable rate instead of dropping most of it in the first moment.
-    const held = this._throttleHeld || this._pointerId !== null;
+    const held = this._throttleHeld || this._pedalHeld || (!this.buttonMode && this._pointerId !== null);
     this.throttle = clamp(
       this.throttle + (held ? THROTTLE_RISE : -THROTTLE_FALL) * dt,
       0,
@@ -88,16 +96,48 @@ export class Input {
     );
 
     this.handbrake = this._handbrakeKeys || this._handbrakeButton;
+    this.button = (this._buttonRight ? 1 : 0) - (this._buttonLeft ? 1 : 0);
     this._drawStick();
   }
 
   /** Combined steering value; the strongest source wins. */
   get value() {
     let best = 0;
-    for (const source of [this.keyboard, this.touch, this.tilt]) {
+    for (const source of [this.keyboard, this.touch, this.tilt, this.button]) {
       if (Math.abs(source) > Math.abs(best)) best = source;
     }
     return clamp(best, -1, 1);
+  }
+
+  /**
+   * Wire up the on-screen controls: `left` and `right` steer, `pedal` asks for
+   * speed, `brake` is the handbrake. Each is held while a finger is on it, and
+   * they are separate elements, so a thumb on each side works at once.
+   */
+  bindButtons({ left, right, pedal, brake }) {
+    const hold = (element, set) => {
+      if (!element) return;
+      const down = (event) => {
+        event.preventDefault();
+        element.setPointerCapture?.(event.pointerId);
+        element.classList.add('is-down');
+        this.hasInput = true;
+        set(true);
+      };
+      const up = () => {
+        element.classList.remove('is-down');
+        set(false);
+      };
+      element.addEventListener('pointerdown', down);
+      element.addEventListener('pointerup', up);
+      element.addEventListener('pointercancel', up);
+      element.addEventListener('lostpointercapture', up);
+      element.addEventListener('contextmenu', (event) => event.preventDefault());
+    };
+    hold(left, (v) => (this._buttonLeft = v));
+    hold(right, (v) => (this._buttonRight = v));
+    hold(pedal, (v) => (this._pedalHeld = v));
+    hold(brake, (v) => (this._handbrakeButton = v));
   }
 
   _bindKeyboard() {

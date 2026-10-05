@@ -37,6 +37,8 @@ const PAINT = [0xd8d8d2, 0x2f3a4a, 0x8a2f2f, 0x30503c, 0xd8a23a, 0x5a5f68, 0x7a4
  * no fail state — the hit costs you speed and a shove, and the other car spins
  * off and stops — but you have to drive around it.
  */
+const FAR = 4000; // units beyond the camera where closed-road traffic waits
+
 export class Traffic {
   constructor(scene, tier) {
     this.count = tier.trafficSlots;
@@ -176,6 +178,9 @@ export class Traffic {
     return true;
   }
 
+  /** True while the road is closed to everyone but the player. */
+  closed = false;
+
   update(state, frame, physics, sfx) {
     const live = state.live;
     const travelled = state.travelled;
@@ -187,7 +192,19 @@ export class Traffic {
       car.s += (car.oncoming ? -car.speed : car.speed) * state.dt;
 
       const gap = car.s - travelled;
-      if (gap < behind || gap > ahead) this._spawn(car, travelled, false, live.danfo);
+      if (this.closed) {
+        // A closed road (a rally stage): no one else is on it. Cars are parked
+        // far over the horizon, out of view, until it opens again.
+        if (gap < FAR / 2) {
+          car.s = travelled + FAR;
+          car.speed = 0;
+          car.hit = 0;
+        }
+        car.wasClosed = true;
+      } else if (gap < behind || gap > ahead || car.wasClosed) {
+        car.wasClosed = false;
+        this._spawn(car, travelled, false, live.danfo);
+      }
       this._updateWreck(car, state.dt);
     }
 

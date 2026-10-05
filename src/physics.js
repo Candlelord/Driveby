@@ -57,6 +57,10 @@ export class CarPhysics {
     this.smoke = 0; // 0..1, tyre smoke on a hard surface
     // True while the car is held on a start line.
     this.hold = false;
+    // A distance to stop at: the car slows so as to rest exactly there.
+    this.holdAt = null;
+    // How many times the car has hit something (for clean-stage bonuses).
+    this.crashes = 0;
   }
 
   /**
@@ -72,6 +76,7 @@ export class CarPhysics {
     this.speed = Math.max(0, Math.min(this.speed, speedAfter));
     this.knock += sideways;
     this.impact = Math.min(1, Math.max(this.impact, strength));
+    if (strength > 0.12) this.crashes++;
     this.impactYaw += Math.sign(sideways || 1) * strength * 0.25;
   }
 
@@ -177,12 +182,17 @@ export class CarPhysics {
     // and lets the car push wide.
     const wanted = this.cruise * (1 + throttle * (CONFIG.boostScale - 1));
     const governed = this._cornerSpeed() * (1 + throttle * 0.9);
-    this.targetSpeed = this.hold ? 0 : Math.min(wanted, governed);
+    let limit = Math.min(wanted, governed);
+    if (this.holdAt !== null) {
+      // Rest exactly on the mark: v² = 2·a·d, with a gentle approach.
+      limit = Math.min(limit, Math.sqrt(2 * 4.5 * Math.max(0, this.holdAt - this.travelled)) + 0.15);
+    }
+    this.targetSpeed = this.hold ? 0 : limit;
 
     // Asymmetric: pulling away takes longer than easing off, which is what
     // makes a standing start feel like effort rather than a jump cut.
     const gap = this.targetSpeed - this.speed;
-    const rate = gap > 0 ? CONFIG.accelRate : this.hold ? 6 : CONFIG.brakeRate;
+    const rate = gap > 0 ? CONFIG.accelRate : this.hold || this.holdAt !== null ? 7 : CONFIG.brakeRate;
 
     // Acceleration falls off as the car approaches its cap, so the last few
     // units per second take the longest — a torque curve without the maths.
@@ -191,6 +201,8 @@ export class CarPhysics {
     // motorway pace, so flat out is a committed straight line rather than the
     // same twitchy lane-change with a bigger number attached.
     this.speed += gap * (1 - Math.exp(-rate * headroom * dt));
+    // Past the mark there is nothing left to coast on.
+    if (this.holdAt !== null && this.travelled > this.holdAt) this.speed *= Math.exp(-9 * dt);
   }
 
   _updateSteering(dt, input) {

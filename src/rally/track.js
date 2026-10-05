@@ -5,8 +5,10 @@ import { setWindProfile, profileFrom } from '../path.js';
 const SURFACE_VALUE = { tarmac: 0, gravel: 0.72, dirt: 1 };
 
 // Cities occupy the ends of a leg; a stage proper runs between them.
-const CORE_FROM = 0.1;
-const CORE_TO = 0.88;
+export const STAGE_FROM = 0.1;
+export const STAGE_TO = 0.88;
+const CORE_FROM = STAGE_FROM;
+const CORE_TO = STAGE_TO;
 const WIND_RAMP = 0.07; // fraction of the leg over which the road winds up to full
 const SURFACE_RAMP = 22; // units over which one surface becomes another
 

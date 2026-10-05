@@ -53,9 +53,11 @@ export class Ui {
 
   setRouteVisible(visible) {
     this.route.hidden = !visible;
+    this.rally?.setActive(visible);
   }
 
   setRoute({ from, to, left, country, total, progress }) {
+    this.rally?.setTrip({ from, to, left, country });
     const text = [from, to, left, country, total].join('|');
     if (text !== this._routeText) {
       this._routeText = text;
