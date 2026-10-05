@@ -4,6 +4,7 @@ import { hash, windAt } from '../path.js';
 import { terrainHeight } from './terrain.js';
 import { PROP_KIT, PROP_NAMES, MODEL_KIT } from '../props/kit.js';
 import { updateFacades } from './facades.js';
+import { MODEL_PROPS, loadModelProp } from '../props/modelProps.js';
 import { PARKED_LATERAL } from '../props/regional.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
@@ -203,6 +204,37 @@ export class Props {
 
     this._buildWires(scene);
     this._buildLamps(scene, tier);
+    if (tier.facades) this._upgradeModels(scene, tier);
+  }
+
+  /**
+   * Swap procedural props for ones built from real models as they load. Until
+   * (and unless) they do, the procedural versions stand.
+   */
+  _upgradeModels(scene, tier) {
+    const casts = Boolean(tier.propShadows && tier.shadows);
+    for (const [name, spec] of Object.entries(MODEL_PROPS)) {
+      const type = this.types[name];
+      if (!type) continue;
+      loadModelProp(spec).then((built) => {
+        if (!built) return;
+        for (const mesh of type.meshes) {
+          scene.remove(mesh);
+          mesh.dispose?.();
+        }
+        type.meshes = built.parts.map((part) => {
+          const mesh = instanced(part.geometry, part.material, this.slots);
+          mesh.visible = false;
+          mesh.castShadow = casts;
+          mesh.receiveShadow = Boolean(tier.shadows);
+          mesh.userData.tint = 'fixed';
+          scene.add(mesh);
+          return mesh;
+        });
+        type.footprint = built.footprint;
+        type.def = { ...type.def, faceRoad: spec.faceRoad };
+      });
+    }
   }
 
   _buildWires(scene) {
@@ -578,11 +610,17 @@ export class Props {
       frame.point(s, offset, terrainHeight(offset, s, live), POSITION);
 
       DUMMY.position.copy(POSITION);
-      const yaw = FACING.has(typeName)
+      // Stalls and shops face the road; signs face the traffic; the rest are
+      // turned any which way.
+      const yaw = type.def.faceRoad
         ? side > 0
-          ? 0
-          : Math.PI
-        : hash(slot * 9.3) * Math.PI * 2;
+          ? -Math.PI / 2
+          : Math.PI / 2
+        : FACING.has(typeName)
+          ? side > 0
+            ? 0
+            : Math.PI
+          : hash(slot * 9.3) * Math.PI * 2;
       DUMMY.rotation.set(0, yaw, 0);
 
       // Wind. A tornado bends everything hard; ordinary weather just breathes

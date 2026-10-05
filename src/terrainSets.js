@@ -135,7 +135,7 @@ const nigerianCity = (label, values = {}) =>
     climate: 'humid',
     grass: 0.05,
     seasonReach: 0,
-    propMix: [['lagosStreet', 0.5], ['bungalow', 0.1], ['stall', 0.1], ['billboard', 0.08], ['palm', 0.08], ['round', 0.06], ['pole', 0.04], ['busShelter', 0.04]],
+    propMix: [['lagosStreet', 0.5], ['market', 0.08], ['bungalow', 0.1], ['stall', 0.1], ['billboard', 0.08], ['palm', 0.08], ['round', 0.06], ['pole', 0.04], ['busShelter', 0.04]],
     runChance: 0.97,
     groundColorBase: 0x7a5e48,
     groundAccent: 0x5e4a3c,
@@ -166,7 +166,7 @@ const sahelCity = (label, values = {}) =>
     climate: 'harmattan',
     grass: 0.08,
     seasonReach: 0,
-    propMix: [['kanoStreet', 0.45], ['mudHouse', 0.15], ['stall', 0.12], ['acacia', 0.08], ['mosque', 0.06], ['pole', 0.06], ['cattle', 0.04]],
+    propMix: [['kanoStreet', 0.45], ['market', 0.08], ['mudHouse', 0.15], ['stall', 0.12], ['acacia', 0.08], ['mosque', 0.06], ['pole', 0.06], ['cattle', 0.04]],
     runChance: 0.97,
     groundColorBase: 0xc0a070,
     groundAccent: 0xa4794c,
@@ -195,7 +195,7 @@ const desertTown = (label, values = {}) =>
     climate: 'desertHeat',
     grass: 0.05,
     seasonReach: 0,
-    propMix: [['medinaStreet', 0.5], ['palm', 0.2], ['mudHouse', 0.08], ['mosque', 0.06], ['stall', 0.06]],
+    propMix: [['medinaStreet', 0.5], ['market', 0.06], ['palm', 0.2], ['mudHouse', 0.08], ['mosque', 0.06], ['stall', 0.06]],
     runChance: 0.97,
     groundColorBase: 0xc89a68,
     groundAccent: 0xa87a4c,
@@ -970,7 +970,7 @@ export const TERRAIN_SETS = {
     seasonReach: 0, // the tropics and the desert keep no four-season year
     // Continuous street frontage both sides (lagosStreet), with stalls,
     // billboards and the odd palm filling in behind and between.
-    propMix: [['lagosStreet', 0.5], ['lagosBlock', 0.1], ['lagosShops', 0.08], ['stall', 0.08], ['billboard', 0.1], ['palm', 0.08], ['busShelter', 0.03], ['pole', 0.03]],
+    propMix: [['lagosStreet', 0.5], ['lagosBlock', 0.1], ['market', 0.07], ['lagosShops', 0.08], ['stall', 0.08], ['billboard', 0.1], ['palm', 0.08], ['busShelter', 0.03], ['pole', 0.03]],
     runChance: 0.9,
     sidewalk: 1,
     people: 1,
@@ -1007,7 +1007,7 @@ export const TERRAIN_SETS = {
     climate: 'humid',
     grass: 1.25,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['palm', 0.3], ['round', 0.3], ['shrub', 0.14], ['bungalow', 0.08], ['stall', 0.06], ['grass', 0.08], ['pole', 0.04]],
+    propMix: [['palm', 0.3], ['round', 0.3], ['shrub', 0.14], ['bungalow', 0.08], ['stall', 0.06], ['market', 0.03], ['grass', 0.08], ['pole', 0.04]],
     groundColorBase: 0x8a4e32, // laterite: the red soil of the south
     groundAccent: 0x4e6a34,
     propA: 0xd6c4a0, // bungalow walls
@@ -1033,7 +1033,7 @@ export const TERRAIN_SETS = {
     climate: 'clear',
     grass: 1.4,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['round', 0.18], ['acacia', 0.16], ['grass', 0.2], ['boulder', 0.12], ['termiteMound', 0.1], ['shrub', 0.1], ['mudHouse', 0.04], ['stall', 0.04], ['pole', 0.06]],
+    propMix: [['round', 0.18], ['acacia', 0.16], ['grass', 0.2], ['boulder', 0.12], ['termiteMound', 0.1], ['shrub', 0.1], ['mudHouse', 0.04], ['stall', 0.04], ['market', 0.03], ['pole', 0.06]],
     groundColorBase: 0x9a8a52, // tall grass going gold
     groundAccent: 0x8a5a38,
     propA: 0x5e7a3a,
@@ -1083,7 +1083,7 @@ export const TERRAIN_SETS = {
     climate: 'harmattan',
     grass: 0.7,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['acacia', 0.22], ['baobab', 0.14], ['mudHouse', 0.12], ['termiteMound', 0.08], ['shrub', 0.12], ['grass', 0.14], ['pole', 0.06], ['stall', 0.04], ['mileMarker', 0.04]],
+    propMix: [['acacia', 0.22], ['baobab', 0.14], ['mudHouse', 0.12], ['termiteMound', 0.08], ['shrub', 0.12], ['grass', 0.14], ['pole', 0.06], ['stall', 0.04], ['market', 0.04], ['mileMarker', 0.04]],
     groundColorBase: 0xc0a070,
     groundAccent: 0xa4794c,
     propA: 0x7a7a44,
@@ -1105,7 +1105,7 @@ export const TERRAIN_SETS = {
     climate: 'harmattan',
     grass: 0.15,
     seasonReach: 0, // the tropics and the desert keep no four-season year
-    propMix: [['kanoStreet', 0.45], ['mudWall', 0.08], ['mudHouse', 0.14], ['mosque', 0.08], ['stall', 0.1], ['round', 0.08], ['pole', 0.04], ['billboard', 0.03]],
+    propMix: [['kanoStreet', 0.45], ['market', 0.08], ['mudWall', 0.08], ['mudHouse', 0.14], ['mosque', 0.08], ['stall', 0.1], ['round', 0.08], ['pole', 0.04], ['billboard', 0.03]],
     runChance: 0.9,
     sidewalk: 1,
     pavementColor: 0xc4a888, // dusty laterite paving

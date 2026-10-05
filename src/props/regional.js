@@ -635,6 +635,17 @@ export const REGIONAL_KIT = {
     spread: 11.5,
     jitter: 4,
   },
+  // A roadside market: a row of stalls under sun umbrellas. On the higher
+  // tiers it is swapped for stalls built from a real model (props/modelProps.js).
+  market: {
+    parts: [
+      { geometry: () => merge([-6, 0, 6].map((x) => stallKiosk().translate(x, 0, 0))), color: 0x8a6a4a },
+      { geometry: () => merge([-6, 0, 6].map((x) => stallPole().translate(x, 0, 0))), color: 0x3a3a3a },
+      { geometry: () => merge([-6, 0, 6].map((x) => stallUmbrella().translate(x, 0, 0))), material: 'a' },
+    ],
+    spread: 15,
+    jitter: 8,
+  },
   mosque: {
     scale: 0.9,
     parts: [
