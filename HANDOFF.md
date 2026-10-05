@@ -69,3 +69,14 @@ colour grade in pause/garage, with warm highlights and turquoise shadow tint;
 new profiles default to it while existing saved look preferences are kept.
 The broader city-feel goal is active: runtime visual verification and further
 street/landmark/lighting refinement remain.
+
+## Pavement life and lagoon pass
+
+Added batched Eko bus shelters, timber benches and bins beside suitable roads.
+Placement rejects water, bridge roads, nearby building footprints and junctions;
+limits are ten sites and three shelters per chunk. Actual baked Lagos data
+produced 710 furniture sites, including 378 shelters across 373 chunks.
+Added animated lagoon normal ripples anchored in world coordinates so shifting
+the large water mesh does not drag the wave pattern with the car. Production
+build and pavement placement checks passed. Full rendered appearance remains
+unverified here; city-feel goal remains active.

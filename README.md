@@ -128,3 +128,7 @@ The pause menu and garage offer Coastal colour alongside Clean and Gritty.
 It gently warms highlights and cools shade. New garage profiles start with it;
 existing profiles keep their saved look. Shops now have display windows or
 roller shutters, outward-facing awnings, and patterned pavement slabs.
+
+Pavements now include Eko bus shelters, benches and bins beside suitable roads.
+Their placement avoids mapped water, buildings, junctions and bridge decks.
+The lagoon has animated surface ripples anchored in world coordinates.

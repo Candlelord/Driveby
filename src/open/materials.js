@@ -10,6 +10,7 @@ import { asphaltMaps, gravelMaps, groundMaps } from '../world/surfaces.js';
  */
 
 export const NIGHT = { value: 0 };
+export const WATER_TIME = { value: 0 };
 const WARM = new THREE.Color(1.0, 0.74, 0.44);
 
 let cache = null;
@@ -35,6 +36,21 @@ export function worldMaterials() {
   const concrete = new THREE.MeshStandardMaterial({ color: 0x9c9890, roughness: 0.9, metalness: 0 });
 
   const water = new THREE.MeshStandardMaterial({ color: 0x2d5566, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.92 });
+  water.onBeforeCompile = (shader) => {
+    shader.uniforms.uWaterTime = WATER_TIME;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vWaterWorld;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWaterWorld = (modelMatrix * vec4(position, 1.0)).xz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uWaterTime;\nvarying vec2 vWaterWorld;')
+      .replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
+        float rippleA = dot(vWaterWorld, vec2(0.65, 0.38)) + uWaterTime * 0.9;
+        float rippleB = dot(vWaterWorld, vec2(-0.31, 0.84)) - uWaterTime * 0.65;
+        vec3 ripple = vec3(cos(rippleA) * 0.075 - cos(rippleB) * 0.025, 0.0,
+          cos(rippleA) * 0.04 + cos(rippleB) * 0.065);
+        normal = normalize(normal + mat3(viewMatrix) * ripple);`);
+  };
+  water.customProgramCacheKey = () => 'lagoon-ripples-v1';
 
   const buildings = buildingMaterial();
   const thatch = new THREE.MeshStandardMaterial({ color: 0xb59a5c, roughness: 1, metalness: 0, vertexColors: false });

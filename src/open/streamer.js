@@ -4,6 +4,7 @@ import { terrainMesh, roadMeshes, buildingMeshes } from './chunkMeshes.js';
 import { floraMeshes } from './flora.js';
 import { streetMeshes } from './streets.js';
 import { buildingDetailMeshes } from './buildingDetails.js';
+import { streetFurnitureMeshes } from './streetFurniture.js';
 
 /**
  * Keeps the world built around the car.
@@ -110,6 +111,7 @@ export class Streamer {
     buildingMeshes(this.world, chunk).forEach(tag('building'));
     buildingDetailMeshes(this.world, chunk).forEach(tag('architecture'));
     streetMeshes(this.world, chunk).forEach(tag('street'));
+    streetFurnitureMeshes(this.world, chunk).forEach(tag('street'));
     floraMeshes(this.world, chunk, this.floraDensity).forEach(tag('flora'));
     this._detail(group, chunk, this.lastX ?? 0, this.lastZ ?? 0);
     this.scene.add(group);

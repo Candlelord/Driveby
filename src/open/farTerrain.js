@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { WORLD } from './geo.js';
 import { groundColour } from './chunkMeshes.js';
-import { worldMaterials } from './materials.js';
+import { worldMaterials, WATER_TIME } from './materials.js';
 
 const STEP = 150;
 const C = new THREE.Color();
@@ -59,7 +59,8 @@ export class FarTerrain {
     scene.add(this.water);
   }
 
-  update(x, z, live) {
+  update(x, z, live, time = 0) {
+    WATER_TIME.value = time;
     this.water.position.x = Math.round(x / 50) * 50;
     this.water.position.z = Math.round(z / 50) * 50;
     if (live) this.water.material.color.copy(live.waterColor ?? this.water.material.color).lerp(new THREE.Color(0x2d5566), 0.6);

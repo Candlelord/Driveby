@@ -412,7 +412,7 @@ function tick(now) {
   // The world around the car.
   streamer.update(vehicle.x, vehicle.z, vehicle.yaw);
   landmarks.update(vehicle.x, vehicle.z);
-  far.update(vehicle.x, vehicle.z, environment.live);
+  far.update(vehicle.x, vehicle.z, environment.live, state.time);
 
   if (mode === 'menu') {
     // Drift slowly round the start while the menu is up.
