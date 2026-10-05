@@ -35,6 +35,7 @@ import { Traffic } from './open/traffic.js';
 import { Pedestrians } from './open/peds.js';
 import { Landmarks3D } from './open/landmarks3d.js';
 import { FarTerrain } from './open/farTerrain.js';
+import { updateFlora } from './open/flora.js';
 import { updateStreets } from './open/streets.js';
 import { PauseMenu, Journal } from './open/menus.js';
 import { NIGHT } from './open/materials.js';
@@ -384,6 +385,7 @@ function tick(now) {
   }
   state.dt = dt;
   state.time += dt;
+  updateFlora(state.time);
   if (mode === 'loading') {
     renderer.render(scene, camera);
     return;

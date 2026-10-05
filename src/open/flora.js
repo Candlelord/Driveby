@@ -5,6 +5,7 @@ import { leafCard, frondCard, grassCard, needleCard, barkMaps, rockMaps, keepCar
 import { CHUNK, NORTH_EDGE, hash2, fbm } from './geo.js';
 import { GROUND, distToSeg } from './world.js';
 import { biomeAt } from './north.js';
+import { applyFoliageWind, FOLIAGE_TIME } from './foliageWind.js';
 
 /**
  * Trees, shrubs, termite mounds and grass, scattered over a chunk by what the
@@ -59,6 +60,7 @@ function kitParts(type) {
 }
 
 const materials = new Map();
+const depthMaterials = new WeakMap();
 function material(surface, colour) {
   const key = `${surface}:${colour}`;
   if (materials.has(key)) return materials.get(key);
@@ -67,13 +69,22 @@ function material(surface, colour) {
     { leaf: card(leafCard()), needle: card(needleCard()), frond: card(frondCard()), grass: { ...card(grassCard()), alphaTest: 0.5 }, bark: { ...barkMaps(), roughness: 0.95 }, rock: { ...rockMaps(), roughness: 0.92 }, core: { roughness: 0.95 } }[surface] ?? { roughness: 0.85 };
   const m = new THREE.MeshStandardMaterial({ color: colour, metalness: 0, ...spec });
   if (surface === 'core') m.color.multiplyScalar(0.34);
-  if (CARDS.has(surface)) keepCardNormals(m);
+  if (CARDS.has(surface)) {
+    keepCardNormals(m);
+    const original = m.onBeforeCompile;
+    applyFoliageWind(m, surface === 'frond' ? 0.18 : 0.11);
+    const wind = m.onBeforeCompile;
+    m.onBeforeCompile = (shader, renderer) => { original(shader, renderer); wind(shader, renderer); };
+    depthMaterials.set(m, applyFoliageWind(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: m.map, alphaTest: m.alphaTest, side: THREE.DoubleSide }), surface === 'frond' ? 0.18 : 0.11));
+  }
   materials.set(key, m);
   return m;
 }
 
 const CELL = 14;
 const DUMMY = new THREE.Object3D();
+const TINT = new THREE.Color();
+export function updateFlora(time) { FOLIAGE_TIME.value = time; }
 
 /** Instanced vegetation for one chunk. */
 export function floraMeshes(world, chunk, density = 1) {
@@ -118,12 +129,16 @@ export function floraMeshes(world, chunk, density = 1) {
     for (const part of kitParts(type)) {
       const colour = part.fixed ?? (part.slot === 'b' ? colours.b : colours.a);
       const mesh = new THREE.InstancedMesh(part.geometry, material(part.surface, colour), list.length);
+      if (depthMaterials.has(mesh.material)) mesh.customDepthMaterial = depthMaterials.get(mesh.material);
       list.forEach((p, i) => {
         DUMMY.position.set(p.x, p.y, p.z);
         DUMMY.rotation.set(0, p.r, 0);
         DUMMY.scale.setScalar(p.s * (type === 'baobab' ? 1.4 : 1));
         DUMMY.updateMatrix();
         mesh.setMatrixAt(i, DUMMY.matrix);
+        const variation = hash2(p.x + ox, p.z + oz);
+        TINT.setRGB(0.88 + variation * 0.16, 0.91 + variation * 0.09, 0.83 + variation * 0.15);
+        mesh.setColorAt(i, TINT);
       });
       mesh.position.set(ox, 0, oz);
       mesh.castShadow = type !== 'grass';
@@ -156,6 +171,7 @@ export function kitInstances(type, list, colours = COLOURS.forest) {
   for (const part of kitParts(type)) {
     const colour = part.fixed ?? (part.slot === 'b' ? colours.b : colours.a);
     const mesh = new THREE.InstancedMesh(part.geometry, material(part.surface, colour), list.length);
+    if (depthMaterials.has(mesh.material)) mesh.customDepthMaterial = depthMaterials.get(mesh.material);
     list.forEach((p, i) => {
       DUMMY.position.set(p.x, p.y, p.z);
       DUMMY.rotation.set(0, p.r ?? 0, 0);

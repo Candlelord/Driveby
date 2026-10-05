@@ -152,3 +152,12 @@ homes no longer receive flat-roof parapets. Road-facing eaves gain gutters,
 downpipes and fixing brackets using existing metal batches. Flat roofs retain
 their parapets. Building checks include a parapet-height regression for pitched
 homes; production build passes. Final appearance still needs in-game review.
+
+## Vegetation variation and breeze
+
+Open-world vegetation gains deterministic instance tint variation and gentle
+leaf/frond movement anchored to world coordinates. Trunks remain static. Card
+normal handling is preserved, and custom depth materials apply identical
+deformation to alpha-cutout shadows. A shared time uniform updates once per
+frame. Hand-placed landmark groves use the same wind materials. Production
+build passes; the final foliage movement needs rendered visual review.
