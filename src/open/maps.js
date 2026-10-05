@@ -311,7 +311,8 @@ export class BigMap {
       <canvas></canvas>
       <div class="bar"><div class="title gfx">Map</div><div style="display:flex;gap:10px"><button class="brush small alt" data-a="clear">Clear waypoint</button><button class="brush small" data-a="close">Back to driving</button></div></div>
       <div class="legend"><div><i style="background:#ffb02e;border-radius:50%"></i>Fuel</div><div><i style="background:#f5f2e8;border-radius:50%"></i>Undiscovered</div><div><i style="background:#5bc8ff;border-radius:50%"></i>Discovered</div><div><i style="background:#c6f000;border-radius:50%"></i>Errand</div><div><i style="background:#c6f000"></i>Fuel ticket</div></div>
-      <div class="hint">tap to set a waypoint · drag to move · scroll or pinch to zoom · M or Esc to close</div>`;
+      <div class="hint">tap to set a waypoint · drag to move · scroll or pinch to zoom · M or Esc to close</div>
+      <div class="attribution">Map data ? <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> ? ODbL</div>`;
     document.body.appendChild(this.panel);
     this.canvas = this.panel.querySelector('canvas');
     this.ctx = this.canvas.getContext('2d');

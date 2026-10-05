@@ -1,14 +1,16 @@
 {
-  "name": "endless-road-trip",
+  "name": "driveby",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Endless auto-driving road trip prototype \u2014 mood-block driven terrain, weather and lighting.",
+  "description": "Open-world field trip through Lagos and a procedural northern landscape.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "models": "node scripts/optimize-models.mjs"
+    "models": "node scripts/optimize-models.mjs",
+    "world:fetch": "node scripts/fetch-osm.mjs",
+    "world:build": "node scripts/build-world.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

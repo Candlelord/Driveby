@@ -192,3 +192,6 @@ body.ow-touching .ow-fuel { bottom: auto; top: calc(env(safe-area-inset-top, 0px
 /* The world hides the old overlays it does not use. */
 body.ow-on #hud, body.ow-on #route, body.ow-on #hint, body.ow-on #tilt-btn, body.ow-on #stick { display: none !important; }
 #screens:has(.mm) { padding: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; overflow: hidden; align-items: stretch; }
+
+.ow-map .attribution { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 4px); max-width: 45%; padding: 3px 6px; background: rgba(11, 11, 12, 0.85); color: #f5f2e8; font-size: 10px; }
+.ow-map .attribution a { color: inherit; }

@@ -44,16 +44,6 @@ body {
   height: 100%;
 }
 
-
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-
-  50% {
-    opacity: 0.3;
-    transform: scale(0.72);
-  }
 /* --- connect / review screens ------------------------------------------- */
 
 #screens {

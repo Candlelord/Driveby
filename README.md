@@ -1,604 +1,114 @@
-# Endless Road Trip — v0.1 prototype
+﻿# Driveby
 
-An endless, auto-driving road trip. No win state, no fail state; the loop is
-about continuing the drive.
+A free-roaming field trip through Lagos and a connected northern landscape.
+Drive yourself, pick destinations on the map, discover places with your friend
+Tunde, run optional errands, and keep the tank full. There are no timed stages.
 
-Your own music sets the mood; the mood decides where you are and what the
-weather is doing.
+Lagos uses OpenStreetMap roads and building footprints within latitude
+6.41–6.60 and longitude 3.34–3.50 (about 18 × 21 km). Buildings and landmarks
+use generated geometry, so this is an interpretation of the city. Beyond
+Lagos, the forest, savanna, Sahel, Kano and desert are procedural; their
+layouts and distances are fictional. The overall bounds are 28 × 54 km.
 
-**Verification status:** the world, audio, physics and classifier are all
-exercised in a real browser. The live Spotify connection is *not* — it needs a
-registered app and a real account, neither of which exist in the environment
-this was built in. See "What is and isn't verified" at the end.
+## Run locally
 
-## Running it
-
-```bash
+```sh
 npm install
-npm run dev      # http://localhost:5173
+npm run dev
+npm run build
+npm run preview
 ```
 
-The dev server binds to all interfaces, so a phone on the same network can hit
-`http://<your-machine-ip>:5173` to test touch and tilt steering.
-
-```bash
-npm run build && npm run preview   # production build
-```
-
-Append `?quality=low`, `medium` or `high` to force a rendering tier — useful for
-checking how the game looks and runs on a weaker device from a desktop.
-
-For Spotify, copy `.env.example` to `.env.local` and fill in a client ID from
-the [Spotify dashboard](https://developer.spotify.com/dashboard). Without one
-the game still runs on the mock playlist, and the classifier and review screen
-still run against a stand-in library.
+Vite serves the development build at http://localhost:5173. Append
+`?quality=low`, `?quality=medium` or `?quality=high` to select a graphics tier.
+Choose a new exploration or Continue from the main menu. Spotify is optional;
+without credentials the game uses a stand-in playlist to drive the lighting
+and mood. See `.env.example` for configuration. Live Spotify is unverified.
 
 ## Controls
 
 | Input | Action |
 |---|---|
-| Arrow keys / `A` `D` | Steer (desktop) |
-| Drag anywhere | Steer — drag across ~¼ of the screen is full lock |
-| Device tilt | Steer. On iOS, tap **enable tilt steering** first (the OS requires a gesture before handing over orientation events) |
-| Space / `S` | Handbrake (route mode) |
-| `V` | Co-driver voice on/off |
-| `1`–`5` | Force tornado / lightning / snow / sandstorm / aurora |
-| `0` | Stop the running event |
-| `M` | Mute audio |
-| `R` | Reopen the mood review screen |
-| `L` | Cycle to the next landmark |
+| W / Up | Accelerate |
+| S / Down | Brake, then reverse |
+| A, D / Left, Right | Steer |
+| Space | Handbrake |
+| M / Tab | Open or close the map |
+| Esc / P | Pause menu |
+| J | Field-trip journal |
+| R | Recover to a nearby road |
+| V | Toggle Tunde's voice |
 
-In route mode the HUD's top-right panel shows the leg and distance left.
+The map supports dragging, wheel or pinch zoom, and clicking destinations to
+set a waypoint. Routes follow the road graph when possible; a direct line is
+used when a graph route is unavailable. Pause offers the garage, journal,
+look settings, recovery, and Save and quit to menu. Gamepad triggers and left
+stick, plus touch driving buttons, are also supported; desktop is the primary
+target.
 
-The car drives itself forward at a constant speed. Steering only moves it across
-the road. On open road the verge eases you back; in a city street you can mount
-the pavement right up to the shopfronts.
+Discoveries earn money and journal entries. Errands are optional. Stop near a
+fuel station's pumps to refill automatically if you can afford it ($90 per
+full tank). Glowing fuel tickets restore 25% of the tank. Empty fuel permits
+slow movement, and an emergency refill prevents permanent stranding.
+Progress autosaves in this browser's local storage; garage purchases and
+paint choices are also stored locally.
 
-Everything is solid: traffic, parked cars and building fronts. A hit costs you
-speed and shoves you off line, with camera shake and a crash; a car you hit
-spins off and stops, and traffic that is not paying attention can pile into
-it. Pedestrians step out of your way. There is still no game over.
+## Map data pipeline
 
-**Progress saves itself** — every few seconds while you drive, and whenever
-the tab is hidden or closed — in this browser's local storage. The start
-screen then offers *Continue*, with where you were ("near Kano, Nigeria ·
-1,187 km · saved 2 h ago").
+The baked map ships in `public/world/`, so ordinary builds need no Overpass
+access. To refresh it:
 
-## Rally
-
-Route mode is a rally. Every leg between two stops is a timed stage; the
-cities at either end are liaison, and nothing is counted there.
-
-- **Handling** (`physics.js`): the road bends and the car, left alone, goes
-  straight on — so it drifts toward the outside of the bend by however much
-  `speed² × curvature` exceeds the grip. Gravel and the wet cut the grip. The
-  car lifts for corners it can see unless you hold the pedal. The handbrake
-  locks the rears: a hard stop and the nose swings where you steer.
-- **Roads** (`path.js`, `rally/track.js`): each stage has a surface profile
-  (tarmac, gravel, dirt) and a windiness profile that adds rally corners to the
-  highway curve; both are pure functions of distance. Dirt is a shader on the
-  road (`withDirt`), with dust and tyre smoke.
-- **Stages** (`rally/stages.js`): start gate, countdown with the car held on
-  the line, timer and progress, three splits against the fastest crew, results
-  table (invented crews, `rally/field.js`), prize money. Roads are closed:
-  no traffic. Saves include the stage clock.
-- **Co-driver** (`rally/copilot.js`): corners are read off `heading(s)`
-  (`rally/corners.js`), graded hairpin/1–6, shown as chips and spoken with the
-  browser's speech synthesis. `V` or the speaker button mutes the voice.
-- **Trackside** (`rally/dressing.js`): tape on the outside of bends, tyre
-  stacks (solid, they fall over), chevron boards, spectators; three
-  collectible postcards a stage (`rally/postcards.js`).
-- **Garage** (`garage/`, `garage.js`): cars, paint, liveries, a turntable,
-  postcard book, and a *Clean* / *Gritty* look switch (a heavier grade).
-- **Fuel** (`rally/stations.js`, `rally/tickets.js`): the tank drains with distance
-  (boost drinks it), the HUD has a gauge, and a gas station stands at the end of
-  every stage. Pull in on the right and the car brakes itself to the pumps; the
-  fill costs money. Run dry and you crawl, and a passer-by tips a little in.
-  Lime fuel tickets float over the road, two a stage, and top the tank up by a
-  quarter.
-- **Cars** (`world/carModels.js`): the Harmattan GT, Cicada, Kestrel Saloon,
-  Sahel Concept and Rapid Response, each with its own grip, speed and tank.
-- **Traffic and markets**: real vehicles (the VW van recoloured as the Lagos
-  danfo, Soviet saloons, a sedan, the cicada, an ambulance) and, in the towns
-  and villages, markets of real stalls.
-- **Controls**: arrows or A/D steer, up/W boost, space/S handbrake; on touch
-  there are on-screen arrows, pedal and handbrake.
-
-Buildings in Paris and Amsterdam are baked from real models into facade
-textures (`scripts/bake-facades.mjs`) on the high and medium tiers.
-
-## Route mode: Lagos → Paris
-
-Pick **Lagos → Paris** on the start screen (or open the game with
-`?route=lagos-paris`) and the trip has a destination. The road follows the
-real Trans-Saharan Highway:
-
-Lagos → Ibadan → Ilorin → Abuja → Kaduna → Kano → Zinder (Niger) → Agadez →
-Tamanrasset (Algeria) → In Salah → Ghardaïa → Algiers → *ferry* → Marseille
-(France) → Lyon → Paris → Brussels (Belgium) → Amsterdam (Netherlands).
-
-That is 6,075 km by road, compressed to about 48 minutes at cruise (holding
-boost shortens it). Long legs still feel long — distance is square-root
-compressed, so the 940 km Saharan crossing is the longest stretch but not ten
-times the 128 km to Ibadan.
-
-- **The route picks the place, the music keeps the light.** Your playlist
-  still sets the mood — sky, time of day, colour grade — but the country is
-  held by the route, so Kano follows Kaduna whatever comes on next.
-- **Regions** (`terrainSets.js`, ROUTE section): Lagos, the rainforest belt,
-  Guinea savanna, the Abuja hills, the Sahel under Harmattan dust, Kano's mud
-  city, Saharan dunes, the Hoggar, the M'zab valley, the Algiers coast, Paris
-  and the Dutch polder, with Provence and northern France reusing existing
-  sets. New props for them live in `props/regional.js` (baobab, acacia,
-  cypress, termite mounds, Hausa mud houses, zinc-roofed bungalows, roadside
-  stalls, mosques, Haussmann blocks, canal houses).
-- **Cities as they really look**: the trip opens on the Third Mainland
-  Bridge (a real viaduct on piers over the lagoon, Makoko's stilt houses on
-  the water, Lagos Island's towers and the Lekki–Ikoyi Link Bridge across it),
-  then Lagos streets of balconied blocks with black rooftop water tanks, shop
-  rows under rusted awnings, yellow-and-black painted kerbs and yellow danfo
-  minibuses in the traffic. Kano has its earthen city walls and a gate you
-  drive through; Paris is continuous Haussmann street walls on both sides.
-- **Every stop is a city**: Ibadan, Ilorin, Abuja, Kaduna, Zinder, Agadez
-  (with its Grand Mosque), Tamanrasset, In Salah, Ghardaïa, Marseille, Lyon,
-  Brussels and Amsterdam each have their own streets as you arrive and leave
-  — Nigerian shop streets, Sahel mud compounds, Saharan medinas, French stone
-  blocks, Dutch canal houses.
-- **City life**: in the cities the road is lined both
-  sides with a continuous street frontage (`lagosStreet`, `kanoStreet`,
-  `algiersStreet`, `haussmannStreet`), a raised paved pavement, cars parked
-  along the kerb, and people (`world/people.js`) walking and standing —
-  dressed and carrying head-loads according to the region, limbs animated in
-  the vertex shader. Villages and the countryside get a few people on the
-  verges.
-- **Landmarks**, at real proportions: Lagos Island, Zuma Rock, Abuja's
-  National Mosque, Kano's city gate, Algiers' Maqam Echahid, the Eiffel Tower,
-  the Arc de Triomphe and the Atomium.
-- **On the way**: a route panel (leg, km to go, country, overall progress),
-  green road-sign arrivals at every city, border-crossing signs, wet/dry
-  seasons instead of four in the tropics and the desert, and a fade-to-black
-  ferry crossing from Algiers to Marseille (the Algeria–Morocco border has
-  been closed since 1994).
-- Reaching Amsterdam ends the trip and hands the road back to the playlist.
-
-Routes are data (`routes/lagosParis.js`): stops, leg distances, the regions
-each leg passes through, borders and landmarks. Adding another route is a new
-file in the same shape, registered in `ROUTES`.
-
-## The environment system
-
-Four layers. Each owns a different slice of the look, and later layers override
-earlier ones in `compose()` — which is what lets a sandstorm read as a sandstorm
-over any place in any mood, without either of them knowing sandstorms exist.
-
-| Layer | Owns | Advances on |
-|---|---|---|
-| **Mood** (`moods.js`) | Sky, sun, lamps, lens, colour grade | Song-block boundaries |
-| **Terrain set** (`terrainSets.js`) | Place: landform, ground, scenery, features | Drawn from the mood's pool at block start |
-| **Climate** (`climates.js`) | Air: precipitation, visibility, wet road | Named by the terrain set |
-| **Event** (`events.js`) | Rare dramatic overlay | Its own scheduler |
-
-### Terrain sets
-
-28 of them, pooled per mood. A block start draws one at random from the
-incoming mood's pool, so a Sad block might be a flooded plain or a burned forest
-or an ice road, and you don't know which until you're in it.
-
-| Mood | Pool |
-|---|---|
-| Sad (8) | flooded plain, cliff coast, burned forest, rural crossroads, highland moor, ice road, *mountain pass*, *salt flats* |
-| Chill (10) | pine forest, misty lake, redwood corridor, terraced valley, autumn birches, *river crossing*, *blossom avenue*, *highland moor*, *mountain pass*, *bioluminescent valley* |
-| Happy (9) | wheat fields, palm highway, desert bloom, orchard hills, lavender fields, canyon road, *river crossing*, *blossom avenue*, *salt flats* |
-| Hip-Hop (7) | skyline drive, neon underpass, rooftop skybridge, warehouse district, refinery coast, tunnel run, *bioluminescent valley* |
-
-*Italicised sets sit in more than one pool and read differently depending on
-which mood's light is falling on them.*
-
-Landform comes from four controls in `terrain.js`: `hillHeight` (amplitude),
-`hillScale` (how big the forms are), `hillSharpness` (bends the noise — above 1
-for jagged peaks, below 1 for wind-rounded dunes), and `causeway` / `cliffSide`
-for raised banks and cliff walls. Features — water planes, god-rays, distant
-skylines, overpass arches, tunnels, ground fog — are each one number on the
-profile, so a set turns one on simply by having a non-zero value and it fades
-with everything else.
-
-**Tunnels** are the one feature with reach outside the renderer. `tunnelAt()`
-returns how enclosed the road is at a given distance, and three systems read the
-same function: the geometry places segments where it is non-zero, the lighting
-swaps the sky's fill for the tunnel's own lamps, and the audio drops the wind
-while swelling the road noise and closing the bus filter. Tunnels run in
-stretches, not continuously — the interesting part is the mouth.
-
-Scatter density is tied to visibility, not set by hand: thick air hides most of
-the props, so a misty forest can place forty trees and show three. Effective
-density scales with fog reach, measured against a clear-day baseline, so a set
-reads as equally populated whatever weather it is found in. Two slow waves clump
-the scatter into thickets and clearings so a high average does not read as a
-hedge.
-
-Scenery does **not** cross-fade between sets. Each slot along the road belongs
-to whichever set was current when that stretch first came into existence, which
-is ~330 units ahead — well outside the fog. The swap is never seen happening,
-and it is far cheaper than blending every shape against every other. Ground
-colour and landform *do* crossfade, over ~5s.
-
-### Landmarks
-
-Six one-off structures that appear rarely — roughly every 5,000 units — and are
-deliberately *not* tied to a terrain set or a mood. Coming over a rise in a
-rainstorm and finding the Great Wall there is the point.
-
-**the Great Wall · the standing stones · the stone heads · the pyramids · the
-torii gates · the great bridge**
-
-Each is built once as merged geometry and parked at a scheduled distance,
-placed through the same path transform as everything else so it sits correctly
-on a curve. Two sample the ground they stand on; two straddle the road and you
-drive through them. The HUD names one when it comes into sight.
-
-### Climates
-
-clear, clear night, wet night, mist, rain, ash, leaf fall, petals, frozen, snow,
-storm. A terrain set names the one it wants, so each mood's characteristic
-weather falls out of its pool rather than being stated twice.
-
-Falling particles are one parameterised system, not several: snow, ash, autumn
-leaves and blossom petals differ only in colour, fall speed and how much they
-sway. `frozen` has no precipitation at all — what sells it is black ice, the
-most reflective road surface in the game.
-
-### Events
-
-Five, each a short timeline of phases producing overrides:
-
-- **Tornado** — funnel on the horizon, trees bending, debris building, a
-  green-grey whiteout at the pass-through, then clearing faster than it arrived
-- **Lightning storm** — full-screen flashes, rain stepping up behind them
-- **Sandstorm** — orange fog wall, fast dust, neon blooming through the haze
-- **Snowfall** — everything pales, fog shortens, nothing else runs alongside
-- **Aurora** — the rare quiet one; forces a clear night sky whatever the mood
-  was doing, and silences all other weather
-
-None of them touch steering or the car's control. Press **1–5** to force one and
-**0** to stop it.
-
-## What's in this build
-
-- **Endless road.** The centreline is a closed-form function of distance rather
-  than an accumulated segment list, so it never drifts and needs no chunk
-  bookkeeping. The car sits at the world origin and the road is transformed
-  around it, which keeps float precision constant no matter how far you drive.
-- **Mock mood blocks.** A block ends when its last "song" finishes — length is
-  song-count driven, not timer driven, matching how the real Spotify-backed
-  version has to behave.
-- **Traffic.** Cars in both directions, instancing the same model the player
-  drives. Same-direction traffic runs slower so you steadily catch and pass it;
-  oncoming traffic closes at nearly twice your speed and is gone in a second. At
-  night the two read completely differently — receding tail lights versus
-  headlights growing out of the dark. Nothing collides: instead of a crash,
-  traffic eases toward its shoulder when you end up on top of it.
-- **Car lights.** A lit pool of road ahead of the car, and beam shafts at lamp
-  height that only come up when there is something in the air to scatter off —
-  so clear nights stay clean and fog gets shafts. Lamps come on for darkness
-  *and* for heavy weather.
-- **Distance.** Two rings of parallax ridge silhouettes and a starfield sit
-  outside the fog, hazed toward the fog colour in proportion to its density.
-- **A full grade per mood.** Bloom, exposure, contrast, saturation, split
-  toning, vignette, grain and chromatic aberration crossfade with everything
-  else. Field of view too — happy is wide and open, sad is tight and closed in.
-- **Debug overlay.** All four layers (both values, mid-crossfade), block
-  progress, song counter, distance. Testing only — not a real UI.
-
-Flat-shaded solid colours throughout, no textures on any geometry. The two
-exceptions are generated: a soft-dot alpha ramp for particles, stars and glows,
-and a wedge ramp for headlight beams. Untextured points render as hard squares,
-which reads as a glitch rather than mist.
-
-## Spotify, audio and physics
-
-### Spotify
-
-OAuth 2.0 **Authorization Code with PKCE** — the right flow for a public client
-with no server, and the only one that still yields a refresh token. Access
-tokens live in memory; the refresh token goes to localStorage, which is the
-honest tradeoff for a serverless client.
-
-After login it pulls top tracks (short and long term), saved tracks and recently
-played, then batch-fetches the **artist** objects — because genre tags live on
-the artist and are the primary classification signal available.
-
-> Spotify deprecated `audio-features` and `audio-analysis` for new apps in
-> November 2024 with no reinstated access path. **Nothing in this game may
-> depend on tempo, energy or valence.** Speed and intensity cues come from mood
-> and terrain instead.
-
-`genreMap.js` holds the genre → mood table (longest rule first, so "melodic
-hardcore" isn't caught by "melodic"), with track-title keywords as a weak
-tiebreaker and a confidence score. The review screen is pre-filled and sorted
-**lowest confidence first** — the player is correcting a decision, not sorting a
-library from scratch. Corrections persist locally and are never written back.
-
-**Playback** tries the Web Playback SDK first (real in-browser audio, Premium
-only) and falls back to deep-linking the Spotify app. A hard constraint shapes
-the audio design:
-
-> The SDK streams through a DRM-sandboxed element. There is **no raw buffer** —
-> no `AnalyserNode`, no beat detection, and no filter can be attached to the
-> music. `setVolume` is the only lever.
-
-So ducking is a coarse volume dip, not the low-pass an engineer would reach for,
-and all the muffling happens on our own SFX bus instead.
-
-### Audio
-
-Every SFX layer is **synthesised, not sampled** — no assets to license, nothing
-to download, and every parameter is live. Wind genuinely thickens with speed
-rather than crossfading between two recordings of wind.
-
-```
-engine (3 detuned oscillators) / wind (white) / road (brown) /
-rain / hush / gust            ->  per-layer gain
-  -> SFX low-pass  (opens in clear weather, closes in heavy)
-  -> master gain -> destination
+```sh
+npm run world:fetch
+npm run world:build
+npm run build
 ```
 
-The low-pass is the "music is inside the car" effect: severity from rain, drift,
-wind and fog closes it from 18kHz down to ~500Hz, so the outside world thickens
-against the music without the music ever being touched. One-shots (birds, gulls,
-thunder) briefly duck the SDK volume by 10–20%. Press **M** to mute.
+The downloader caches raw Overpass JSON in the ignored `osm-cache/` folder.
+Rerunning it retries missing files; `--force` refreshes existing files.
+It requests water and POIs plus roads, buildings and land use for 16 tiles:
+50 cache files in total. Confirm all are present before calling the map
+complete. The builder can run on a partial cache, leaving sparse areas.
 
-### Physics
+The builder generates 400 m chunks, a ground raster, road graph, points of
+interest and map image. Coordinates use metres around 6.455 N, 3.39 E: X is
+east, Z is south, Y is up. The game's service worker retrieves world data from
+the network first so rebuilt maps can reach returning players; hashed model
+and application assets remain cached.
 
-Arcade, not simulation — there is no fail state, so this exists to give the car
-weight, not to create challenge. Speed eases toward a per-terrain cap with an
-asymmetric curve (pulling away takes longer than easing off) and falling
-acceleration near the cap. Steering has two stages of lag: the wheel follows the
-finger, the car follows the wheel. Body roll trails the steering so the car
-settles after a correction. Suspension bob is a function of *distance*, not
-time, scaled by the terrain set's roughness, with event shake layered on top.
-The road edge is a soft push-back with a rumble-strip cue, never a wall.
+Map data © OpenStreetMap contributors, ODbL. See [CREDITS.md](CREDITS.md).
 
-## Mobile
+## Code layout
 
-`quality.js` picks a tier at startup from pointer type, core count and device
-memory, deliberately starting conservative on touch — better to hold a smooth
-medium than to stutter at high for the three seconds the watchdog needs.
+- `src/main.js`: loading, menu, overlays, simulation and rendering loop.
+- `src/open/world.js`, `streamer.js`, `chunk.js`: map data, streaming and geometry.
+- `src/open/north.js`, `farTerrain.js`: generated north and distant terrain.
+- `src/open/vehicle.js`, `camera.js`, `controls.js`: driving, collisions and camera.
+- `src/open/route.js`, `maps.js`: road graph, GPS, minimap and full map.
+- `src/open/gameplay.js`, `places.js`, `menus.js`: fuel, errands, discoveries and journal.
+- `src/open/traffic.js`, `peds.js`, `streets.js`, `landmarks3d.js`: city life and landmarks.
+- `src/world/`: cars, model loading, sky, surfaces, weather and lighting.
+- `src/garage/`, `garage.js`: car selection, purchases, paint and liveries.
+- `src/spotify/`, `session.js`: optional music integration and mock playlist.
+- `scripts/`: map download/build and model optimization.
 
-Two kinds of setting. **Budgets** (draw distance, terrain resolution, particle
-counts, traffic slots, star count) are fixed at startup, because changing them
-means reallocating geometry. **Bloom and pixel ratio** are adjustable at
-runtime, so those are what the frame-time watchdog in `post.js` walks back —
-bloom first, then resolution. One-way; re-enabling on a recovered average would
-just oscillate.
+Raw models live in ignored `models-src/`. Add entries to `models.config.json`
+and run `npm run models` to optimize them into hashed files in `public/models/`
+and update the runtime manifest. Keep licences and credits with every model.
+Procedural geometry is the fallback while models load.
 
-| | high | medium | low |
-|---|---|---|---|
-| Pixel ratio cap | 2 | 1.5 | 1.25 |
-| MSAA | on | off | off |
-| Bloom | on | on | off |
-| Geometry detail | 1.55x | 1.0x | 0.6x |
-| Cloud octaves (per sky pixel) | 4 | 3 | 2 |
-| Water grid / normals | 16x34, rebuilt | 10x20, rebuilt | 5x10, static |
-| Birds, fireflies, exhaust, spray | on | on | off |
-| Terrain rows | every segment | every 2nd | every 3rd |
-| Road drawn ahead | 384u | 296u | 232u |
-| Triangles (measured) | ~29k | — | ~8.6k |
+In development, `window.__drive` exposes the vehicle, world, renderer, scene,
+camera, garage and gameplay for inspection. It is absent from production.
 
-The tiers used to shrink only buffers, which left a phone rendering the same
-geometry a desktop did. A shared `detail` level now scales segment counts on
-every curved surface, and the three genuinely expensive things — per-pixel cloud
-octaves, per-frame water normal recomputation, and the four extra particle
-systems — are cut explicitly rather than incidentally.
+## Verification and remaining limits
 
-Rendering also stops entirely when the tab is backgrounded, which on a phone is
-the difference between a game and a battery drain. Touch steering is a
-drag-anywhere virtual stick, and the viewport handles the address bar
-collapsing (`visualViewport`) and safe-area insets.
+The preceding session captured the menu, driving HUD, map and GPS, pause,
+Lagos streets, generated biomes and several gameplay probes. Its final saved
+National Theatre screenshot shows the building and surrounding streets from
+farther away; the earlier grey view was taken beside its wall.
 
-## Render pipeline
-
-`scene -> bloom -> tone map -> grade`, via `EffectComposer`.
-
-Tone mapping happens *after* bloom so highlights keep headroom above 1.0 for
-bloom to pick up — the sun disc, neon strips and headlights are deliberately
-driven past 1.0 for exactly that reason. Exposure is applied before tone
-mapping, where a stop change rolls highlights off properly instead of just
-lifting the image; everything else is graded after, in display space, which is
-where vignette and grain behave. The grade pass carries the look without bloom —
-you lose the glow, not the palette.
-
-## Layout
-
-```
-src/
-  main.js          scene setup, the frame loop, camera
-  config.js        tuning knobs; quality.js overwrites the budget ones
-  quality.js       device tiering and per-tier budgets
-  post.js          bloom + colour grade pipeline, quality watchdog
-  environment.js   the four layers, their clocks, and compose()
-  moods.js         4 mood profiles + mock block data
-  terrainSets.js   18 terrain sets and the per-mood pools
-  climates.js      8 climate profiles
-  events.js        5 extreme weather events and their scheduler
-  physics.js       arcade car feel
-  session.js       ties Spotify to the game; entirely optional
-  blend.js         generic profile interpolation
-  path.js          road centreline maths + the car-local transform
-  input.js         keyboard / drag / tilt steering
-  ui.js            debug overlay
-  audio/
-    noise.js       generated white / brown / rain buffers
-    sfx.js         the SFX bus, layers, muffle filter and one-shots
-  spotify/
-    auth.js        OAuth PKCE
-    library.js     data pull, classification, local store, block building
-    genreMap.js    genre -> mood table and the classifier
-    player.js      Web Playback SDK + deep-link fallback
-    mock.js        stand-in library for running without credentials
-  props/
-    kit.js         the 18-shape roadside prop kit
-  ui/
-    screens.js     connect and review screens
-  world/
-    sky.js         gradient dome, sun/moon, stars, distant ridges
-    road.js        asphalt, edge lines, dashed centre line
-    terrain.js     the ground either side, and its shared height function
-    props.js       instanced scenery, spawned per terrain set
-    features.js    water, god-rays, skyline, overpasses, ground fog
-    eventVisuals.js funnel cloud, debris, aurora ribbons
-    carGeometry.js the car model, shared by the player and traffic
-    car.js         player car, headlight pool and beams
-    traffic.js     other cars, both directions
-    weather.js     rain, drift (snow/ash) and haze
-    ribbon.js      the strip-of-quads primitive road and terrain share
-    textures.js    the generated alpha ramps
-```
-
-## Tuning
-
-`src/config.js` holds the driving feel (`speed`, `steerRate`, `steerResponse`,
-the camera values) and the three environment clocks. Drop `songSeconds` to ~3,
-`terrainRunLength` to ~200 and `climateRunSeconds` to ~5 to see everything cycle
-quickly — but set `environment.nextTerrainAt` / `nextClimateAt` too, since the
-first thresholds are captured when the Environment is constructed.
-
-The profile files are the art direction. Any key listed in a `*_COLOR_KEYS` or
-`*_NUMBER_KEYS` array is blended automatically — adding a new one to a profile
-plus its key list is all it takes for it to crossfade.
-
-Two things worth knowing before touching the numbers. Three's Lambert BRDF
-divides irradiance by pi, so the light intensities that produce the brightness
-you expect are roughly 3x what looks reasonable written down — tune those
-against rendered pixels, not by eye on the source. And the grade should be felt,
-not seen: `aberration` around 1.0 is already a few pixels of fringing in the
-corners, and it goes garish fast.
-
-In a dev build, `window.__roadtrip` exposes `{ state, environment, traffic,
-scene, camera, renderer, post, tier, CONFIG, MOOD_PROFILES, TERRAIN_PROFILES,
-CLIMATE_PROFILES }`. Mutating a profile takes effect on the next frame, which
-makes it the fastest way to dial a colour in. To jump straight to a combination:
-
-```js
-const e = __roadtrip.environment;
-for (const [axis, id] of [[e.mood,'hiphop'], [e.terrain,'city'], [e.climate,'snow']]) {
-  axis.fromId = id; axis.toId = id; axis.transition = 1;
-}
-```
-
-## Art direction
-
-The target is photographic: a dashcam-follow shot of a real road trip. Moods
-still own the light and the grade, but everything underneath them is built to
-behave like the real thing. Everything is procedural, so the game still ships
-with no binary assets:
-
-- **Physically based light.** Standard PBR shading with no stylised falloff,
-  ACES filmic tone mapping, and image-based lighting (`world/envLight.js`):
-  a small copy of the live sky dome over a ground-coloured lower half is
-  re-rendered into a PMREM environment map every second or so, so car paint,
-  glass, wet asphalt and water reflect the sky that is actually overhead. A
-  weakened hemisphere light remains as fill so night moods are not black.
-- **Real shadows.** A soft shadow map that on high and medium covers the
-  roadside as well as the car, so trees, fences and traffic throw shade across
-  the road.
-- **Surface detail** (`world/surfaces.js`): tileable noise generates asphalt
-  (aggregate, polished wheel tracks in each lane, normal and roughness maps —
-  a wet road shines first where the tyres run), gravel verges, worn line
-  paint, soil/grass ground detail, bark and rock. Albedo maps are near-white,
-  so the set's palette still decides every colour. A second, large-scale noise
-  sample breaks up visible tiling on road and terrain.
-- **Foliage as cards** (`props/foliage.js`): broadleaf crowns are leaf-card
-  clouds over a dark core, conifers are drooping needle boughs, palms have
-  textured fronds. Card normals point out of the crown, so it shades as one
-  mass. Rocks are noise-displaced and smooth-shaded. Thousands of grass tufts
-  (`world/grass.js`) line the verges, coloured from the ground they grow on.
-- **The car** (`world/carGeometry.js`): extruded profile with real wheel
-  arches, plan-view taper and tumblehome, creased normals, clearcoat metallic
-  paint, mirror-smooth glass, and spoked alloys in rounded tyres.
-- **A camera, not a painting.** The mood grade is kept but turned down —
-  lighter split-toning, little colour fringing, subtle bloom, a touch of film
-  grain — and anti-aliasing is real: 4x MSAA on high, FXAA elsewhere.
-
-Real GI, SSR, TAA and depth of field are still absent — at this budget they
-would cost the frame rate that the whole calm of the game depends on.
-
-## 3D models
-
-Procedural meshes are the fallback; real models are the upgrade. A model
-loads in the background and replaces its procedural stand-in when it arrives
-(`world/models.js`); if it never loads, the procedural one just stays.
-
-```bash
-# 1. put the downloaded .glb in models-src/
-# 2. add an entry to models.config.json (name, parts to strip, how hard to simplify, credit)
-npm run models            # -> public/models/<name>.<hash>.glb + src/world/model-manifest.json
-```
-
-`npm run models` strips parts nobody sees (interiors, engines, wipers),
-simplifies, shrinks textures to WebP and meshopt-compresses — the first car went
-from 11.5 MB and 213k triangles to 1.1 MB and 50k. Filenames carry a content
-hash because the service worker serves everything but pages cache-first.
-Glass is swapped for a cheap tinted surface (real transmission re-renders the
-scene) and each model's paint, lamp and wheel nodes are found by name.
-
-Models in use, and their licences, are in [CREDITS.md](CREDITS.md). Anything
-under CC BY needs its credit kept there.
-
-## Graphics
-
-See [GRAPHICS.md](GRAPHICS.md) for the full 50-item improvement list and what
-is built versus specified.
-
-## Performance
-
-Draw calls scale with what a set actually uses: unused prop shapes and features
-are hidden entirely rather than drawn at zero scale. Road and terrain are rewritten into preallocated buffers
-each frame with no per-frame allocation; scenery and traffic are instanced; the
-car is merged to one mesh per material so detail costs no draw calls; particle
-systems scale via draw range rather than rebuilding.
-
-## What is and isn't verified
-
-**Verified in a real browser**, by driving the build and reading values back:
-
-- All 18 terrain sets render, with their water, cliffs, causeways, god-rays,
-  skylines and overpasses
-- All 5 events reach their intended peaks (funnel, debris, shake, fog, drift,
-  aurora all confirmed at the right magnitudes)
-- The classifier, review screen, corrections and their persistence, and block
-  building — running against the stand-in library
-- The audio graph: 3 engine oscillators, 5 noise layers, and the muffle filter
-  measurably closing from ~7.8kHz in clear air to ~3.1kHz in a storm
-- Physics acceleration curve, and the quality tiers
-
-**Not verified, and cannot be here:**
-
-- **The live Spotify connection.** OAuth PKCE, the token exchange and refresh,
-  the real data pull, and Web Playback SDK audio are all written but have never
-  run against Spotify's servers — there is no client ID and no Premium account
-  in this environment. Treat that path as untested code, not working code.
-- **Real-device performance.** Frame timings here come from a software
-  renderer, so the tier thresholds and the watchdog's 26ms cutoff are reasoned
-  rather than measured.
-
-## Deliberately not in this build
-
-The purchased car model, persistent progress across sessions, the weighted
-Sad→Happy mood drift, rest stops, journal/postcards, companion presence, and any
-narrative content.
-
-Interpretations rather than literal implementations: the hip-hop "sharp shadows"
-is high-contrast lighting rather than real shadow maps (an infinite road needs
-careful shadow frustum management, and it was not worth the mobile cost). Prop
-placement is a deterministic hash scatter rather than an authored layout. A few
-per-set flourishes listed as optional in the brief — gull and crow silhouettes,
-a redwood the road passes *through* — are not in; the sets read without them.
-
-## Next phase
-
-Real Spotify data (saved/top/recently-played tracks), the genre → mood
-classifier, and the real car model. The mood profile shape and the block clock
-in `environment.js` are the two seams those changes land on: swap the mock
-blocks for classified ones and replace the song timer with playback events, and
-the rest of the scene keeps working unchanged. Terrain and climate are already
-independent of all of it.
+A fresh interactive browser pass is still needed for the Third Mainland
+Bridge and lagoon, fuel station accessibility, Kano close-up and journal
+layout. The current continuation has no connected browser. Build and data
+checks do not establish those visual results. See `HANDOFF.md` for the latest
+cache coverage and checks. `GRAPHICS.md` is a historical graphics checklist.

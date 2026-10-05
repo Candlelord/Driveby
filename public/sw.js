@@ -17,7 +17,7 @@
 //   assets     cache first. The filename carries a content hash, so a hit is
 //              always correct and a new build simply asks for new names.
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `road-trip-${VERSION}`;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
@@ -43,21 +43,27 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
-  if (new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
   const isDocument = request.mode === 'navigate' || request.destination === 'document';
-  event.respondWith(isDocument ? networkFirst(request) : cacheFirst(request));
+  // World files keep their names when the map is rebuilt.
+  const worldPath = new URL('./world/', self.location.href).pathname;
+  const isWorld = url.pathname.startsWith(worldPath);
+  event.respondWith(isDocument || isWorld ? networkFirst(request, isDocument) : cacheFirst(request));
 });
 
 /** Fresh whenever the network can be reached; cached only when it cannot. */
-async function networkFirst(request) {
+async function networkFirst(request, isDocument = false) {
   try {
     const response = await fetch(request);
-    const copy = response.clone();
-    caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined);
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined);
+    }
     return response;
   } catch (error) {
-    const cached = (await caches.match(request)) || (await caches.match('./index.html'));
+    const cached = (await caches.match(request)) || (isDocument && (await caches.match('./index.html')));
     if (cached) return cached;
     throw error;
   }
@@ -69,7 +75,9 @@ async function cacheFirst(request) {
   if (cached) return cached;
 
   const response = await fetch(request);
-  const copy = response.clone();
-  caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined);
+  if (response.ok) {
+    const copy = response.clone();
+    caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined);
+  }
   return response;
 }

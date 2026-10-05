@@ -1,5 +1,9 @@
 # 50 graphics & 3D improvements
 
+This is a historical checklist from the earlier road-trip renderer. Some
+scenery and rally systems listed here have since been removed. See README.md
+for the current open-world architecture and verification limits.
+
 Status against the current build. **Done** items are implemented and were
 checked in a browser; **Listed** items are specified but not built.
 

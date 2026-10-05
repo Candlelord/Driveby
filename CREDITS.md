@@ -1,5 +1,14 @@
 # Credits
 
+## Map data
+
+Lagos roads, building footprints, land use, water and points of interest are
+derived from ? [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
+available under the [Open Database Licence (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/).
+The derived map database is shipped in `public/world/`; `scripts/fetch-osm.mjs`
+and `scripts/build-world.mjs` reproduce it from Overpass data. The northern
+landscape is procedural, with fictional distances and layouts.
+
 ## 3D models
 
 | Model | Author | Licence | Source |
