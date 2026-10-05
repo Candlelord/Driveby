@@ -39,6 +39,7 @@ import { updateFlora } from './open/flora.js';
 import { updateStreets } from './open/streets.js';
 import { PauseMenu, Journal } from './open/menus.js';
 import { NIGHT, preloadBuildingMaterials } from './open/materials.js';
+import { watchBuildUpdates } from './open/buildUpdates.js';
 import { biomeAt, KANO_CENTRE } from './open/north.js';
 
 /**
@@ -213,6 +214,7 @@ async function boot() {
   const save = loadSave();
   if (save) session.screens.offerResume(resumeInfo(save));
   session.begin();
+  watchBuildUpdates(saveGame);
 }
 
 function resumeInfo(save = loadSave()) {

@@ -50,7 +50,8 @@ self.addEventListener('fetch', (event) => {
   // World files keep their names when the map is rebuilt.
   const worldPath = new URL('./world/', self.location.href).pathname;
   const isWorld = url.pathname.startsWith(worldPath);
-  event.respondWith(isDocument || isWorld ? networkFirst(request, isDocument) : cacheFirst(request));
+  const isBuildInfo = url.pathname === new URL('./build-info.json', self.location.href).pathname;
+  event.respondWith(isDocument || isWorld || isBuildInfo ? networkFirst(request, isDocument) : cacheFirst(request));
 });
 
 /** Fresh whenever the network can be reached; cached only when it cannot. */

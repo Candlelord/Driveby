@@ -216,6 +216,16 @@ track frontage are excluded. Site regression checks cover grid boundaries,
 facing direction, awning clearance and bridge exclusion; production build passes.
 Rendered appearance still requires visual verification.
 
+## Updates for open game sessions
+
+Production builds emit build-info.json and embed the matching version in the
+bundle. The game checks on startup, visibility changes and every three minutes
+while visible. A newer build offers Save & reload; driving progress is saved
+before reload, without interrupting play automatically. Build-marker requests
+revalidate HTTP/service-worker caches. Offline/malformed responses are ignored.
+Build-version agreement and cache checks pass, as does production build.
+The notification and full scene still need rendered browser verification.
+
 ## Material preload during startup
 
 Plaster loading begins in parallel with world loading at boot and shares one

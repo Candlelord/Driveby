@@ -252,4 +252,17 @@ body {
   opacity: 0.6;
   line-height: 1.4;
 }
-
+/* A deployment can be accepted without interrupting a drive automatically. */
+.build-update {
+  position: fixed; bottom: max(22px, env(safe-area-inset-bottom)); left: 50%;
+  transform: translateX(-50%); z-index: 1000; display: flex; align-items: center;
+  gap: 16px; padding: 12px 16px; border-radius: 8px; background: #172629;
+  border: 1px solid #82998d; color: #f5f0df; box-shadow: 0 4px 24px #0007;
+  font: 14px system-ui, sans-serif; max-width: calc(100vw - 32px);
+}
+.build-update button {
+  background: #edd29d; color: #172629; border: 0; border-radius: 4px;
+  padding: 9px 12px; font: inherit; font-weight: 600; cursor: pointer;
+  white-space: nowrap;
+}
+.build-update button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
