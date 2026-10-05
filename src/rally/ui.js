@@ -40,6 +40,7 @@ export class RallyUi {
         <div class="trip"></div>
       </div>
       <div class="rl-dial"><div class="readout"><span class="kmh">0</span><small>km/h</small></div></div>
+      <button class="rl-voice" aria-label="Co-driver voice" title="Co-driver voice (V)"></button>
       <div class="rl-count gfx"></div>
       <div class="rl-split"><span class="what"></span><span class="delta"></span></div>
       <div class="rl-grid">
@@ -83,6 +84,9 @@ export class RallyUi {
     this.resultsEl = q('.rl-results');
     this.kmhEl = q('.kmh');
 
+    this.voiceEl = q('.rl-voice');
+    this.onVoiceToggle = () => {};
+    this.voiceEl.addEventListener('click', () => this.onVoiceToggle());
     this._buildDial(q('.rl-dial'));
     this._last = {};
     this.touch = window.matchMedia?.('(pointer: coarse)').matches || (navigator.maxTouchPoints ?? 0) > 0 || /[?&]touch=1/.test(window.location.search);
@@ -140,6 +144,16 @@ export class RallyUi {
     add('circle', { cx: centre, cy: centre, r: 7, fill: '#f5f2e8', stroke: '#0b0b0c', 'stroke-width': 2 });
     this.needle.style.transform = `rotate(${-SWEEP / 2}deg)`;
     host.insertBefore(svg, host.firstChild);
+  }
+
+  /** The co-driver's voice switch: a speaker, with a slash through it when off. */
+  setVoice(on) {
+    this.voiceEl.classList.toggle('is-off', !on);
+    this.voiceEl.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor"/>${
+      on
+        ? '<path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+        : '<path d="M15 9l6 6M21 9l-6 6" fill="none" stroke="#ff3d8b" stroke-width="2" stroke-linecap="round"/>'
+    }</svg>`;
   }
 
   /** Per-frame: the speedometer. */

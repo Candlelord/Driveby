@@ -23,7 +23,8 @@ const OVERRUN = 62; // the car coasts to a halt this far past the finish
  * countdown, with the clock held at the saved time.
  */
 export class StageRunner {
-  constructor({ director, physics, ui, sfx, wallet }) {
+  constructor({ director, physics, ui, sfx, wallet, copilot }) {
+    this.copilot = copilot;
     this.director = director;
     this.physics = physics;
     this.ui = ui;
@@ -153,6 +154,7 @@ export class StageRunner {
         if (g.start - s < 12 && physics.speed < 0.6) {
           physics.hold = true;
           this.phase = 'grid';
+          this.copilot?.react('start');
           this.countdown = -0.8;
           this.lastCount = 4;
           ui.showGrid({
@@ -269,6 +271,7 @@ export class StageRunner {
     }
     this.resuming = false;
     this.crashesAtStart = this.physics.crashes;
+    this.copilot?.setEnabled(true);
     this.ui.hideGrid();
   }
 
@@ -282,6 +285,7 @@ export class StageRunner {
     while (this.splitsDone < SPLITS.length && f >= SPLITS[this.splitsDone]) {
       const ghost = this.pace * SPLITS[this.splitsDone];
       this.ui.split({ number: this.splitsDone + 1, delta: this.time - ghost });
+      this.copilot?.react('split', { delta: this.time - ghost });
       this.splitsDone++;
     }
 
@@ -291,6 +295,8 @@ export class StageRunner {
       this.finalTime = this.time;
       this.physics.holdAt = g.end + OVERRUN;
       this.ui.finish();
+      this.copilot?.setEnabled(false);
+      this.copilot?.react('finish');
       this.sfx?.beep(660, 0.5, 0.26);
     }
   }
@@ -319,6 +325,7 @@ export class StageRunner {
   }
 
   _release(done = false) {
+    this.copilot?.setEnabled(false);
     this.physics.hold = false;
     this.physics.holdAt = null;
     if (done) this.phase = 'free';
