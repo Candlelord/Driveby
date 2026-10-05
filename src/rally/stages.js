@@ -137,7 +137,7 @@ export class StageRunner {
     // The next unfinished stage around the car, for the gates.
     if (this.phase === 'free' || this.phase === 'approach') {
       const next = here && !this.completed.has(here.index) && s < here.end ? here : null;
-      this.gates = next ? { start: next.start, end: next.end, name: next.stage.name } : null;
+      this.gates = next ? { start: next.start, end: next.end, name: next.stage.name, index: next.index } : null;
     }
 
     switch (this.phase) {

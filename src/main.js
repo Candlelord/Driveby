@@ -42,6 +42,7 @@ import { StageRunner } from './rally/stages.js';
 import { Gates } from './rally/gates.js';
 import { Copilot } from './rally/copilot.js';
 import { Dressing } from './rally/dressing.js';
+import { Postcards, ALL_POSTCARDS } from './rally/postcards.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -139,6 +140,7 @@ ui.rally = rallyUi;
 input.bindButtons(rallyUi.buttons);
 const gates = new Gates(scene);
 const dressing = new Dressing(scene);
+const postcards = new Postcards(scene, garage);
 const copilot = new Copilot({ ui: rallyUi, physics });
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
@@ -292,6 +294,12 @@ function tick(now) {
   stages?.update(state);
   gates.update(state, frame, stages?.gates ?? null);
   dressing.update(state, frame, stages?.region ?? null);
+  const found = postcards.update(state, frame, stages?.region ?? null);
+  if (found) {
+    sfx.beep(990, 0.18, 0.2);
+    setTimeout(() => sfx.beep(1320, 0.3, 0.2), 120);
+    ui.toast('Postcard collected', `${found.caption} · ${garage.postcards.length} of ${ALL_POSTCARDS.length}`, 4);
+  }
   rallyUi.update(state);
   copilot.update(state);
   landmarks.update(state, frame, environment);
@@ -500,6 +508,7 @@ if (import.meta.env.DEV) {
     rallyUi,
     copilot,
     dressing,
+    postcards,
     gates,
     get stages() {
       return stages;
