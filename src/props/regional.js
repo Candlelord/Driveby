@@ -711,7 +711,7 @@ const facadeParts = (layout, front, backColor, slab = 9) => {
 export const MODEL_KIT = {
   haussmannStreet: {
     parts: [
-      ...facadeParts([...parisLayout(1), ...parisLayout(-1)], PARIS_FRONT, 0x6b655c, 9),
+      ...facadeParts([...parisLayout(1), ...parisLayout(-1)], PARIS_FRONT, 0x6b655c, 8),
       ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0x2a2e36, 0x8a8e94),
     ],
     front: PARIS_FRONT,
@@ -722,7 +722,7 @@ export const MODEL_KIT = {
   },
   amsterdamStreet: {
     parts: [
-      ...facadeParts([...amsterdamLayout(1), ...amsterdamLayout(-1)], AMSTERDAM_FRONT, 0x5a4a40, 8),
+      ...facadeParts([...amsterdamLayout(1), ...amsterdamLayout(-1)], AMSTERDAM_FRONT, 0x5a4a40, 6),
       ...parkedCars(PARKED.slice(0, 2), PARKED.slice(3, 5), 0x2a2e36, 0x6a7078),
     ],
     front: AMSTERDAM_FRONT,

@@ -45,6 +45,7 @@ for (const [name, spec] of Object.entries(config.facades)) {
   const params = new URLSearchParams({ model: spec.model, yaw: String(spec.yaw ?? 0), ppm: String(spec.ppm ?? 80) });
   if (spec.crop) params.set('crop', spec.crop.join(','));
   if (spec.glass) params.set('glass', spec.glass);
+  if (spec.relief) params.set('relief', String(spec.relief));
   await page.goto(`${base}/scripts/bake.html?${params}`);
   await page.waitForFunction(() => document.title === 'done', null, { timeout: 120000 }).catch(() => {});
   const result = await page.evaluate(() => window.__bake);
@@ -53,8 +54,8 @@ for (const [name, spec] of Object.entries(config.facades)) {
     console.log(`${name}: bake failed ${logs.join(' ')}`);
     continue;
   }
-  const entry = { size: result.size, files: {} };
-  for (const kind of ['albedo', 'normal', 'windows']) {
+  const entry = { size: result.size, relief: result.relief, roofFrom: spec.roofFrom ?? 1, roofScale: spec.roofScale ?? 1, files: {} };
+  for (const kind of ['albedo', 'normal', 'windows', 'height']) {
     const png = Buffer.from(result[kind].split(',')[1], 'base64');
     const webp = await sharp(png)
       .webp({ quality: kind === 'albedo' ? 88 : 82, alphaQuality: 90 })

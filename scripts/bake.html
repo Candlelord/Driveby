@@ -24,6 +24,7 @@
       const yaw = Number(q.get('yaw') ?? 0);
       const ppm = Number(q.get('ppm') ?? 80);
       const glassPattern = new RegExp(q.get('glass') ?? 'glass|vitre|window|verre', 'i');
+      const relief = Number(q.get('relief') ?? 1.2); // metres of depth the height map spans
       const crop = (q.get('crop') ?? '').split(',').map(Number); // optional: minY,maxY to cut a base slab off
 
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/models/' + manifest[name]);
@@ -101,6 +102,22 @@
       swap((m) => new THREE.MeshBasicMaterial({ color: isGlass(m) ? 0xffffff : 0x000000, side: THREE.DoubleSide }));
       renderer.render(scene, camera);
       out.windows = grab();
+
+      // Height: 1 at the front of the facade, falling to 0 a `relief` deeper.
+      // The game reads it for parallax, so balconies stand out and windows sink in.
+      renderer.setClearColor(0x000000, 1);
+      swap(
+        () =>
+          new THREE.ShaderMaterial({
+            side: THREE.DoubleSide,
+            uniforms: { uNear: { value: 5 }, uRelief: { value: relief } },
+            vertexShader: 'varying float vD; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vD = -mv.z; gl_Position = projectionMatrix * mv; }',
+            fragmentShader: 'uniform float uNear; uniform float uRelief; varying float vD; void main(){ float h = 1.0 - clamp((vD - uNear) / uRelief, 0.0, 1.0); gl_FragColor = vec4(vec3(h), 1.0); }',
+          })
+      );
+      renderer.render(scene, camera);
+      out.height = grab();
+      out.relief = relief;
 
       window.__bake = out;
       document.title = 'done';
