@@ -1,7 +1,0 @@
-{
-  "facades": {
-    "haussmann-a": { "model": "bldg-haussmann-2", "yaw": 0, "ppm": 72, "relief": 1.4, "roofFrom": 0.58, "roofScale": 0.5 },
-    "haussmann-b": { "model": "bldg-haussmann-1", "yaw": 0, "ppm": 72, "relief": 1.4, "roofFrom": 0.56, "roofScale": 0.5 },
-    "canal-a": { "model": "bldg-canal-3", "yaw": 0, "ppm": 64, "relief": 1.2, "roofFrom": 0.8, "roofScale": 0.85 }
-  }
-}

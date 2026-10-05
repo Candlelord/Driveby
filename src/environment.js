@@ -5,7 +5,6 @@ import { TERRAIN_SETS, TERRAIN_POOLS, SET_COLOR_KEYS, SET_NUMBER_KEYS } from './
 import { CLIMATE_PROFILES, CLIMATE_COLOR_KEYS, CLIMATE_NUMBER_KEYS } from './climates.js';
 import { EventDirector } from './events.js';
 import { SEASON_KEYS, seasonAt, writeSeason } from './seasons.js';
-import { tunnelAt } from './world/features.js';
 import { createLiveProfile, blendProfiles, blendLiveToward, smoothstep, clamp01 } from './blend.js';
 
 const MOOD_KEYS = { colors: MOOD_COLOR_KEYS, numbers: MOOD_NUMBER_KEYS };
@@ -479,7 +478,8 @@ export class Environment {
     // Stars and the sun disc draw with depthTest off so they sit at infinity —
     // which means they punch straight through a tunnel ceiling. Under a roof
     // there is no sky, so take it away rather than rely on occlusion.
-    const cov = (live.tunnelCoverage = tunnelAt(this.travelled ?? 0, live.tunnel));
+    // No tunnels in the open world.
+    const cov = (live.tunnelCoverage = 0);
     if (cov > 0) {
       live.lampIntensity = Math.max(live.lampIntensity, cov);
       live.starOpacity *= 1 - cov;

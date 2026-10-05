@@ -15,7 +15,6 @@ import { NORTH_EDGE } from './geo.js';
 const SPEED = [24, 21, 16, 14, 12, 10, 8.5, 8, 7, 6];
 const WIDTH = [15, 13, 11, 9.5, 8.5, 7, 6.5, 5, 4.6, 4.6];
 const PAINT = [0xd8d8d2, 0x2f3a4a, 0x8a2f2f, 0x30503c, 0xd8a23a, 0x5a5f68, 0x7a4a86, 0xf2c21b];
-const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 const DUMMY = new THREE.Object3D();
 const COLOR = new THREE.Color();
 
@@ -33,7 +32,7 @@ export class Traffic {
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         mesh.frustumCulled = false;
         mesh.castShadow = true;
-        for (let i = 0; i < count; i++) mesh.setMatrixAt(i, HIDDEN);
+        mesh.count = 0;
         mesh.userData.isPaint = part.isPaint;
         scene.add(mesh);
         return mesh;
@@ -167,26 +166,22 @@ export class Traffic {
       void i;
     });
 
-    // Instances.
+    // Instances: each vehicle type draws only the cars that are that type.
     for (const kind of this.kinds) {
-      kind.meshes.forEach((mesh) => {
-        this.cars.forEach((car, i) => {
-          if (!car.active || car.kind !== kind.spec.id || !car.pose) {
-            mesh.setMatrixAt(i, HIDDEN);
-            return;
-          }
+      const mine = this.cars.filter((car) => car.active && car.kind === kind.spec.id && car.pose);
+      for (const mesh of kind.meshes) {
+        mine.forEach((car, j) => {
           DUMMY.position.set(car.pose.x, car.pose.y, car.pose.z);
           DUMMY.rotation.set(0, -car.pose.yaw, 0);
           DUMMY.updateMatrix();
-          mesh.setMatrixAt(i, DUMMY.matrix);
-          if (mesh.userData.isPaint) {
-            COLOR.setHex(PAINT[car.paint % PAINT.length]);
-            mesh.setColorAt(i, COLOR);
-          }
+          mesh.setMatrixAt(j, DUMMY.matrix);
+          if (mesh.userData.isPaint) mesh.setColorAt(j, COLOR.setHex(PAINT[car.paint % PAINT.length]));
         });
+        mesh.count = mine.length;
+        mesh.visible = mine.length > 0;
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-      });
+      }
     }
   }
 }

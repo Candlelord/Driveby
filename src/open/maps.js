@@ -148,7 +148,7 @@ export function drawIcon(ctx, kind, x, y, size = 1, label = '') {
   };
   const glyph = (text, colour = '#0b0b0c', px = 12) => {
     ctx.fillStyle = colour;
-    ctx.font = `italic 900 ${px}px Impact, "Arial Black", sans-serif`;
+    ctx.font = `900 ${px}px Arial, Helvetica, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 0, 1);

@@ -44,33 +44,6 @@
         "^node_brakes"
       ]
     },
-    "bldg-haussmann-1": {
-      "src": "haussmannien_building_1/scene.gltf",
-      "simplify": 0.1,
-      "maxTexture": 1024,
-      "license": "CC BY 4.0",
-      "credit": "\"haussmannien building 1\" by pacpak (https://sketchfab.com/pacpak), CC-BY-4.0, https://sketchfab.com/3d-models/haussmannien-building-1-f9c9365843cc4cc2b1d800bbb4d3c10d — simplified and compressed",
-      "error": 0.1,
-      "join": true
-    },
-    "bldg-haussmann-2": {
-      "src": "haussmannien_building_2/scene.gltf",
-      "simplify": 0.06,
-      "maxTexture": 1024,
-      "license": "CC BY 4.0",
-      "credit": "\"haussmannien building 2\" by pacpak (https://sketchfab.com/pacpak), CC-BY-4.0, https://sketchfab.com/3d-models/haussmannien-building-2-edbf50156fab462e9249c3033c881739 — simplified and compressed",
-      "error": 0.1,
-      "join": true
-    },
-    "bldg-canal-3": {
-      "src": "dutch_canals_house_amsterdam_3/scene.gltf",
-      "simplify": 0.03,
-      "maxTexture": 1024,
-      "license": "CC BY 4.0",
-      "credit": "\"Dutch Canals House Amsterdam #3\" by ustoopia (https://sketchfab.com/ustoopia), CC-BY-4.0, https://sketchfab.com/3d-models/dutch-canals-house-amsterdam-3-d0c7594bd37441f284ed1053b7cb1574 — simplified and compressed",
-      "error": 0.1,
-      "join": true
-    },
     "car-cicada": {
       "src": "cicada_-_retro_cartoon_car/scene.gltf",
       "strip": [

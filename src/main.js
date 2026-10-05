@@ -517,6 +517,7 @@ boot();
 
 if (import.meta.env.DEV) {
   window.__drive = {
+    renderer,
     world, vehicle, environment, garage, scene, camera, controls, hud, CAR_MODELS,
     get gameplay() { return gameplay; },
     get streamer() { return streamer; },

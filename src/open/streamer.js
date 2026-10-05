@@ -61,6 +61,11 @@ export class Streamer {
 
   update(x, z, heading = 0) {
     this.frame++;
+    this.lastX = x;
+    this.lastZ = z;
+    // Detail by distance: trees and street furniture only nearby, shadows
+    // only from the chunks right around the car.
+    if (this.frame % 15 === 0) for (const { group, chunk } of this.live.values()) this._detail(group, chunk, x, z);
     const wanted = this._wanted(x, z, heading);
     const keep = new Set(wanted.map((w) => w.key));
 
@@ -94,13 +99,29 @@ export class Streamer {
   _build(chunk) {
     const group = new THREE.Group();
     group.name = `chunk ${chunk.key}`;
-    group.add(terrainMesh(this.world, chunk));
-    for (const mesh of roadMeshes(this.world, chunk)) group.add(mesh);
-    for (const mesh of buildingMeshes(this.world, chunk)) group.add(mesh);
-    for (const mesh of streetMeshes(this.world, chunk)) group.add(mesh);
-    for (const mesh of floraMeshes(this.world, chunk, this.floraDensity)) group.add(mesh);
+    const tag = (layer) => (mesh) => {
+      mesh.userData.layer = layer;
+      mesh.userData.shadow = mesh.castShadow;
+      group.add(mesh);
+    };
+    tag('ground')(terrainMesh(this.world, chunk));
+    roadMeshes(this.world, chunk).forEach(tag('road'));
+    buildingMeshes(this.world, chunk).forEach(tag('building'));
+    streetMeshes(this.world, chunk).forEach(tag('street'));
+    floraMeshes(this.world, chunk, this.floraDensity).forEach(tag('flora'));
+    this._detail(group, chunk, this.lastX ?? 0, this.lastZ ?? 0);
     this.scene.add(group);
     this.live.set(chunk.key, { group, chunk });
+  }
+
+  _detail(group, chunk, x, z) {
+    const d = Math.hypot((chunk.cx + 0.5) * CHUNK - x, (chunk.cz + 0.5) * CHUNK - z);
+    for (const mesh of group.children) {
+      const layer = mesh.userData.layer;
+      if (layer === 'flora') mesh.visible = d < this.radius * 0.6;
+      else if (layer === 'street') mesh.visible = d < this.radius * 0.5;
+      mesh.castShadow = Boolean(mesh.userData.shadow) && d < 330;
+    }
   }
 
   _drop(key) {
