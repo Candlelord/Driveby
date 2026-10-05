@@ -99,6 +99,9 @@ const CLEARANCE = 1.35;
 const MIN_FOOTPRINT = 0.9;
 
 const TINT = new THREE.Color();
+// Runs a closed rally road does without: it is lined with tape and tyres.
+const STAGE_BARE = new Set(['guardrail', 'barrier', 'fence', 'wall']);
+
 const DUMMY = new THREE.Object3D();
 const POSITION = new THREE.Vector3();
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -364,7 +367,7 @@ export class Props {
 
       // A closed rally road is lined with tape and tyres, not crash barriers
       // (see rally/dressing.js).
-      if ((run.name === 'guardrail' || run.name === 'barrier') && windAt(s) > 0.15) continue;
+      if (STAGE_BARE.has(run.name) && windAt(s) > 0.15) continue;
 
       const type = this.types[run.name];
       if (!type || type.used >= this.slots) continue;
@@ -542,12 +545,18 @@ export class Props {
     const fogBoost = clamp(REFERENCE_REACH * live.fogDensity, 1, 3.6);
     const farEdge = CONFIG.segmentsAhead * CONFIG.segmentLength;
 
-    for (let i = 0; i < this.slots; i++) {
+    // Dense sets (a forest stage) get a second pass over the same ground with
+    // different seeds, since one candidate per slot cannot make a thicket.
+    for (let n = 0; n < this.slots * 2; n++) {
+      const pass = n >= this.slots ? 1 : 0;
+      const i = n % this.slots;
       const slot = firstSlot + i;
+      const key = slot + pass * 100003;
       const s = slot * propSpacing;
 
       const setId = environment.setAt(s);
       const set = TERRAIN_SETS[setId];
+      if (pass > 0 && !(set.scatterPasses > pass)) continue;
 
       // Density is the set's, not the blended value — a slot belongs wholly to
       // one set, so it should be as sparse or dense as that set wants.
@@ -557,7 +566,7 @@ export class Props {
       // clearings while leaving the mean roughly where the set asked for it.
       const clump = 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(s * 0.0082) * Math.cos(s * 0.0031 + 1.3));
 
-      const typeName = pickScatterType(set.propMix, hash(slot * 2.3));
+      const typeName = pickScatterType(set.propMix, hash(key * 2.3));
       if (!typeName) continue;
 
       const type = this.types[typeName];
@@ -566,10 +575,10 @@ export class Props {
       const def = type.def;
 
       const density = set.propDensity * clump * fogBoost;
-      if (hash(slot * 5.9) >= density) continue;
+      if (hash(key * 5.9) >= density) continue;
 
-      const side = hash(slot * 1.7) < 0.5 ? -1 : 1;
-      const distance = def.spread + hash(slot * 3.3) * def.jitter;
+      const side = hash(key * 1.7) < 0.5 ? -1 : 1;
+      const distance = def.spread + hash(key * 3.3) * def.jitter;
       const offset = side * distance;
 
       // Fade in with distance rather than popping at the spawn boundary: the
@@ -580,7 +589,7 @@ export class Props {
 
       // Big structures take a fixed damper as well as the set's scale, so a
       // water tower thirty units away does not end up the size of a hill.
-      const jitterScale = 0.75 + hash(slot * 7.1) * 0.8;
+      const jitterScale = 0.75 + hash(key * 7.1) * 0.8;
       const size = jitterScale * set.propScale * (def.scale ?? 1) * fade;
       let spanX = size;
       let spanY = size;
@@ -588,13 +597,13 @@ export class Props {
       if (def.stretch) {
         const [fMin, fMax] = def.stretch.footprint;
         const [hMin, hMax] = def.stretch.height;
-        spanX = (fMin + hash(slot * 11.7) * (fMax - fMin)) * fade;
-        spanY = (hMin + hash(slot * 13.1) * (hMax - hMin)) * fade;
-        spanZ = (fMin + hash(slot * 17.3) * (fMax - fMin)) * fade;
+        spanX = (fMin + hash(key * 11.7) * (fMax - fMin)) * fade;
+        spanY = (hMin + hash(key * 13.1) * (hMax - hMin)) * fade;
+        spanZ = (fMin + hash(key * 17.3) * (fMax - fMin)) * fade;
       } else {
         // Slight non-uniform scale, so even one shape does not read as cloned.
-        spanX = size * (0.94 + hash(slot * 19.1) * 0.12);
-        spanZ = size * (0.94 + hash(slot * 23.3) * 0.12);
+        spanX = size * (0.94 + hash(key * 19.1) * 0.12);
+        spanZ = size * (0.94 + hash(key * 23.3) * 0.12);
       }
 
       // Keep objects out of each other, and out of the lane the infrastructure
@@ -620,21 +629,21 @@ export class Props {
           ? side > 0
             ? 0
             : Math.PI
-          : hash(slot * 9.3) * Math.PI * 2;
+          : hash(key * 9.3) * Math.PI * 2;
       DUMMY.rotation.set(0, yaw, 0);
 
       // Wind. A tornado bends everything hard; ordinary weather just breathes
       // through the vegetation, each prop on its own phase so it is not a
       // synchronised wave.
       const sway = SWAYS.has(typeName)
-        ? Math.sin(state.time * (1.1 + hash(slot * 4.1) * 0.9) + slot) * live.wind * 0.055
+        ? Math.sin(state.time * (1.1 + hash(key * 4.1) * 0.9) + slot) * live.wind * 0.055
         : 0;
       DUMMY.rotation.z = live.propLean * 0.35 * (FACING.has(typeName) ? 0.3 : 1) + sway;
 
       DUMMY.scale.set(spanX, spanY, spanZ);
       DUMMY.updateMatrix();
 
-      this._write(type, DUMMY.matrix, 0.82 + hash(slot * 29.7) * 0.36);
+      this._write(type, DUMMY.matrix, 0.82 + hash(key * 29.7) * 0.36);
     }
   }
 

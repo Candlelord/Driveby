@@ -45,6 +45,7 @@ import { GarageStage } from './garage/stage.js';
 import { GarageUi } from './garage/ui.js';
 import { Copilot } from './rally/copilot.js';
 import { FuelStations } from './rally/stations.js';
+import { FuelTickets } from './rally/tickets.js';
 import { Dressing } from './rally/dressing.js';
 import { Postcards, ALL_POSTCARDS } from './rally/postcards.js';
 
@@ -155,6 +156,7 @@ const gates = new Gates(scene);
 const dressing = new Dressing(scene);
 const postcards = new Postcards(scene, garage);
 const copilot = new Copilot({ ui: rallyUi, physics });
+const tickets = new FuelTickets(scene, { physics });
 const stations = new FuelStations(scene, { garage, physics, ui: rallyUi, sfx: null });
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
@@ -351,6 +353,10 @@ function tick(now) {
     ui.toast('Postcard collected', `${found.caption} · ${garage.postcards.length} of ${ALL_POSTCARDS.length}`, 4);
   }
   stations.update(state, frame);
+  if (physics.fuelOn && tickets.update(state, frame, stages?.region ?? null)) {
+    sfx.beep(1100, 0.12, 0.2);
+    ui.toast('Fuel ticket', 'tank topped up by a quarter', 3.5);
+  }
   rallyUi.update(state);
   copilot.update(state);
   landmarks.update(state, frame, environment);
@@ -560,6 +566,7 @@ if (import.meta.env.DEV) {
     copilot,
     dressing,
     stations,
+    tickets,
     postcards,
     gates,
     get stages() {

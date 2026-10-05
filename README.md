@@ -90,6 +90,17 @@ cities at either end are liaison, and nothing is counted there.
   collectible postcards a stage (`rally/postcards.js`).
 - **Garage** (`garage/`, `garage.js`): cars, paint, liveries, a turntable,
   postcard book, and a *Clean* / *Gritty* look switch (a heavier grade).
+- **Fuel** (`rally/stations.js`, `rally/tickets.js`): the tank drains with distance
+  (boost drinks it), the HUD has a gauge, and a gas station stands at the end of
+  every stage. Pull in on the right and the car brakes itself to the pumps; the
+  fill costs money. Run dry and you crawl, and a passer-by tips a little in.
+  Lime fuel tickets float over the road, two a stage, and top the tank up by a
+  quarter.
+- **Cars** (`world/carModels.js`): the Harmattan GT, Cicada, Kestrel Saloon,
+  Sahel Concept and Rapid Response, each with its own grip, speed and tank.
+- **Traffic and markets**: real vehicles (the VW van recoloured as the Lagos
+  danfo, Soviet saloons, a sedan, the cicada, an ambulance) and, in the towns
+  and villages, markets of real stalls.
 - **Controls**: arrows or A/D steer, up/W boost, space/S handbrake; on touch
   there are on-screen arrows, pedal and handbrake.
 
