@@ -123,3 +123,8 @@ Close-up architecture fades out by chunk distance; quality tiers cap the extra
 instances to keep dense streets bounded. Footprints and collision shells stay
 in map coordinates. Run `node scripts/test-building-details.mjs` to check
 placement, winding, deterministic streaming rebuilds and geometry budgets.
+
+The pause menu and garage offer Coastal colour alongside Clean and Gritty.
+It gently warms highlights and cools shade. New garage profiles start with it;
+existing profiles keep their saved look. Shops now have display windows or
+roller shutters, outward-facing awnings, and patterned pavement slabs.

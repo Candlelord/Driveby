@@ -90,7 +90,7 @@ export class GarageUi {
       <div class="gr-nav"><button class="brush alt" data-action="prev" aria-label="Previous car">‹</button><button class="brush alt" data-action="next" aria-label="Next car">›</button></div>
       <div class="gr-cash">
         <div class="money gfx lime">$${g.cash.toLocaleString('en-GB')}</div>
-        <div class="gr-looks"><button class="gr-chip${g.look === 'real' ? ' is-on' : ''}" data-look="real">Clean</button><button class="gr-chip${g.look === 'drive' ? ' is-on' : ''}" data-look="drive">Gritty</button></div>
+        <div class="gr-looks"><button class="gr-chip${g.look === 'real' ? ' is-on' : ''}" data-look="real">Clean</button><button class="gr-chip${g.look === 'drive' ? ' is-on' : ''}" data-look="drive">Gritty</button><button class="gr-chip${g.look === 'coast' ? ' is-on' : ''}" data-look="coast">Coastal</button></div>
       </div>
       <div class="gr-back"><button class="brush" data-action="back">Back</button></div>`;
 

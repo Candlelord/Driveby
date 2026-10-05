@@ -59,3 +59,13 @@ offsets use the actual road width. `node scripts/test-driving.mjs` reproduces
 bridge seams, reversed ways, underpasses, barriers and sideways crash recovery.
 These regressions and existing geometry/cache checks pass. Visual playtesting
 remains user-side.
+
+## Street character pass
+
+Corrected shopfront outward normals. Added varied window displays, roller
+shutters and pavement slabs with a consistent world-space texture scale.
+Storefront geometry is batched and capped per chunk. Added an optional Coastal
+colour grade in pause/garage, with warm highlights and turquoise shadow tint;
+new profiles default to it while existing saved look preferences are kept.
+The broader city-feel goal is active: runtime visual verification and further
+street/landmark/lighting refinement remain.

@@ -17,7 +17,7 @@ export class Garage {
     this.selected = DEFAULT_CAR;
     this.paints = {}; // car id -> hex
     this.liveries = {}; // car id -> livery id
-    this.look = 'real'; // 'real' or 'drive'
+    this.look = 'coast'; // 'real', 'drive' or 'coast'
     this.postcards = []; // ids of collected postcards
     this._listeners = new Set();
     this._load();
@@ -72,7 +72,7 @@ export class Garage {
   }
 
   setLook(look) {
-    this.look = look === 'drive' ? 'drive' : 'real';
+    this.look = ['drive', 'coast', 'real'].includes(look) ? look : 'real';
     this._commit();
   }
 
@@ -113,7 +113,7 @@ export class Garage {
       this.selected = this.owned.has(data.selected) ? data.selected : DEFAULT_CAR;
       this.paints = data.paints ?? {};
       this.liveries = data.liveries ?? {};
-      this.look = data.look === 'drive' ? 'drive' : 'real';
+      this.look = ['drive', 'coast', 'real'].includes(data.look) ? data.look : 'coast';
       this.postcards = Array.isArray(data.postcards) ? data.postcards : [];
     } catch {
       // Unreadable: start fresh.

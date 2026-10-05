@@ -49,6 +49,7 @@ export class PauseMenu {
             <button class="ow-chip${voice ? ' is-on' : ''}" data-a="voice">Tunde talks: ${voice ? 'on' : 'off'}</button>
             <button class="ow-chip${look === 'real' ? ' is-on' : ''}" data-look="real">Clean look</button>
             <button class="ow-chip${look === 'drive' ? ' is-on' : ''}" data-look="drive">Gritty look</button>
+            <button class="ow-chip${look === 'coast' ? ' is-on' : ''}" data-look="coast">Coastal colour</button>
           </div>
           <button class="brush pink small" data-a="quit">Save and quit to menu</button>
         </nav>

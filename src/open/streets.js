@@ -34,7 +34,7 @@ function materials() {
   if (shared) return shared;
   shared = {
     kerb: new THREE.MeshStandardMaterial({ map: kerbTexture(), roughness: 0.8 }),
-    pavement: new THREE.MeshStandardMaterial({ color: 0xa9a49a, roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    pavement: new THREE.MeshStandardMaterial({ color: 0xc5bca9, map: pavementTexture(), roughness: 0.92, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     pole: new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 0.9 }),
     metal: new THREE.MeshStandardMaterial({ color: 0x55595e, roughness: 0.5, metalness: 0.6 }),
     lamp: new THREE.MeshBasicMaterial({ color: 0x8a8a80 }),
@@ -42,6 +42,7 @@ function materials() {
     zinc: new THREE.MeshStandardMaterial({ map: zincTexture(), roughness: 0.7, metalness: 0.3, side: THREE.DoubleSide, vertexColors: true }),
     signs: new THREE.MeshStandardMaterial({ map: signAtlas(), roughness: 0.7, emissive: 0xffffff, emissiveMap: signAtlas(), emissiveIntensity: 0.0 }),
     ads: new THREE.MeshStandardMaterial({ map: adAtlas(), roughness: 0.6, emissive: 0xffffff, emissiveMap: adAtlas(), emissiveIntensity: 0.05 }),
+    storefront: new THREE.MeshStandardMaterial({ map: storefrontAtlas(), roughness: 0.55, metalness: 0.08 }),
   };
   return shared;
 }
@@ -64,6 +65,7 @@ export function streetMeshes(world, chunk) {
   const awnings = new Quads();
   const signs = new Quads();
   const ads = new Quads();
+  const storefronts = new Quads();
   const lamps = [];
   const poles = [];
   const wires = [];
@@ -145,7 +147,9 @@ export function streetMeshes(world, chunk) {
   }
 
   // Shopfronts: on building walls that face a nearby road.
+  let shopCount = 0;
   for (const b of chunk.buildings) {
+    if (shopCount >= 100) break;
     if (b.kind !== 0 && b.kind !== 1) continue;
     if (b.h > 40) continue;
     const ring = b.ring;
@@ -162,9 +166,9 @@ export function streetMeshes(world, chunk) {
       const [x0, z0] = pts[i];
       const [x1, z1] = pts[(i + 1) % pts.length];
       const len = Math.hypot(x1 - x0, z1 - z0);
-      if (len < 4) continue;
-      const nx = (z1 - z0) / len;
-      const nz = -(x1 - x0) / len;
+      if (len < 4 || len > 35) continue;
+      const nx = -(z1 - z0) / len;
+      const nz = (x1 - x0) / len;
       const mx = (x0 + x1) / 2;
       const mz = (z0 + z1) / 2;
       // Is a road just in front of this wall?
@@ -173,10 +177,21 @@ export function streetMeshes(world, chunk) {
       if (near > 6) continue;
       const seed = hash2(mx, mz);
       if (seed < 0.25) continue;
+      shopCount++;
       const out = 1.7;
       const top = ground + 3.1;
       const low = ground + 2.65;
       const col = [[0.62, 0.42, 0.32], [0.45, 0.55, 0.62], [0.5, 0.58, 0.44], [0.7, 0.66, 0.6]][Math.floor(seed * 4)];
+      const tx = (x1 - x0) / len, tz = (z1 - z0) / len;
+      const bays = Math.max(1, Math.floor((len - 0.8) / 3.5));
+      const bayWidth = (len - 0.8) / bays;
+      for (let bay = 0; bay < bays; bay++) {
+        const from = 0.4 + bay * bayWidth + 0.12, to = from + bayWidth - 0.24;
+        const cell = Math.floor(hash1(seed * 919 + bay * 7) * 4);
+        const at = (d, y) => [x0 + tx * d + nx * 0.08 - ox, y, z0 + tz * d + nz * 0.08 - oz];
+        storefronts.quad(at(from, ground + 0.24), at(to, ground + 0.24),
+          at(to, ground + 2.55), at(from, ground + 2.55), [cell / 4, 0, (cell + 1) / 4, 1]);
+      }
       awnings.quad(
         [x0 - ox, top, z0 - oz],
         [x1 - ox, top, z1 - oz],
@@ -225,6 +240,7 @@ export function streetMeshes(world, chunk) {
   add(awnings, m.zinc, true);
   add(signs, m.signs);
   add(ads, m.ads, true);
+  add(storefronts, m.storefront);
 
   if (lamps.length) {
     const pole = new THREE.CylinderGeometry(0.09, 0.13, 8, 6).translate(0, 4, 0);
@@ -309,7 +325,9 @@ class Quads {
 
   /** A horizontal strip at two heights (start, end). */
   flat(a, b, c, d, y0, y1) {
-    this.quad([a[0], y0, a[1]], [d[0], y0, d[1]], [c[0], y1, c[1]], [b[0], y1, b[1]], [0, 0, 1, 1]);
+    const width = Math.hypot(d[0] - a[0], d[1] - a[1]);
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    this.quad([a[0], y0, a[1]], [d[0], y0, d[1]], [c[0], y1, c[1]], [b[0], y1, b[1]], [0, 0, width / 2, length / 2]);
   }
 
   /** A low box between two points: top and both sides. */
@@ -392,6 +410,64 @@ function kerbTexture() {
     },
     true
   );
+}
+
+function pavementTexture() {
+  return canvasTexture(256, 256, (ctx) => {
+    ctx.fillStyle = '#77766e'; ctx.fillRect(0, 0, 256, 256);
+    for (let row = 0; row < 8; row++) for (let col = -1; col < 5; col++) {
+      const x = col * 64 + (row % 2) * 32, y = row * 32;
+      const shade = 157 + Math.floor(hash2(col + 17, row + 31) * 32);
+      ctx.fillStyle = `rgb(${shade},${shade - 3},${shade - 12})`;
+      ctx.fillRect(x + 1, y + 1, 62, 30);
+      ctx.strokeStyle = '#cec7b8'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x + 2, y + 30); ctx.lineTo(x + 2, y + 2); ctx.lineTo(x + 61, y + 2); ctx.stroke();
+    }
+    for (let i = 0; i < 900; i++) {
+      ctx.fillStyle = i % 3 ? 'rgba(50,45,35,0.12)' : 'rgba(240,230,210,0.13)';
+      ctx.fillRect(hash1(i * 13 + 4) * 256, hash1(i * 19 + 6) * 256, 1, 1);
+    }
+    ctx.strokeStyle = 'rgba(65,61,49,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(32, 85); ctx.lineTo(46, 96); ctx.lineTo(40, 112); ctx.lineTo(57, 126); ctx.stroke();
+  }, true);
+}
+
+function storefrontAtlas() {
+  return canvasTexture(512, 256, (ctx) => {
+    const colours = ['#557e77', '#cfb281', '#996451', '#627992'];
+    for (let cell = 0; cell < 4; cell++) {
+      const x = cell * 128;
+      ctx.fillStyle = colours[cell]; ctx.fillRect(x, 0, 128, 256);
+      ctx.fillStyle = '#242b2a'; ctx.fillRect(x + 7, 8, 114, 230);
+      if (cell === 2) {
+        // Closed roller shutter: slats, grime and a lock at street level.
+        ctx.fillStyle = '#7a817b'; ctx.fillRect(x + 11, 12, 106, 220);
+        for (let y = 16; y < 228; y += 7) {
+          ctx.fillStyle = '#555e59'; ctx.fillRect(x + 11, y, 106, 2);
+          ctx.fillStyle = '#a1a69b'; ctx.fillRect(x + 11, y + 2, 106, 1);
+        }
+        ctx.fillStyle = '#444a43'; ctx.fillRect(x + 57, 219, 14, 8);
+      } else {
+        ctx.fillStyle = '#283c3f'; ctx.fillRect(x + 11, 12, 106, 220);
+        // Visible shelves and boxes give shop windows an interior rhythm.
+        for (let row = 0; row < 3; row++) {
+          const y = 92 + row * 40;
+          ctx.fillStyle = '#afa184'; ctx.fillRect(x + 13, y + 24, 69, 4);
+          for (let col = 0; col < 6; col++) {
+            ctx.fillStyle = ['#b19460', '#8d5c4e', '#758d72', '#c4b38d'][(col + row + cell) % 4];
+            ctx.fillRect(x + 15 + col * 11, y + 5 + (col % 2) * 5, 8, 18 - (col % 2) * 5);
+          }
+        }
+        ctx.fillStyle = 'rgba(173,211,215,0.12)';
+        ctx.beginPath(); ctx.moveTo(x + 11, 12); ctx.lineTo(x + 55, 12); ctx.lineTo(x + 11, 145); ctx.fill();
+        ctx.fillStyle = colours[cell]; ctx.fillRect(x + 83, 12, 4, 220);
+        ctx.fillStyle = '#c5b995'; ctx.fillRect(x + 91, 119, 3, 19);
+        ctx.fillStyle = '#d4c3a0'; ctx.fillRect(x + 23, 44, 46, 17);
+        ctx.fillStyle = '#35443d'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.fillText('OPEN', x + 46, 56);
+      }
+      ctx.fillStyle = '#787264'; ctx.fillRect(x, 239, 128, 17);
+    }
+  });
 }
 
 function zincTexture() {

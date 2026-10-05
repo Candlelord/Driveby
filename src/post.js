@@ -30,6 +30,7 @@ const GradeShader = {
     uGrain: { value: 0 },
     uAberration: { value: 0 },
     uDrive: { value: 0 },
+    uCoast: { value: 0 },
   },
 
   vertexShader: /* glsl */ `
@@ -54,6 +55,7 @@ const GradeShader = {
     uniform float uGrain;
     uniform float uAberration;
     uniform float uDrive;
+    uniform float uCoast;
 
     varying vec2 vUv;
 
@@ -91,6 +93,16 @@ const GradeShader = {
         color = (color - 0.5) * mix(1.0, 1.14, uDrive) + 0.5;
         color = mix(color, color * vec3(0.9, 0.97, 1.06), uDrive * 0.5 * (1.0 - smoothstep(0.1, 0.7, l)));
         color = mix(color, color * vec3(1.03, 1.0, 0.94), uDrive * 0.35 * smoothstep(0.35, 0.9, l));
+      }
+
+      // Coastal film colour: turquoise shade, warm plaster and gentle highlights.
+      if (uCoast > 0.001) {
+        float coastLuma = dot(color, LUMA);
+        vec3 coast = mix(vec3(coastLuma), color, 1.12);
+        coast = mix(coast, coast * vec3(0.91, 1.03, 1.06), 0.32 * (1.0 - smoothstep(0.1, 0.65, coastLuma)));
+        coast = mix(coast, coast * vec3(1.06, 1.01, 0.95), 0.45 * smoothstep(0.25, 0.9, coastLuma));
+        coast += vec3(0.012, 0.013, 0.015) * (1.0 - smoothstep(0.0, 0.4, coastLuma));
+        color = mix(color, coast, uCoast);
       }
 
       // Split tone: shadows and highlights pull toward different hues, which is
@@ -188,9 +200,10 @@ export class Post {
     this.grade.uniforms.uResolution.value.set(width * pixelRatio, height * pixelRatio);
   }
 
-  /** 'real' or 'drive'. */
+  /** Switch smoothly between clean, gritty and coastal grades. */
   setLook(look) {
     this.lookTarget = look === 'drive' ? 1 : 0;
+    this.coastTarget = look === 'coast' ? 1 : 0;
   }
 
   setBloomEnabled(enabled) {
@@ -205,6 +218,8 @@ export class Post {
     u.uTime.value = state.time;
     this.look += (this.lookTarget - this.look) * (1 - Math.exp(-3.5 * state.dt));
     u.uDrive.value = this.look;
+    this.coast = (this.coast ?? 0) + ((this.coastTarget ?? 0) - (this.coast ?? 0)) * (1 - Math.exp(-3.5 * state.dt));
+    u.uCoast.value = this.coast;
 
     // Exposure is applied before tone mapping, so it rolls highlights off the
     // way a real stop change does instead of just lifting the whole image.
