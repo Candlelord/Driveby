@@ -193,3 +193,12 @@ optional asset. Failure/timeout keeps existing wall shading, and late success
 can activate detail after boot. Material loader checks cover success, failure,
 timeout and late recovery; production build passes. Hashed asset names remain
 the update mechanism for pushed texture changes. Visual completion is unproven.
+
+## Facade window bounds
+
+Physical window placement now accounts for the complete pane and lintel height,
+preventing the last row from projecting above shorter roofs. Religious facade
+bay sizes and pane proportions match their shell shader instead of using house
+windows. Geometry regression checks cover residential, office and religious
+facades at four heights; production build passes. Runtime visual review remains
+outstanding and the realism goal stays active.

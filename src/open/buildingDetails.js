@@ -72,8 +72,8 @@ export function buildingDetailMeshes(world, chunk) {
     const heights = ring.map(([x, z]) => world.terrainHeight(x, z));
     const base = Math.min(...heights), top = Math.max(...heights) + b.h;
     const office = b.kind === 1;
-    const bay = office ? 2.2 : b.kind === 2 ? 7 : 3.6;
-    const storey = office ? 3.6 : b.kind === 2 ? 9 : 3.2;
+    const bay = office ? 2.2 : b.kind === 2 ? 7 : b.kind === 3 ? 4.5 : 3.6;
+    const storey = office ? 3.6 : b.kind === 2 ? 9 : b.kind === 3 ? 3 : 3.2;
     const trim = s < 0.5 ? 0xd8d0bc : 0xe5e0d2;
     const accent = [0x566f69, 0x754b3e, 0x4d6577, 0x9a8762][Math.floor(s * 4)];
     let selected = false;
@@ -115,12 +115,13 @@ export function buildingDetailMeshes(world, chunk) {
       for (let y = base + storey; y < top - 0.5; y += storey)
         part('trim', len / 2, y, 0.07, len, office ? 0.16 : 0.1, 0.18);
       if (b.kind === 2) continue;
-      for (let floor = 1; floor * storey + 0.9 < b.h; floor++) {
+      const windowTop = office ? 0.92 : b.kind === 3 ? 0.65 : 0.82;
+      for (let floor = 1; (floor + windowTop) * storey + 0.28 < b.h; floor++) {
         const y = base + floor * storey;
         for (let col = 0; (col + 0.76) * bay < len; col++) {
           const x = (col + 0.5) * bay;
-          const w = bay * (office ? 0.9 : 0.52), h = storey * (office ? 0.78 : 0.48);
-          const cy = y + storey * (office ? 0.53 : 0.58);
+          const w = bay * (office ? 0.9 : b.kind === 3 ? 0.16 : 0.52), h = storey * (office ? 0.78 : b.kind === 3 ? 0.2 : 0.48);
+          const cy = y + storey * (office ? 0.53 : b.kind === 3 ? 0.55 : 0.58);
           part('metal', x, cy, 0.028, w + 0.17, h + 0.17, 0.07, 0x42463f);
           const occupancy = hash1(s * 811 + col * 17 + floor * 31 + i * 13);
           const light = occupancy < (office ? 0.32 : 0.46) ? 0.65 + hash1(s * 719 + col + floor) * 0.35 : 0;

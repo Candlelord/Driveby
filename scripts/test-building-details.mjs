@@ -70,6 +70,15 @@ try {
     if (shading.y > 0.1 && shading.y < 0.99) slopes++;
   }
   assert.ok(slopes >= 4, 'suitable houses must have two pitched roof slopes');
+  for (const kind of [0, 1, 3]) for (const height of [4.4, 7.5, 10, 14]) {
+    const details = buildingDetailMeshes(world, { ...chunk, buildings: [{ ...building, kind, h: height }] });
+    const panes = details.find(mesh => mesh.name === 'facade glass');
+    if (!panes) continue;
+    for (let i = 0; i < panes.count; i++) {
+      panes.getMatrixAt(i, matrix);
+      assert.ok(matrix.elements[13] + matrix.elements[5] / 2 <= height + 0.31, 'glass panes must fit below the roof for every building type and height');
+    }
+  }
   const pitchedDetails = buildingDetailMeshes(world, { ...chunk, buildings: [{ ...building, h: 6 }] });
   const renderParts = pitchedDetails.find(mesh => mesh.name === 'facade render');
   for (let i = 0; i < renderParts.count; i++) {
