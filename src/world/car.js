@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildCarParts, WHEEL_RADIUS, FRONT_AXLE, REAR_AXLE, TRACK } from './carGeometry.js';
 import { beamTexture } from './textures.js';
+import { loadGltf, tuneModel, materialsNamed, nodeNamed, mountWheel } from './models.js';
 
 const AHEAD = new THREE.Vector3();
 const HERE = new THREE.Vector3();
@@ -19,6 +20,8 @@ export class Car {
     scene.add(this.group);
 
     const parts = buildCarParts();
+    // Everything the procedural car is made of, so a real model can replace it.
+    this.proceduralParts = [];
 
     const materials = carMaterials(0xa3201a);
     this.bodyMaterial = materials.body;
@@ -39,19 +42,74 @@ export class Car {
       mesh.castShadow = realShadow;
       mesh.receiveShadow = realShadow;
       this.group.add(mesh);
+      this.proceduralParts.push(mesh);
     }
 
     // Unlit materials, driven above 1.0 at night so bloom has something to grab.
     this.headlightMaterial = new THREE.MeshBasicMaterial({ color: 0xfff3d4 });
     this.taillightMaterial = new THREE.MeshBasicMaterial({ color: 0xff2a18 });
-    this.group.add(new THREE.Mesh(parts.heads, this.headlightMaterial));
-    this.group.add(new THREE.Mesh(parts.tails, this.taillightMaterial));
+    for (const geometry of [parts.heads, parts.tails]) {
+      const mesh = new THREE.Mesh(geometry, geometry === parts.heads ? this.headlightMaterial : this.taillightMaterial);
+      this.group.add(mesh);
+      this.proceduralParts.push(mesh);
+    }
 
     this._buildWheels(parts.wheel);
     this._buildShadow();
     this._buildLights();
 
     this.spin = 0;
+    this.model = null;
+    this.paint = 0xa3201a;
+    // The real car arrives when it arrives; until then (or if it never does)
+    // the procedural one drives.
+    loadGltf(CAR_MODEL).then((gltf) => this._useModel(gltf.scene)).catch(() => {});
+  }
+
+  /** Swap the procedural car for the loaded model. */
+  _useModel(scene) {
+    const root = tuneModel(scene, { shadows: this.realShadow });
+    // Authored nose-toward +Z; the game's car faces -Z.
+    root.rotation.y = Math.PI;
+    const model = new THREE.Group();
+    model.add(root);
+    root.updateMatrixWorld(true);
+
+    const wheels = [];
+    for (const [name, steers] of [['WheelFrontL', true], ['WheelFrontR', true], ['WheelRearL', false], ['WheelRearR', false]]) {
+      const node = nodeNamed(root, name);
+      if (node) wheels.push({ ...mountWheel(node), steers });
+    }
+
+    // Sit the tyres on the road. Measured while the model is still detached,
+    // so the boxes are in the model's own space and not offset by wherever the
+    // car happens to be by the time the download finishes.
+    model.updateMatrixWorld(true);
+    const tyre = new THREE.Box3().setFromObject(nodeNamed(root, 'WheelFrontL') ?? root);
+    model.position.y = -tyre.min.y;
+
+    for (const part of this.proceduralParts) part.visible = false;
+    for (const wheel of this.wheels) wheel.visible = false;
+    this.group.add(model);
+
+    this.model = {
+      group: model,
+      wheels,
+      paint: materialsNamed(root, /^Paint 1/i),
+      accent: materialsNamed(root, /^Paint 2/i),
+      head: materialsNamed(root, /^Headlight/i),
+      tail: materialsNamed(root, /^(Brakelight|Signallight)/i),
+    };
+    // Lamp materials are shared with nothing else, but be certain before
+    // driving their emissive from the lighting each frame.
+    this.setPaint(this.paint);
+  }
+
+  /** Change the car's paint (a hex colour). */
+  setPaint(hex) {
+    this.paint = hex;
+    this.bodyMaterial.color.set(hex);
+    if (this.model) for (const m of this.model.paint) m.color.set(hex);
   }
 
   _buildWheels({ tyre, rim }) {
@@ -166,10 +224,22 @@ export class Car {
       wheel.userData.spinner.rotation.x = this.spin;
       if (wheel.userData.steers) wheel.rotation.y = state.steer * 0.35;
     }
+    if (this.model) {
+      // The model's X axis points the other way round (it is turned to face
+      // -Z), so the same roll is the opposite angle about it.
+      for (const wheel of this.model.wheels) {
+        wheel.spin(-this.spin);
+        if (wheel.steers) wheel.pivot.rotation.y = state.steer * 0.35;
+      }
+    }
 
     const live = state.live;
     const on = live.headlights;
 
+    if (this.model) {
+      for (const m of this.model.head) m.emissiveIntensity = 0.5 + on * 3.2;
+      for (const m of this.model.tail) m.emissiveIntensity = 0.7 + on * 2.6;
+    }
     this.headlightMaterial.color.setRGB(1, 0.94, 0.8).multiplyScalar(0.35 + on * 1.5);
     this.taillightMaterial.color.setRGB(1, 0.05, 0.025).multiplyScalar(0.5 + on * 2.4);
     // With a real shadow map the blob is just a faint contact patch under the
@@ -205,6 +275,7 @@ export class Car {
   }
 }
 
+const CAR_MODEL = 'car-concept';
 const WARM = new THREE.Color(0xfff0d0);
 const BEAM = new THREE.Color();
 

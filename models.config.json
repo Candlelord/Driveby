@@ -1,0 +1,12 @@
+{
+  "models": {
+    "car-concept": {
+      "src": "car-concept.src.glb",
+      "strip": ["^Interior", "Wiper", "^Engine$", "BrakePad", "BrakeDisc", "HoodInterior", "HoodUnder", "Underside", "Gasket", "Handle"],
+      "simplify": 0.3,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "CarConcept © 2024 Darmstadt Graphics Group GmbH — https://creativecommons.org/licenses/by/4.0/ (via KhronosGroup/glTF-Sample-Assets; simplified and compressed)"
+    }
+  }
+}

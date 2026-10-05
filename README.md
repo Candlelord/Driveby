@@ -477,6 +477,28 @@ with no binary assets:
 Real GI, SSR, TAA and depth of field are still absent — at this budget they
 would cost the frame rate that the whole calm of the game depends on.
 
+## 3D models
+
+Procedural meshes are the fallback; real models are the upgrade. A model
+loads in the background and replaces its procedural stand-in when it arrives
+(`world/models.js`); if it never loads, the procedural one just stays.
+
+```bash
+# 1. put the downloaded .glb in models-src/
+# 2. add an entry to models.config.json (name, parts to strip, how hard to simplify, credit)
+npm run models            # -> public/models/<name>.<hash>.glb + src/world/model-manifest.json
+```
+
+`npm run models` strips parts nobody sees (interiors, engines, wipers),
+simplifies, shrinks textures to WebP and meshopt-compresses — the first car went
+from 11.5 MB and 213k triangles to 1.1 MB and 50k. Filenames carry a content
+hash because the service worker serves everything but pages cache-first.
+Glass is swapped for a cheap tinted surface (real transmission re-renders the
+scene) and each model's paint, lamp and wheel nodes are found by name.
+
+Models in use, and their licences, are in [CREDITS.md](CREDITS.md). Anything
+under CC BY needs its credit kept there.
+
 ## Graphics
 
 See [GRAPHICS.md](GRAPHICS.md) for the full 50-item improvement list and what
