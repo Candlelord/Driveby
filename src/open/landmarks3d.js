@@ -27,7 +27,7 @@ const mesh = (geometry, material, x = 0, y = 0, z = 0) => {
   return m;
 };
 
-function nationalTheatre() {
+export function nationalTheatre() {
   const g = new THREE.Group();
   const wall = M.concrete();
   g.add(mesh(new THREE.CylinderGeometry(58, 60, 12, 48), wall, 0, 6, 0));
@@ -43,10 +43,58 @@ function nationalTheatre() {
   roof.computeVertexNormals();
   g.add(mesh(roof, M.white(), 0, 19, 0));
   g.add(mesh(new THREE.CylinderGeometry(20, 30, 8, 32), M.white(), 0, 22, 0));
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    g.add(mesh(new THREE.BoxGeometry(1.2, 10, 1.2), wall, Math.cos(a) * 61, 15, Math.sin(a) * 61));
+  // Recessed glazing, structural fins and patterned panels break up the drum.
+  const glass = new THREE.MeshStandardMaterial({ color: 0x263c40, roughness: 0.2, metalness: 0.35 });
+  const bronze = new THREE.MeshStandardMaterial({ color: 0x986d42, roughness: 0.65, metalness: 0.25 });
+  const trim = M.white();
+  const add = (geometry, material, positions) => {
+    const batch = new THREE.InstancedMesh(geometry, material, positions.length);
+    const pose = new THREE.Object3D();
+    positions.forEach(([x,y,z,yaw], i) => {
+      pose.position.set(x,y,z); pose.rotation.set(0,yaw,0); pose.updateMatrix();
+      batch.setMatrixAt(i, pose.matrix);
+    });
+    batch.castShadow = material !== glass; batch.receiveShadow = true;
+    g.add(batch);
+  };
+  const radial = (i, count, radius, y) => {
+    const a = i / count * Math.PI * 2;
+    return [Math.cos(a) * radius, y, Math.sin(a) * radius, Math.PI / 2 - a];
+  };
+  const windows = [], fins = [], motifs = [], mullions = [];
+  for (let i = 0; i < 64; i++) {
+    windows.push(radial(i + 0.5, 64, 60.35, 4.0), radial(i + 0.5, 64, 59.6, 9.8));
+    fins.push(radial(i, 64, 60.7, 6));
+    mullions.push(radial(i + 0.5, 64, 60.58, 4.0));
+    const a = (i + 0.5) / 64 * Math.PI * 2;
+    // Repeated relief panels evoke the theatre's decorative facade band.
+    for (const shift of [-1.3, 0, 1.3]) {
+      motifs.push([Math.cos(a)*60.65 - Math.sin(a)*shift, 6.85, Math.sin(a)*60.65 + Math.cos(a)*shift, Math.PI/2-a]);
+    }
   }
+  add(new THREE.BoxGeometry(4.7, 3.0, 0.24), glass, windows);
+  add(new THREE.BoxGeometry(0.32, 11.4, 0.7), trim, fins);
+  add(new THREE.BoxGeometry(0.12, 3, 0.3), bronze, mullions);
+  add(new THREE.BoxGeometry(0.75, 1.2, 0.32).rotateZ(Math.PI/4), bronze, motifs);
+  for (const [radius, y, height] of [[60.9, 2.25, 0.45], [60.5, 5.9, 0.45], [59.7, 8, 0.5], [59, 11.6, 0.55]]) {
+    g.add(mesh(new THREE.CylinderGeometry(radius, radius, height, 96, 1, true), trim, 0, y, 0));
+  }
+  const columns = [];
+  for (let i = 0; i < 32; i++) columns.push(radial(i, 32, 61, 14.9 + Math.cos(i/32*Math.PI*4)*3.2));
+  add(new THREE.BoxGeometry(0.8, 7.5, 0.8), wall, columns);
+  // Four entrance porticoes make the monumental facade legible from the road.
+  const canopies = [], doors = [], frames = [];
+  for (let i = 0; i < 4; i++) {
+    canopies.push(radial(i, 4, 63, 4.5));
+    doors.push(radial(i, 4, 60.8, 1.7));
+    for (const side of [-1,1]) {
+      const p = radial(i, 4, 64, 2.2), a = i/4*Math.PI*2;
+      p[0] -= Math.sin(a)*side*5.6; p[2] += Math.cos(a)*side*5.6; frames.push(p);
+    }
+  }
+  add(new THREE.BoxGeometry(13, 0.55, 7), trim, canopies);
+  add(new THREE.BoxGeometry(8, 3.3, 0.35), glass, doors);
+  add(new THREE.BoxGeometry(0.5, 4.4, 0.5), wall, frames);
   return g;
 }
 

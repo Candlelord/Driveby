@@ -113,3 +113,14 @@ shop interiors gain warm emissive detail at dusk; the atlas shutter cell stays
 dark. This is inexpensive projected illumination rather than extra shadowed
 lights. Placement/render-state checks pass. Browser shader compilation and
 the final night appearance remain unverified and need in-game review.
+
+## National Theatre facade pass
+
+The landmark's plain cylindrical wall now has two glazing tiers, 64 structural
+fins, horizontal trim bands, 192 bronze relief motifs and four entrance
+porticoes. Roof supports follow the saddle silhouette. Repeated details use
+eight instanced batches instead of individual meshes. This remains an artistic
+interpretation, informed by the official National Theatre architectural
+description: https://nationaltheatre.gov.ng/wp-content/uploads/2024/06/NATMOS-2023-with-Cover.pdf
+Landmark geometry checks and production build passed. In-game appearance and
+interaction with the baked surrounding footprints still require visual review.
