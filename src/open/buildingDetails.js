@@ -85,7 +85,7 @@ export function buildingDetailMeshes(world, chunk) {
       const nx = -tz, nz = tx, mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
       // Only road-facing walls receive costly close-up details.
       let near = null, distance = 45;
-      for (const seg of chunk.index.roadsNear(mx, mz)) {
+      for (const seg of chunk.index.roadsNear(mx, mz, distance)) {
         const hit = distToSeg(mx, mz, seg);
         if (hit.dist < distance) {
           const rx = seg.x0 + (seg.x1 - seg.x0) * hit.t;

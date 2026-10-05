@@ -185,6 +185,16 @@ Source prompt and preparation instructions are in src/assets/README.md.
 Asset inspected directly; production build passed. The final game rendering
 still needs visual review.
 
+## Street-facing facade coverage
+
+Facade decoration's 45m road search now queries the spatial index over that
+radius, rather than only the point's 24m cell. Physics retains the zero-radius
+query. A baked-data audit across 80 evenly sampled chunks generated 130475
+detail parts versus 126629 with the previous query, within existing per-chunk
+budgets. The audit is reproducible via scripts/audit-facade-coverage.mjs.
+Setback facade, building geometry, driving checks and production build pass.
+Rendered visual realism still requires in-game verification.
+
 ## Material preload during startup
 
 Plaster loading begins in parallel with world loading at boot and shares one

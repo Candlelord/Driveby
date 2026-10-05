@@ -282,7 +282,7 @@ async function loadRaster(url, width, height) {
 const G = 24; // index grid size, metres
 
 /** Spatial index of one chunk's road segments and building footprints. */
-function indexChunk(roads, buildings) {
+export function indexChunk(roads, buildings) {
   const segGrid = new Map();
   const segments = [];
   for (const road of roads) {
@@ -328,7 +328,14 @@ function indexChunk(roads, buildings) {
   }
   return {
     segments,
-    roadsNear: (x, z) => segGrid.get(Math.floor(x / G) * 100003 + Math.floor(z / G)) ?? [],
+    roadsNear: (x, z, radius = 0) => {
+      if (!radius) return segGrid.get(Math.floor(x / G) * 100003 + Math.floor(z / G)) ?? [];
+      const found = new Set();
+      for (let gx = Math.floor((x - radius) / G); gx <= Math.floor((x + radius) / G); gx++)
+        for (let gz = Math.floor((z - radius) / G); gz <= Math.floor((z + radius) / G); gz++)
+          for (const segment of segGrid.get(gx * 100003 + gz) ?? []) found.add(segment);
+      return [...found];
+    },
     buildingsNear: (x, z) => {
       const out = new Set();
       const gx = Math.floor(x / G);

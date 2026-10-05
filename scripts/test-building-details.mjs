@@ -18,6 +18,7 @@ try {
   const { buildingDetailMeshes } = await server.ssrLoadModule('/src/open/buildingDetails.js');
   const { setDetail } = await server.ssrLoadModule('/src/props/detail.js');
   const { buildingMeshes } = await server.ssrLoadModule('/src/open/chunkMeshes.js');
+  const { indexChunk } = await server.ssrLoadModule('/src/open/world.js');
   setDetail(1);
   const building = { kind: 0, h: 14, ring: [[0, 0], [18, 0], [18, 12], [0, 12]] };
   const road = { x0: -20, z0: -10, x1: 40, z1: -10, hw: 3 };
@@ -38,6 +39,12 @@ try {
     }
   }
   assert.ok(instances > 50 && instances <= 2200);
+  const setbackRoad = { cls: 5, flags: 0, width: 6, pts: [[-20, 5, 0], [40, 5, 0]] };
+  const setback = { ...building, ring: building.ring.map(([x,z])=>[x,z+40]) };
+  const indexed = indexChunk([setbackRoad], [setback]);
+  assert.equal(indexed.roadsNear(9, 40).length, 0, 'fixture must reproduce a facade in a different grid cell');
+  assert.equal(indexed.roadsNear(9, 40, 45).length, 1, 'radius query must find a nearby road once without duplicates');
+  assert.ok(buildingDetailMeshes(world, { ...chunk, buildings: [setback], index: indexed }).length > 0, 'setback buildings must receive street-facing architecture');
   const again = buildingDetailMeshes(world, chunk);
   const glass = meshes.find(mesh => mesh.name === 'facade glass');
   const lights = [...glass.geometry.attributes.aInteriorLight.array];
