@@ -135,7 +135,10 @@ export class Vehicle {
     const pz = this.z;
     this.x += this.vx * dt;
     this.z += this.vz * dt;
-    if (here.road?.flags & 1) this._bridgeEdge(here.road);
+    if (here.road?.flags & 1) {
+      const next = this.world.surfaceAt(this.x, this.z, this.y);
+      this._bridgeEdge(next.road?.flags & 1 ? next.road : here.road);
+    }
     this._collide(px, pz);
     this._bounds();
 
@@ -150,7 +153,8 @@ export class Vehicle {
       this._hit(0.25);
     } else {
       const ground = under.y;
-      if (this.y > ground + 0.4) {
+      const rideBridge = this.grounded && (here.road?.flags & 1) && (under.road?.flags & 1);
+      if (this.y > ground + 0.4 && !rideBridge) {
         this.grounded = false;
         this.vy -= GRAVITY * dt;
         this.y += this.vy * dt;
@@ -166,7 +170,7 @@ export class Vehicle {
         this.vy = this.grounded ? rise : 0;
         this.y = ground;
         this.grounded = true;
-        if (this.grounded && this.vy < -9 && Math.abs(vf) > 18) {
+        if (!rideBridge && this.grounded && this.vy < -9 && Math.abs(vf) > 18) {
           this.grounded = false;
         }
       }
@@ -247,15 +251,20 @@ export class Vehicle {
       const hit = distToSeg(this.x, this.z, seg);
       if (!best || hit.dist < best.hit.dist) best = { seg, hit };
     }
-    if (!best || best.hit.t <= 0 || best.hit.t >= 1) return;
-    const { seg, hit } = best;
+    if (!best) return;
+    const { seg } = best;
+    // Use the side of the span, including its endpoints. A radial endpoint
+    // clamp would block the exit; skipping endpoints leaves holes at seams.
+    const length = Math.hypot(seg.x1 - seg.x0, seg.z1 - seg.z0);
+    if (!length) return;
+    const nx = -(seg.z1 - seg.z0) / length, nz = (seg.x1 - seg.x0) / length;
+    const side = (this.x - seg.x0) * nx + (this.z - seg.z0) * nz;
     const max = Math.max(0.5, road.width / 2 - RADIUS - 0.15);
-    if (hit.dist <= max) return;
-    const cx = lerp(seg.x0, seg.x1, hit.t), cz = lerp(seg.z0, seg.z1, hit.t);
-    const nx = (this.x - cx) / hit.dist, nz = (this.z - cz) / hit.dist;
-    this.x = cx + nx * max; this.z = cz + nz * max;
+    if (Math.abs(side) <= max) return;
+    const correction = side - Math.sign(side) * max;
+    this.x -= nx * correction; this.z -= nz * correction;
     const speed = this.vx * nx + this.vz * nz;
-    if (speed > 0) { this.vx -= nx * speed; this.vz -= nz * speed; this._hit(Math.min(0.6, speed / 15)); }
+    if (speed * side > 0) { this.vx -= nx * speed; this.vz -= nz * speed; this._hit(Math.min(0.6, Math.abs(speed) / 15)); }
   }
 
   /** Something hit the car (or the car hit something): `strength` 0..1. */

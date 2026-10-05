@@ -161,8 +161,10 @@ export class Traffic {
         car.speed *= 0.3;
         sfx?.crash(strength);
       }
-      car.spinYaw = (car.spinYaw ?? 0) + car.spin * dt;
-      if (car.hit <= 0) car.spinYaw *= Math.exp(-3 * dt);
+      // A graph-following car cannot sustain a sideways skid: limit the impact
+      // twitch and bring its nose back to the lane even during the cooldown.
+      car.spinYaw = Math.max(-0.3, Math.min(0.3, (car.spinYaw ?? 0) + car.spin * dt));
+      car.spinYaw *= Math.exp(-6 * dt);
       const y = this.world.surfaceAt(x, z).y;
       car.pose = { x, y, z, yaw: here.yaw + car.spinYaw };
       void i;

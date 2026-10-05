@@ -165,7 +165,7 @@ export function roadMeshes(world, chunk) {
         scale = 1 / Math.max(0.55, cos);
       }
       if (i > 0) along += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
-      const y = deck > 0 ? deck : world.terrainHeight(x, z) + lift;
+      const y = bridge || deck > 0 ? deck : world.terrainHeight(x, z) + lift;
       ys.push(y);
       vs.push(along);
       left.push([x - nx * hw * scale - ox, z - nz * hw * scale - oz]);

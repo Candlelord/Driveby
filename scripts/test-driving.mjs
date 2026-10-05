@@ -28,6 +28,21 @@ try {
   assert.ok(vehicle.x > 392 && vehicle.y === 6 && vehicle.grounded, 'crossing must not drop to the lagoon');
   vehicle.x = 400; vehicle.z = 54; vehicle.vz = 10; vehicle._bridgeEdge(road);
   assert.ok(vehicle.z <= 52.81 && Math.abs(vehicle.vz) < 1e-6, 'parapet must stop an outward slide');
+  for (const x of [380, 440, 441]) {
+    vehicle.x = x; vehicle.z = 54; vehicle.vz = 10;
+    vehicle._bridgeEdge(road);
+    assert.ok(vehicle.z <= 52.81 && vehicle.x === x, 'endpoint rails must stop lateral falls without blocking forward exits');
+  }
+  const rampWorld = {
+    surfaceAt: (x) => ({ y: 6 - x * 0.1, road, surface: 'asphalt' }),
+    terrainHeight: () => -2.6, buildingsNear: () => [],
+  };
+  const rampCar = new Vehicle(rampWorld); rampCar.place(0, 50, Math.PI / 2);
+  rampCar.vx = 30;
+  for (let i = 0; i < 60; i++) {
+    rampCar.update(1 / 60, { throttle: 0, brake: 0, steer: 0, handbrake: false });
+    assert.ok(rampCar.grounded && Math.abs(rampCar.y - rampWorld.surfaceAt(rampCar.x).y) < 1e-8, 'descending bridge must retain tyre contact');
+  }
   vehicle.grounded = false; vehicle.pitch = 1; vehicle.place(400, 50);
   assert.ok(vehicle.grounded && vehicle.pitch === 0, 'recovery must reset the falling pose');
 
@@ -44,5 +59,8 @@ try {
   assert.ok(Math.abs(car.pose.x) <= 1.3, 'traffic must fit the actual road width');
   car.spinYaw = 2; traffic._spawn(car, 0, 0, 0);
   assert.equal(car.spinYaw, 0, 'respawn must remove the crash rotation');
+  car.hit = 3; car.spin = 1.4; car.spinYaw = Math.PI / 2;
+  traffic.update(1 / 60, player);
+  assert.ok(Math.abs(car.pose.yaw) <= 0.3, 'moving traffic must face the road during the crash cooldown');
   console.log('Driving checks passed: continuous reversed bridge ways, chunk crossing, underpass separation, parapets, recovery and traffic realignment.');
 } finally { await server.close(); }

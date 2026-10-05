@@ -80,3 +80,14 @@ Added animated lagoon normal ripples anchored in world coordinates so shifting
 the large water mesh does not drag the wave pattern with the car. Production
 build and pavement placement checks passed. Full rendered appearance remains
 unverified here; city-feel goal remains active.
+
+## Bridge falls and sideways traffic follow-up
+
+Bridge parapet collision now covers segment endpoints using lateral projection,
+so chunk seams cannot disable the rails and forward exits remain open. Cars
+retain tyre contact on descending bridge spans instead of launching from deck
+height changes. Bridge rendering treats zero-height flagged decks consistently
+with collision. Traffic impact rotation is limited to 0.3 radians and realigns
+during the crash cooldown, preventing graph-following cars moving sideways.
+Driving regression checks cover endpoint rails, descending ramps and crash
+cooldown alignment. Runtime visual verification remains outstanding.
