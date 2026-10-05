@@ -124,3 +124,12 @@ interpretation, informed by the official National Theatre architectural
 description: https://nationaltheatre.gov.ng/wp-content/uploads/2024/06/NATMOS-2023-with-Cover.pdf
 Landmark geometry checks and production build passed. In-game appearance and
 interaction with the baked surrounding footprints still require visual review.
+
+## Asphalt wear pass
+
+Added shader detail to paved roads: subtle tyre-polished tracks, dusty verges,
+irregular age variation, sparse resurfacing patches and hairline cracks. Patch
+and crack positions use world metres, so their pattern remains continuous
+across streamed chunks. Road roughness varies slightly across wheel paths and
+edges. This uses the existing asphalt draw with no extra meshes or textures.
+Production build passes; final shader appearance needs browser visual review.

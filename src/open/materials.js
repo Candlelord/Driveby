@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { asphaltMaps, gravelMaps, groundMaps } from '../world/surfaces.js';
+import { applyRoadWear } from './roadWear.js';
 
 /**
  * Shared materials for the open world: ground, roads, buildings, water.
@@ -27,6 +28,7 @@ export function worldMaterials() {
   const asphalt = asphaltMaps();
   const road = new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 0.9, metalness: 0, map: asphalt.map, roughnessMap: asphalt.roughnessMap, normalMap: asphalt.normalMap, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   road.normalScale.set(0.3, 0.3);
+  applyRoadWear(road);
   const gravel = gravelMaps();
   const dirt = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.98, metalness: 0, map: gravel.map, normalMap: gravel.normalMap, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   dirt.normalScale.set(0.9, 0.9);
