@@ -91,3 +91,15 @@ with collision. Traffic impact rotation is limited to 0.3 radians and realigns
 during the crash cooldown, preventing graph-following cars moving sideways.
 Driving regression checks cover endpoint rails, descending ramps and crash
 cooldown alignment. Runtime visual verification remains outstanding.
+
+## Articulated pavement pedestrians
+
+Replaced rigid box figures with rounded torsos and heads, noses, hair, eyes,
+separate trousers and shoes, and animated opposing arm/leg swings. Basket
+carriers steady their load with a raised arm. Height and clothing vary per
+person. Seven instanced batches keep draw calls bounded; inactive people and
+unused loads no longer occupy rendered instances. Walking offsets use actual
+road widths and pavement height. Water, bridge roads, building interiors and
+unloaded road paths are rejected. Pedestrian regression checks cover gait,
+pavement placement and immediate removal of blocked walkers. Rendered visual
+quality still needs in-game review; the overall city-feel goal remains active.
