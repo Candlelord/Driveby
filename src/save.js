@@ -11,14 +11,15 @@
  * access is guarded and the game simply runs without saving.
  */
 
-const KEY = 'driveby.save.v1';
+// v2: the open world (position, fuel, places found…). The v1 road-trip save is left alone.
+const KEY = 'driveby.save.v2';
 
 export function loadSave() {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
     const save = JSON.parse(raw);
-    return save && save.version === 1 ? save : null;
+    return save && save.version === 2 ? save : null;
   } catch {
     return null;
   }
@@ -26,7 +27,7 @@ export function loadSave() {
 
 export function writeSave(save) {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify({ ...save, version: 1, savedAt: Date.now() }));
+    window.localStorage.setItem(KEY, JSON.stringify({ ...save, version: 2, savedAt: Date.now() }));
     return true;
   } catch {
     return false;

@@ -6,8 +6,6 @@ import { buildCarModel } from './carBuild.js';
 import { CAR_MODELS, DEFAULT_CAR } from './carModels.js';
 import { createLivery } from './livery.js';
 
-const AHEAD = new THREE.Vector3();
-const HERE = new THREE.Vector3();
 
 /**
  * The player's car, and its lights.
@@ -215,16 +213,20 @@ export class Car {
     }
   }
 
-  update(state, frame) {
-    // Pitch to match the slope of the road just ahead of the bumper.
-    frame.point(state.travelled + 6, state.lateral, 0, AHEAD);
-    frame.point(state.travelled, state.lateral, 0, HERE);
-    const pitch = Math.atan2(AHEAD.y - HERE.y, 6);
+  /**
+   * Put the car in the world and animate it. `pose` is { x, y, z, yaw, pitch,
+   * roll }: yaw 0 faces north (-Z), positive turns right.
+   */
+  place(pose, state) {
+    this.group.position.set(pose.x, pose.y, pose.z);
+    this.group.rotation.set(0, 0, 0);
+    this.group.rotation.order = 'YXZ';
+    this.group.rotation.set(pose.pitch, -pose.yaw, pose.roll);
+    this.animate(state);
+  }
 
-    // Suspension bob and body roll both come from the physics model now.
-    this.group.position.set(state.lateral, HERE.y + state.bob, 0);
-    this.group.rotation.set(pitch, -state.steer * 0.1 + (state.impactYaw ?? 0) + (state.bodyYaw ?? 0), state.roll);
-
+  /** Wheels and lamps. `state` carries speed, steer, dt and the live environment. */
+  animate(state) {
     this.spin -= (state.speed / WHEEL_RADIUS) * state.dt;
     for (const wheel of this.wheels) {
       wheel.userData.spinner.rotation.x = this.spin;

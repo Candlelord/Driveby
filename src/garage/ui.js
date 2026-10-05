@@ -1,8 +1,6 @@
 import '../ui/menus.css';
 import { CAR_MODELS } from '../world/carModels.js';
 import { LIVERIES } from '../world/livery.js';
-import { ALL_POSTCARDS } from '../rally/postcards.js';
-import { drawPostcard } from '../rally/postcardArt.js';
 
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const escapeHtml = (v) =>
@@ -10,8 +8,7 @@ const escapeHtml = (v) =>
 
 /**
  * The garage: browse the cars on the turntable, buy and pick one, choose its
- * paint and livery, switch the look of the game, and look through the
- * postcards collected so far.
+ * paint and livery, and switch the look of the game.
  */
 export class GarageUi {
   constructor({ garage, stage }) {
@@ -86,34 +83,17 @@ export class GarageUi {
         }
       </div>`;
 
-    const collected = new Set(g.postcards);
-    const cardsTab = `
-      <h2 class="gr-name gfx">Postcards</h2>
-      <div class="gr-count">${collected.size} of ${ALL_POSTCARDS.length} collected</div>
-      <div class="gr-cards">${ALL_POSTCARDS.map((c, i) => (collected.has(c.id) ? `<canvas width="220" height="264" data-card="${c.id}" style="--tilt:${((i * 37) % 7) - 3}deg"></canvas>` : `<div class="locked" style="--tilt:${((i * 37) % 7) - 3}deg">?</div>`)).join('')}</div>`;
-
     this.root.innerHTML = `
       <div class="gr-panel">
-        <div class="gr-tabs">
-          <button class="gr-tab${this.tab === 'cars' ? ' is-on' : ''}" data-tab="cars">Cars</button>
-          <button class="gr-tab${this.tab === 'cards' ? ' is-on' : ''}" data-tab="cards">Postcards</button>
-        </div>
-        ${this.tab === 'cars' ? carsTab : cardsTab}
+        ${carsTab}
       </div>
-      ${
-        this.tab === 'cars'
-          ? `<div class="gr-nav"><button class="brush alt" data-action="prev" aria-label="Previous car">‹</button><button class="brush alt" data-action="next" aria-label="Next car">›</button></div>`
-          : ''
-      }
+      <div class="gr-nav"><button class="brush alt" data-action="prev" aria-label="Previous car">‹</button><button class="brush alt" data-action="next" aria-label="Next car">›</button></div>
       <div class="gr-cash">
         <div class="money gfx lime">$${g.cash.toLocaleString('en-GB')}</div>
         <div class="gr-looks"><button class="gr-chip${g.look === 'real' ? ' is-on' : ''}" data-look="real">Clean</button><button class="gr-chip${g.look === 'drive' ? ' is-on' : ''}" data-look="drive">Gritty</button></div>
       </div>
       <div class="gr-back"><button class="brush" data-action="back">Back</button></div>`;
 
-    for (const canvas of this.root.querySelectorAll('canvas[data-card]')) {
-      drawPostcard(canvas, ALL_POSTCARDS.find((c) => c.id === canvas.dataset.card));
-    }
     this._wire();
   }
 
@@ -122,10 +102,6 @@ export class GarageUi {
     const car = CAR_MODELS[this.id];
     const on = (selector, fn) => this.root.querySelectorAll(selector).forEach((el) => el.addEventListener('click', () => fn(el)));
 
-    on('[data-tab]', (el) => {
-      this.tab = el.dataset.tab;
-      this.render();
-    });
     on('[data-paint]', (el) => {
       this.preview.paint = Number(el.dataset.paint);
       if (g.owned.has(car.id)) g.setPaint(this.preview.paint, car.id);

@@ -1,196 +1,352 @@
 import * as THREE from 'three';
 import './style.css';
 
-import { CONFIG, applyTier } from './config.js';
+import { applyTier } from './config.js';
 import { detectTier, tierFromQuery } from './quality.js';
 import { setDetail } from './props/detail.js';
 import { setSurfaceSize } from './world/surfaces.js';
-import { PathFrame, heading } from './path.js';
 import { Environment } from './environment.js';
-import { CarPhysics } from './physics.js';
-import { MOOD_PROFILES } from './moods.js';
-import { TERRAIN_SETS, TERRAIN_POOLS } from './terrainSets.js';
-import { CLIMATE_PROFILES } from './climates.js';
-import { EVENT_NAMES } from './events.js';
 import { Session } from './session.js';
 import { Sfx } from './audio/sfx.js';
-import { Input } from './input.js';
 import { FrameClock } from './loop.js';
-import { Ui } from './ui.js';
 import { Post } from './post.js';
 import { Sky } from './world/sky.js';
-import { Road } from './world/road.js';
-import { Terrain } from './world/terrain.js';
-import { Props } from './world/props.js';
 import { Car } from './world/car.js';
-import { Traffic } from './world/traffic.js';
 import { Weather } from './world/weather.js';
-import { Features } from './world/features.js';
-import { Landmarks } from './world/landmarks.js';
-import { EventVisuals } from './world/eventVisuals.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { EnvironmentLight } from './world/envLight.js';
-import { Grass } from './world/grass.js';
-import { People } from './world/people.js';
-import { Collisions } from './collisions.js';
-import { RouteDirector } from './routes/director.js';
-import { ROUTES } from './routes/lagosParis.js';
-import { loadSave, writeSave, savedAgo } from './save.js';
 import { Garage } from './garage.js';
 import { CAR_MODELS } from './world/carModels.js';
-import { RallyUi } from './rally/ui.js';
-import { StageRunner } from './rally/stages.js';
-import { Gates } from './rally/gates.js';
 import { GarageStage } from './garage/stage.js';
 import { GarageUi } from './garage/ui.js';
-import { Copilot } from './rally/copilot.js';
-import { FuelStations } from './rally/stations.js';
-import { FuelTickets } from './rally/tickets.js';
-import { Dressing } from './rally/dressing.js';
-import { Postcards, ALL_POSTCARDS } from './rally/postcards.js';
+import { loadSave, writeSave, savedAgo } from './save.js';
 
+import { toWorld, NORTH_EDGE } from './open/geo.js';
+import { World } from './open/world.js';
+import { Streamer } from './open/streamer.js';
+import { Vehicle } from './open/vehicle.js';
+import { ChaseCamera } from './open/camera.js';
+import { Controls } from './open/controls.js';
+import { Hud } from './open/hud.js';
+import { MapLayers, Minimap, BigMap } from './open/maps.js';
+import { RoadGraph, routeProgress } from './open/route.js';
+import { Gameplay } from './open/gameplay.js';
+import { Traffic } from './open/traffic.js';
+import { Pedestrians } from './open/peds.js';
+import { Landmarks3D } from './open/landmarks3d.js';
+import { PauseMenu, Journal } from './open/menus.js';
+import { NIGHT } from './open/materials.js';
+import { biomeAt, KANO_CENTRE } from './open/north.js';
+
+/**
+ * Driveby: an open-world drive from Lagos to the Sahara.
+ *
+ * Lagos is the real city, built from OpenStreetMap; the north is made up but
+ * shaped like the real thing. Drive anywhere, find places, keep the tank full,
+ * run errands, with a friend in the passenger seat.
+ */
+
+// --- the device ---------------------------------------------------------------------
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
-// Must run before any geometry is constructed.
 setDetail(tier.detail ?? 1);
-// Procedural textures are generated at a size the device can afford.
 setSurfaceSize(tier.textureSize ?? 512);
+const RADIUS = { high: 1500, medium: 1100, low: 750 }[tier.name] ?? 1100;
 
-const container = document.getElementById('scene');
-
-const renderer = new THREE.WebGLRenderer({
-  // MSAA is the first thing worth giving up on a phone; the grade pass hides
-  // most of what it was buying.
-  antialias: tier.name === 'high',
-  powerPreference: 'high-performance',
-});
+const renderer = new THREE.WebGLRenderer({ antialias: tier.name === 'high', powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, tier.pixelRatio));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.autoUpdate = true;
-container.appendChild(renderer.domElement);
+document.getElementById('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x000000, 0.01);
+scene.fog = new THREE.FogExp2(0x000000, 0.004);
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.3, RADIUS * 1.8);
 
-const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1500);
-camera.position.set(0, CONFIG.camHeight, CONFIG.camDistance);
-
-// A hemisphere in place of flat ambient is the cheapest fake GI there is: the
-// fill comes from the sky above and from light bounced off the ground below,
-// so the underside of everything carries the ground's colour instead of grey.
-// This is most of what "soft bounced light" means in the art brief.
 const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1);
-scene.add(ambient);
-
 const sun = new THREE.DirectionalLight(0xffffff, 1);
-sun.position.set(60, 90, -40);
-scene.add(sun, sun.target);
-
-// Real cast shadows. The frustum is a box centred a little up the road from
-// the car — where the camera is looking — sized by tier: on high it covers the
-// near roadside so trees, fences and traffic all throw shade across the road;
-// lower tiers keep a tight box around the car alone so the map stays sharp at
-// a small size.
-const SHADOW_CENTRE = new THREE.Vector3(0, 0, -(tier.shadowReach ?? 16) * 0.55);
+scene.add(ambient, sun, sun.target);
 if (tier.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   sun.castShadow = true;
   sun.shadow.mapSize.set(tier.shadows, tier.shadows);
-  const reach = tier.shadowReach ?? 16;
-  const frustum = sun.shadow.camera;
-  frustum.left = -reach;
-  frustum.right = reach;
-  frustum.top = reach;
-  frustum.bottom = -reach;
-  frustum.near = 1;
-  frustum.far = 400;
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.04;
-  sun.shadow.radius = 3;
-  sun.target.position.copy(SHADOW_CENTRE);
+  const reach = 70;
+  Object.assign(sun.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach, near: 1, far: 500 });
+  sun.shadow.bias = -0.0005;
+  sun.shadow.normalBias = 0.05;
 }
 
+// --- the look of the world: sky, light, weather, grade -------------------------------
 const environment = new Environment();
-const physics = new CarPhysics();
-const frame = new PathFrame();
-
+environment.jumpToRegion('lagosCity');
 const sky = new Sky(scene, tier);
-const terrain = new Terrain(scene, tier);
-const road = new Road(scene);
-const props = new Props(scene, tier);
-const features = new Features(scene, tier);
-const landmarks = new Landmarks(scene, CONFIG);
-const eventVisuals = new EventVisuals(scene, tier);
-// Birds, fireflies, exhaust and spray are four extra Points systems updated
-// every frame; the lowest tier does without them.
-const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
-const traffic = new Traffic(scene, tier);
+const envLight = new EnvironmentLight(renderer, scene, sky.domeMaterial, tier);
+const post = new Post(renderer, scene, camera, tier);
+const sfx = new Sfx();
+// Particles authored around a car at the origin facing -Z ride along with the car.
+const carFrame = new THREE.Group();
+scene.add(carFrame);
+const weather = new Weather(carFrame, tier);
+const atmosphere = tier.atmosphere ? new Atmosphere(carFrame, tier) : null;
+
+// --- the car and the garage -------------------------------------------------------------
 const garage = new Garage();
-physics.stats = CAR_MODELS[garage.selected]?.stats ?? physics.stats;
 const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps, model: garage.selected });
 car.setPaint(garage.paintOf());
 car.setLivery(garage.liveryOf());
-// The garage changes the player's car; the world follows.
-garage.onChange((g) => {
-  if (car.modelId !== g.selected) car.setModel(g.selected, g.paintOf());
-  physics.stats = CAR_MODELS[g.selected]?.stats ?? physics.stats;
-  car.setPaint(g.paintOf());
-  car.setLivery(g.liveryOf());
-});
-const weather = new Weather(scene, tier);
-const grass = tier.grass ? new Grass(scene, tier) : null;
-const people = new People(scene, tier);
-const envLight = new EnvironmentLight(renderer, scene, sky.domeMaterial, tier);
-
-const input = new Input(renderer.domElement, {
-  stick: document.getElementById('stick'),
-  tiltButton: document.getElementById('tilt-btn'),
-});
-const ui = new Ui();
-const rallyUi = new RallyUi();
-ui.rally = rallyUi;
-input.bindButtons(rallyUi.buttons);
-const gates = new Gates(scene);
-const dressing = new Dressing(scene);
-const postcards = new Postcards(scene, garage);
-const copilot = new Copilot({ ui: rallyUi, physics });
-const tickets = new FuelTickets(scene, { physics });
-const stations = new FuelStations(scene, { garage, physics, ui: rallyUi, sfx: null });
-const post = new Post(renderer, scene, camera, tier);
-const sfx = new Sfx();
-stations.sfx = sfx;
 post.setLook(garage.look);
-garage.onChange((g) => post.setLook(g.look));
-const collisions = new Collisions({ physics, props, sfx, dressing });
-const session = new Session(environment);
-
-// The garage replaces the world with a turntable while it is open.
 const garageStage = new GarageStage(renderer);
 garageStage.bindDrag(renderer.domElement);
 const garageUi = new GarageUi({ garage, stage: garageStage });
-let garageOpen = false;
-session.screens.hooks = {
-  stats: () => ({
-    stages: `${loadSave()?.route?.stages?.completed?.length ?? 0} of ${Object.values(ROUTES)[0].legs.filter((l) => l.stage).length}`,
-    postcards: `${garage.postcards.length} of ${ALL_POSTCARDS.length}`,
-    cash: garage.cash,
-  }),
-};
-session.screens.onGarage = () => {
-  garageOpen = true;
-  session.screens.hide();
-  garageStage.resize(window.innerWidth, window.innerHeight);
-  garageUi.open(() => {
-    garageOpen = false;
-    session.screens.reshowMenu();
-    clock.reset();
+
+// --- the world -----------------------------------------------------------------------------
+const world = new World();
+const hud = new Hud();
+const controls = new Controls();
+controls.bindButtons(hud.buttons);
+const session = new Session(environment);
+const clock = new FrameClock();
+
+const vehicle = new Vehicle(world);
+vehicle.stats = CAR_MODELS[garage.selected]?.stats ?? vehicle.stats;
+const chase = new ChaseCamera(camera, world);
+let streamer = null;
+let gameplay = null;
+let traffic = null;
+let peds = null;
+let landmarks = null;
+let layers = null;
+let minimap = null;
+let bigMap = null;
+let graph = null;
+let route = null;
+let routeCheck = 0;
+let pause = null;
+let journal = null;
+
+// Where a new trip starts: by Tafawa Balewa Square on Lagos Island.
+const START = { ...toWorld(6.4478, 3.3965), yaw: Math.PI * 0.5 };
+
+const state = { time: 0, dt: 0, frame: 0, speed: 0, heading: 0, travelled: 0, lateral: 0, steer: 0, live: environment.live, spray: 0, smoke: 0, slip: 0, slide: 0, dirt: 0, edgePressure: 0 };
+let mode = 'loading'; // loading → menu → driving
+let overlay = null; // null | 'pause' | 'map' | 'journal' | 'garage'
+let saveTimer = 0;
+
+garage.onChange((g) => {
+  post.setLook(g.look);
+  if (car.modelId !== g.selected) car.setModel(g.selected, g.paintOf());
+  car.setPaint(g.paintOf());
+  car.setLivery(g.liveryOf());
+  vehicle.stats = CAR_MODELS[g.selected]?.stats ?? vehicle.stats;
+});
+
+async function boot() {
+  await world.load();
+  layers = new MapLayers(world);
+  const graphData = await world.loadGraph();
+  graph = new RoadGraph();
+  if (graphData.nodes.length) graph.addLagos(graphData);
+  graph.addPolylines(world.north.roads);
+  if (world.meta?.exit) graph.link(world.meta.exit.x, world.meta.exit.z, world.north.roads[0].pts[0][0], world.north.roads[0].pts[0][1]);
+  await layers.load();
+
+  streamer = new Streamer(scene, world, { radius: RADIUS, budgetMs: tier.name === 'low' ? 5 : 8, floraDensity: tier.name === 'low' ? 0.5 : 1 });
+  gameplay = new Gameplay(scene, { world, hud, garage, vehicle, sfx });
+  gameplay.onWaypoint = () => {
+    route = null;
+    routeCheck = 0;
+  };
+  traffic = new Traffic(scene, { world, graph, count: tier.name === 'low' ? 12 : 26 });
+  peds = new Pedestrians(scene, { world, graph, count: tier.name === 'low' ? 20 : 44 });
+  landmarks = new Landmarks3D(scene, world);
+  minimap = new Minimap(layers, hud.el.miniCanvas);
+  bigMap = new BigMap(layers, {
+    onWaypoint: (wp) => {
+      gameplay.setWaypoint(wp);
+      bigMap.update(mapData(true));
+    },
+    onClose: () => closeOverlay(),
   });
+  pause = new PauseMenu({
+    resume: () => closeOverlay(),
+    map: () => openOverlay('map'),
+    journal: () => openOverlay('journal'),
+    garage: () => openOverlay('garage'),
+    reset: () => {
+      vehicle.recover();
+      chase.snap(vehicle);
+      closeOverlay();
+    },
+    cancelJob: () => {
+      gameplay.cancelJob();
+      openOverlay('pause');
+    },
+    toggleVoice: () => {
+      gameplay.friend.setVoice(!gameplay.friend.voice);
+      openOverlay('pause');
+    },
+    setLook: (look) => {
+      garage.setLook(look);
+      openOverlay('pause');
+    },
+    quit: () => {
+      saveGame();
+      closeOverlay();
+      mode = 'menu';
+      hud.setActive(false);
+      session.screens.offerResume(resumeInfo());
+      session.screens.reshowMenu();
+    },
+  });
+  journal = new Journal({ onClose: () => openOverlay('pause') });
+  session.screens.hooks = { stats: () => ({ found: `${loadSave()?.found?.length ?? 0} of ${gameplay.places.length}`, cash: garage.cash }) };
+
+  // The first view: hovering over the start while the menu is up.
+  vehicle.place(START.x, START.z, START.yaw);
+  mode = 'menu';
+  const save = loadSave();
+  if (save) session.screens.offerResume(resumeInfo(save));
+  session.begin();
+}
+
+function resumeInfo(save = loadSave()) {
+  if (!save) return null;
+  return { title: 'Continue', sub: `near ${areaName(save.x, save.z)} · ${save.found?.length ?? 0} places found · saved ${savedAgo(save)}` };
+}
+
+function areaName(x, z) {
+  if (z > NORTH_EDGE) {
+    let best = 'Lagos';
+    let bestD = 2500;
+    for (const p of world.pois.places ?? []) {
+      const d = Math.hypot(p.x - x, p.z - z);
+      if (d < bestD) {
+        bestD = d;
+        best = p.name;
+      }
+    }
+    return best;
+  }
+  return { forest: 'the bush', savanna: 'the savanna', sahel: 'the Sahel', desert: 'the desert' }[biomeAt(x, z)];
+}
+
+session.screens.onGarage = () => openOverlay('garage', true);
+session.onStart = (picked) => {
+  const save = picked === 'resume' ? loadSave() : null;
+  if (save) {
+    vehicle.place(save.x, save.z, save.yaw ?? 0);
+    vehicle.fuel = save.fuel ?? 1;
+    vehicle.odometer = save.odometer ?? 0;
+    gameplay.restore(save);
+  } else {
+    vehicle.place(START.x, START.z, START.yaw);
+    vehicle.fuel = 1;
+    vehicle.odometer = 0;
+    gameplay.restore(null);
+    setTimeout(() => gameplay.friend.say('Field trip! No plan, full tank, the whole country. Press M for the map and pick somewhere.', 7), 1500);
+  }
+  // Put the car on a real road as soon as the streets round it have loaded.
+  spawnPending = !save;
+  chase.snap(vehicle);
+  mode = 'driving';
+  hud.setActive(true);
+  saveGame();
+};
+let spawnPending = false;
+
+function saveGame() {
+  if (mode !== 'driving' || !gameplay) return;
+  writeSave({ x: vehicle.x, z: vehicle.z, yaw: vehicle.yaw, fuel: vehicle.fuel, odometer: vehicle.odometer, ...gameplay.snapshot() });
+}
+window.addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') saveGame();
+  else clock.reset();
+});
+
+// --- overlays: pause, map, journal, garage -------------------------------------------------
+function mapData(full) {
+  const labels = [];
+  for (const p of world.pois.places ?? []) labels.push({ x: p.x, z: p.z, text: p.name, minScale: p.kind === 'suburb' ? 22 : 9 });
+  for (const p of world.north.places) if (p.kind === 'village' || p.kind === 'city') labels.push({ x: p.x, z: p.z - 300, text: p.name, big: p.kind === 'city' });
+  labels.push({ x: 3000, z: -2000, text: 'Lagos', big: true });
+  labels.push({ x: KANO_CENTRE.x, z: KANO_CENTRE.z - 1500, text: 'Kano', big: true });
+  return { route, icons: gameplay.icons(full), labels, waypoint: gameplay.waypoint, car: { x: vehicle.x, z: vehicle.z, yaw: vehicle.yaw } };
+}
+
+function hideOverlays() {
+  if (pause?.open) pause.hide();
+  if (bigMap?.open) bigMap.hide();
+  if (journal?.open) journal.hide();
+}
+
+function openOverlay(name, fromMenu = false) {
+  hideOverlays();
+  overlay = name;
+  controls.enabled = false;
+  if (name === 'pause') {
+    pause.show({ found: gameplay.found.size, total: gameplay.places.length, cash: garage.cash, km: vehicle.odometer / 1000, area: gameplay.area || areaName(vehicle.x, vehicle.z), voice: gameplay.friend.voice, look: garage.look, job: gameplay.job ? `${gameplay.job.cargo} → ${gameplay.job.to.name}` : null });
+  } else if (name === 'map') {
+    bigMap.show(vehicle, mapData(true));
+  } else if (name === 'journal') {
+    journal.show(gameplay.journal());
+  } else if (name === 'garage') {
+    session.screens.hide();
+    hud.setActive(false);
+    garageStage.resize(window.innerWidth, window.innerHeight);
+    garageUi.open(() => {
+      if (fromMenu || mode === 'menu') {
+        overlay = null;
+        controls.enabled = true;
+        session.screens.reshowMenu();
+      } else {
+        hud.setActive(true);
+        openOverlay('pause');
+      }
+    });
+  }
+}
+
+function closeOverlay() {
+  hideOverlays();
+  overlay = null;
+  controls.enabled = true;
+  clock.reset();
+}
+
+controls.on('pause', () => {
+  if (mode !== 'driving' || overlay === 'garage') return;
+  if (overlay) closeOverlay();
+  else openOverlay('pause');
+});
+controls.on('map', () => {
+  if (mode !== 'driving' || overlay === 'garage') return;
+  if (overlay === 'map') closeOverlay();
+  else openOverlay('map');
+});
+controls.on('journal', () => {
+  if (mode !== 'driving' || overlay === 'garage') return;
+  if (overlay === 'journal') closeOverlay();
+  else openOverlay('journal');
+});
+controls.on('reset', () => {
+  if (mode !== 'driving' || overlay) return;
+  vehicle.recover();
+  chase.snap(vehicle);
+});
+controls.on('voice', () => gameplay?.friend.setVoice(!gameplay.friend.voice));
+hud.el.menu.addEventListener('click', () => (overlay ? closeOverlay() : openOverlay('pause')));
+hud.el.mini.addEventListener('click', () => openOverlay('map'));
+
+vehicle.onHit = (strength) => {
+  sfx.crash(strength);
+  if (strength > 0.5 && Math.random() < 0.5) {
+    gameplay?.friend.say(['Easy! Easy!', 'That one will leave a mark.', 'My mum is going to ask about that dent.', 'We are exploring, not demolishing.'][Math.floor(Math.random() * 4)], 3);
+  }
 };
 
-// Audio cannot start until the browser has seen a gesture, so the first real
-// input is what opens the context.
+// Audio needs a gesture.
 const startAudio = () => {
   sfx.start();
   window.removeEventListener('pointerdown', startAudio);
@@ -199,394 +355,167 @@ const startAudio = () => {
 window.addEventListener('pointerdown', startAudio);
 window.addEventListener('keydown', startAudio);
 
-// A route, if the player chose one, takes over where the road goes; the music
-// keeps the light.
-let route = null;
-let stages = null; // the timed-stage runner, route mode only
-let trip = null; // set once driving starts: 'endless' or a route id
-let saveTimer = 0;
-
-// Saved progress: offer it on the start screen, described in place names.
-const save = loadSave();
-if (save) {
-  const where = ROUTES[save.trip]
-    ? new RouteDirector(ROUTES[save.trip], { environment, landmarks, ui }).describe(save.route?.progress ?? 0)
-    : `${((save.travelled ?? 0) / 1609.34).toFixed(1)} mi driven`;
-  session.screens.offerResume({
-    title: `Continue: ${ROUTES[save.trip]?.title ?? 'Endless drive'}`,
-    sub: `${where} · saved ${savedAgo(save)}`,
-  });
-}
-
-session.onStart = (picked) => {
-  const resume = picked === 'resume' ? loadSave() : null;
-  trip = resume ? resume.trip : picked;
-  if (resume) {
-    physics.travelled = resume.travelled ?? physics.travelled;
-    environment.restoreBlock(resume.blockIndex);
-  }
-  if (ROUTES[trip]) {
-    route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
-    route.start(physics.travelled, resume?.route ?? null);
-    input.buttonMode = rallyUi.touch;
-    physics.fuelOn = true;
-    physics.fuel = resume?.fuel ?? 1;
-    stations.setRoute(ROUTES[trip], route);
-    stages = new StageRunner({ director: route, physics, ui: rallyUi, sfx, wallet: garage, copilot });
-    stages.start(resume?.route?.stages ?? null);
-  }
-  saveGame();
-};
-
-/** Write the save slot: called on a timer while driving and when hidden. */
-function saveGame() {
-  if (!trip) return;
-  // A finished route carries on as an endless drive.
-  const onRoute = route?.active;
-  const ok = writeSave({
-    trip: onRoute ? trip : 'endless',
-    travelled: physics.travelled,
-    fuel: physics.fuel,
-    blockIndex: environment.blockIndex,
-    route: onRoute ? { ...route.snapshot(physics.travelled), stages: stages?.snapshot() } : null,
-  });
-  if (ok) ui.flashSaved();
-}
-window.addEventListener('pagehide', saveGame);
-
-// Real track ends replace the mock song timer once a library is connected.
-session.player.onTrackEnd(() => environment.songFinished(state.travelled));
-session.begin();
-
-const state = {
-  travelled: 0,
-  lateral: 0,
-  steer: 0,
-  speed: 0,
-  roll: 0,
-  bob: 0,
-  edgePressure: 0,
-  heading: 0,
-  time: 0,
-  dt: 0,
-  hasInput: false,
-  live: environment.live,
-};
-
-const lookTarget = new THREE.Vector3(0, 1.8, -20);
-const lookSmoothed = new THREE.Vector3(0, 1.8, -20);
-const camTarget = new THREE.Vector3();
-const sunDirection = new THREE.Vector3();
-
-let cameraRoll = 0;
-let cameraFov = 62;
-let running = true;
-
-const clock = new FrameClock();
-
 function resize() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  camera.aspect = width / height;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(width, height);
-  post.setSize(width, height);
-  garageStage.resize(width, height);
+  renderer.setSize(w, h);
+  post.setSize(w, h);
+  garageStage.resize(w, h);
+  if (bigMap?.open) bigMap.draw();
 }
 window.addEventListener('resize', resize);
-// Mobile browsers collapse the address bar without firing a window resize.
 window.visualViewport?.addEventListener('resize', resize);
 
-// Stop rendering entirely when backgrounded — on a phone this is the difference
-// between a game and a battery drain.
-document.addEventListener('visibilitychange', () => {
-  const visible = document.visibilityState === 'visible';
-  if (!visible) saveGame();
-  const wasRunning = running;
-  running = visible;
-  if (visible && !wasRunning) {
-    clock.reset(); // drop the time spent hidden
-    requestAnimationFrame(tick);
-  }
-});
+// --- the frame ------------------------------------------------------------------------------
+const REGION = { lagos: 'lagosCity', forest: 'rainforestBelt', savanna: 'guineaSavanna', sahel: 'sahelSavanna', desert: 'saharaDunes' };
 
 function tick(now) {
-  if (!running) return;
-
-  // Filtered, not raw: see loop.js. Safari's rAF jitter is what makes an
-  // otherwise framerate-independent sim shimmer on an iPhone.
   const dt = clock.tick(now ?? performance.now());
-  if (garageOpen) {
+  requestAnimationFrame(tick);
+  if (overlay === 'garage') {
     garageStage.render(dt);
-    requestAnimationFrame(tick);
     return;
   }
   state.dt = dt;
   state.time += dt;
+  if (mode === 'loading') {
+    renderer.render(scene, camera);
+    return;
+  }
 
-  input.update(dt);
+  const simulating = mode === 'driving' && !overlay;
+  if (spawnPending && mode === 'driving') {
+    const road = world.nearestRoad(vehicle.x, vehicle.z, 400);
+    if (road) {
+      vehicle.place(road.x, road.z, road.angle);
+      chase.snap(vehicle);
+      spawnPending = false;
+    }
+  }
+  controls.update();
+  if (simulating) vehicle.update(dt, controls);
 
-  updateDriving(dt);
-  collisions.update(state);
-  environment.update(dt, state.travelled);
+  // Where are we, for the weather and the light.
+  const biome = vehicle.z > NORTH_EDGE ? 'lagos' : biomeAt(vehicle.x, vehicle.z);
+  const inKano = Math.hypot(vehicle.x - KANO_CENTRE.x, vehicle.z - KANO_CENTRE.z) < KANO_CENTRE.r + 400;
+  environment.enterRegion(inKano ? 'kanoCity' : REGION[biome], vehicle.odometer);
+  environment.update(simulating ? dt : dt * 0.25, vehicle.odometer);
+  state.live = environment.live;
+  state.travelled = vehicle.odometer;
 
-  frame.setOrigin(state.travelled);
-  state.heading = heading(state.travelled);
-  state.hasInput = input.hasInput;
+  // The world around the car.
+  streamer.update(vehicle.x, vehicle.z, vehicle.yaw);
+  landmarks.update(vehicle.x, vehicle.z);
 
-  updateCamera(dt);
-  sky.update(state, camera);
+  if (mode === 'menu') {
+    // Drift slowly round the start while the menu is up.
+    const a = state.time * 0.05;
+    camera.position.set(vehicle.x + Math.sin(a) * 60, vehicle.y + 26, vehicle.z + Math.cos(a) * 60);
+    camera.lookAt(vehicle.x, vehicle.y + 4, vehicle.z);
+  } else {
+    chase.update(vehicle, dt, state.time, environment.live.fov ?? 62);
+  }
+
+  // The car.
+  state.speed = vehicle.speed;
+  state.steer = -vehicle.steer;
+  state.slip = vehicle.slip;
+  state.slide = vehicle.lateral;
+  const loose = vehicle.surface === 'dirt' || vehicle.surface === 'sand' || vehicle.surface === 'grass';
+  state.dirt = loose ? 1 : 0;
+  const fast = Math.min(1.2, Math.abs(vehicle.speed) / 30);
+  state.spray = loose ? Math.min(1.5, fast * (0.35 + vehicle.slip * 1.1)) : 0;
+  state.smoke = loose ? 0 : Math.max(0, (vehicle.slip - 0.35) * 1.6);
+  car.place({ x: vehicle.x, y: vehicle.y, z: vehicle.z, yaw: vehicle.yaw, pitch: -vehicle.pitch, roll: vehicle.roll + vehicle.bodyRoll }, state);
+  carFrame.position.set(vehicle.x, vehicle.y, vehicle.z);
+  carFrame.rotation.set(0, -vehicle.yaw, 0);
+
+  if (simulating) {
+    gameplay.night = environment.live.lampIntensity;
+    gameplay.update(dt, state.time);
+    traffic.update(dt, vehicle, sfx);
+    peds.update(dt, state.time, vehicle);
+    updateRoute(dt);
+    saveTimer += dt;
+    if (saveTimer > 5) {
+      saveTimer = 0;
+      saveGame();
+    }
+  }
+
+  // HUD.
+  if (mode === 'driving') {
+    hud.setSpeed(vehicle.speed);
+    hud.setFuel(vehicle.fuel);
+    hud.setCash(garage.cash);
+    const toGo = route ? routeProgress(route, vehicle.x, vehicle.z).remaining : null;
+    hud.setArea(gameplay.area || 'Lagos', `${vehicle.z > NORTH_EDGE ? 'Lagos' : 'the north'}${toGo !== null ? ` · <b>${(toGo / 1000).toFixed(1)} km</b> to ${gameplay.waypoint?.label ?? 'waypoint'}` : ''}`);
+    if (state.frame++ % 2 === 0) minimap.draw(vehicle, { route, icons: gameplay.icons(false) });
+  }
+
   applyLighting();
+  sky.update(state, camera);
   envLight.update(state, sky);
-
-  terrain.update(state, frame);
-  road.update(state, frame);
-  features.update(state, frame, environment);
-  route?.update(state);
-  stages?.update(state);
-  gates.update(state, frame, stages?.gates ?? null);
-  dressing.update(state, frame, stages?.region ?? null);
-  const found = postcards.update(state, frame, stages?.region ?? null);
-  if (found) {
-    sfx.beep(990, 0.18, 0.2);
-    setTimeout(() => sfx.beep(1320, 0.3, 0.2), 120);
-    ui.toast('Postcard collected', `${found.caption} · ${garage.postcards.length} of ${ALL_POSTCARDS.length}`, 4);
-  }
-  stations.update(state, frame);
-  if (physics.fuelOn && tickets.update(state, frame, stages?.region ?? null)) {
-    sfx.beep(1100, 0.12, 0.2);
-    ui.toast('Fuel ticket', 'tank topped up by a quarter', 3.5);
-  }
-  rallyUi.update(state);
-  copilot.update(state);
-  landmarks.update(state, frame, environment);
-  props.update(state, frame, environment);
-  grass?.update(state, frame, environment);
-  people.update(state, frame, environment);
-  traffic.closed = Boolean(stages?.closed);
-  traffic.update(state, frame, physics, sfx);
-  car.update(state, frame);
   weather.update(state);
-  eventVisuals.update(state, camera);
   atmosphere?.update(state);
-
-  ui.update(environment, state, landmarks.label);
   post.update(state);
   sfx.update(state, state.live, session.player);
   session.update();
-
-  saveTimer += state.dt;
-  if (saveTimer > 5) {
-    saveTimer = 0;
-    saveGame();
-  }
-
+  // Windows light up from dusk, not under an overcast noon.
+  NIGHT.value = Math.max(0, Math.min(1, (environment.live.lampIntensity - 0.35) / 0.4));
   post.render();
-  requestAnimationFrame(tick);
 }
 
-function updateDriving(dt) {
-  physics.update(dt, input.value, state.live, state.live.shake, input.throttle, input.handbrake);
-
-  state.travelled = physics.travelled;
-  state.lateral = physics.lateral;
-  state.steer = physics.steer;
-  state.speed = physics.speed;
-  state.roll = physics.roll;
-  state.bob = physics.bob;
-  state.edgePressure = physics.edgePressure;
-  state.impactYaw = physics.impactYaw;
-  state.bodyYaw = physics.bodyYaw;
-  state.slide = physics.slide;
-  state.slip = physics.slip;
-  state.dirt = physics.dirt;
-  state.spray = physics.spray;
-  state.smoke = physics.smoke;
-  state.handbrake = physics.handbrake;
-  state.throttle = input.throttle;
+function updateRoute(dt) {
+  const wp = gameplay.waypoint;
+  if (!wp) {
+    route = null;
+    return;
+  }
+  if (Math.hypot(wp.x - vehicle.x, wp.z - vehicle.z) < 25) {
+    gameplay.setWaypoint(null);
+    hud.toast('You are here', wp.label ?? '', 2.5);
+    route = null;
+    return;
+  }
+  routeCheck -= dt;
+  if (routeCheck > 0) return;
+  routeCheck = 1.2;
+  if (route && routeProgress(route, vehicle.x, vehicle.z).off < 45) return;
+  route = graph.route(vehicle.x, vehicle.z, wp.x, wp.z) ?? [[vehicle.x, vehicle.z], [wp.x, wp.z]];
 }
 
+const SUN_DIR = new THREE.Vector3();
 function applyLighting() {
   const live = state.live;
-
   scene.fog.color.copy(live.fogColor);
-  scene.fog.density = live.fogDensity;
-
+  scene.fog.density = Math.min(live.fogDensity, 0.012) * 0.38;
   ambient.color.copy(live.ambientColor);
-  // Bounce is the ground colour pulled toward the sky's, so it always agrees
-  // with whatever terrain and weather are underneath.
   ambient.groundColor.copy(live.groundColor).lerp(live.ambientColor, 0.35);
-  // Most of the fill now comes from the sky itself through the environment
-  // map, which also carries direction (bright toward the sun, ground-coloured
-  // below). The hemisphere stays as a fraction, so the moods' authored ambient
-  // still lifts night scenes the sky alone would leave black.
   ambient.intensity = live.ambientIntensity * 0.42;
-  scene.environmentIntensity = ENV_INTENSITY;
-
+  scene.environmentIntensity = 0.85;
   sun.color.copy(live.sunColor);
   sun.intensity = live.sunIntensity;
-
-  // Keep the key light locked to the visible sun, counter-rotated with the road
-  // so shading stays consistent as the car turns.
-  sunDirection.copy(sky.sunDirection).applyAxisAngle(THREE.Object3D.DEFAULT_UP, state.heading);
-  sun.position.copy(sunDirection).multiplyScalar(160).add(SHADOW_CENTRE);
+  SUN_DIR.copy(sky.sunDirection);
+  sun.target.position.set(vehicle.x, vehicle.y, vehicle.z);
+  sun.position.copy(SUN_DIR).multiplyScalar(200).add(sun.target.position);
 }
 
-const ENV_INTENSITY = 0.85;
+requestAnimationFrame(tick);
+boot();
 
-function updateCamera(dt) {
-  const lag = 1 - Math.exp(-CONFIG.camLag * dt);
-
-  // A slow two-frequency drift keeps the camera from feeling rail-mounted.
-  const swayX = Math.sin(state.time * 0.63) * Math.sin(state.time * 0.29) * CONFIG.camSway;
-  const swayY = Math.sin(state.time * 0.47 + 1.3) * CONFIG.camSway * 0.6;
-
-  // Extreme weather adds an irregular shake on top of the handheld drift.
-  // A collision rattles the camera on top of any weather shake.
-  const shake = state.live.shake + physics.impact * 0.9;
-  const shakeX = shake > 0 ? Math.sin(state.time * 27.3) * Math.sin(state.time * 11.1) * shake * 0.5 : 0;
-  const shakeY = shake > 0 ? Math.sin(state.time * 33.7 + 2.1) * shake * 0.35 : 0;
-
-  camTarget.set(
-    state.lateral * 0.45 + swayX + shakeX,
-    CONFIG.camHeight + swayY + shakeY,
-    CONFIG.camDistance
-  );
-  camera.position.lerp(camTarget, lag);
-
-  // Aim at where the road actually is, well ahead, so corners lead the car
-  // instead of trailing it.
-  //
-  // This used to be a hybrid: the lateral offset of a point 45 units up the
-  // road, halved, but then placed at only 20 units. Halving the offset and
-  // more than halving the distance leaves the *angle* over twice what the bend
-  // really is, so the camera swung much further than the road turned and the
-  // whole world appeared to slew sideways around the car rather than the car
-  // travelling through it. Sampling the point and using it is both simpler and
-  // correct.
-  frame.point(state.travelled + CONFIG.camLookAhead, 0, 0, lookTarget);
-  // The lift is what sets the pitch, and it is negative because the aim point
-  // is now genuinely 45 units out rather than the 20 the old code pretended.
-  // Sampling honestly at 45 with the old +1.9 lift looked 2.23 degrees higher
-  // than this game has always framed itself; -0.27 puts the pitch back exactly
-  // where it was while keeping the yaw correct.
-  lookTarget.y += CONFIG.camAimLift;
-  // A little of the driver's own position, so the camera leads a lane change
-  // rather than reporting it afterwards.
-  lookTarget.x += state.lateral * 0.25;
-  lookSmoothed.lerp(lookTarget, lag);
-  camera.lookAt(lookSmoothed);
-
-  // Bank into the corner. Curvature comes from the road itself rather than the
-  // player's steering, so the horizon tilts with the bend, not with a tap.
-  const curvature = heading(state.travelled + 55) - state.heading;
-  // Capped: a hairpin turns the road by a radian or more, and the horizon
-  // should lean into it, not fall over.
-  const lean = Math.max(-0.16, Math.min(0.16, curvature * CONFIG.camRoll));
-  cameraRoll += (lean - cameraRoll) * (1 - Math.exp(-2.4 * dt));
-  camera.rotateZ(cameraRoll + (physics.shakeRoll ?? 0));
-
-  // Field of view is part of each mood: wide and open for happy, tighter and
-  // more closed-in for sad. Speed opens it a little further, which is most of
-  // what sells a boost as speed rather than as the world being scaled down.
-  // Applied after fitting rather than before, so a portrait screen — already at
-  // the widening cap — still gets a speed cue instead of having it swallowed.
-  const boost = physics.speed / (CONFIG.speed * state.live.speedScale) - 1;
-  const targetFov = Math.min(
-    FOV_PORTRAIT_MAX + 7,
-    fitFov(state.live.fov, camera.aspect) + Math.max(0, boost) * 11
-  );
-  if (Math.abs(targetFov - cameraFov) > 0.01) {
-    cameraFov += (targetFov - cameraFov) * (1 - Math.exp(-3 * dt));
-    camera.fov = cameraFov;
-    camera.updateProjectionMatrix();
-  }
-}
-
-// Vertical field of view is what three takes, so on a portrait phone a mood's
-// 62° leaves a horizontal view of about 31° — a letterbox on its side, with the
-// verges out of frame and no sense of the country you are in. Widen the
-// vertical FOV as the screen narrows so the horizontal view holds up, capped
-// before the perspective goes fisheye and the road starts to bow.
-const FOV_REFERENCE_ASPECT = 1.4;
-const FOV_PORTRAIT_MAX = 80;
-
-function fitFov(baseFov, aspect) {
-  if (!aspect || aspect >= FOV_REFERENCE_ASPECT) return baseFov;
-  const halfWide = Math.tan((baseFov * Math.PI) / 360) * FOV_REFERENCE_ASPECT;
-  const fitted = (360 / Math.PI) * Math.atan(halfWide / aspect);
-  return Math.min(FOV_PORTRAIT_MAX, fitted);
-}
-
-// Debug: force an extreme weather event. The spec asks for manual triggers so
-// the events can be validated without waiting for their random schedule.
-const EVENT_KEYS = { 1: 'tornado', 2: 'lightning', 3: 'snow', 4: 'sandstorm', 5: 'aurora' };
-window.addEventListener('keydown', (event) => {
-  const name = EVENT_KEYS[event.key];
-  if (name) {
-    environment.events.force(name);
-    ui.flashEvent(name);
-  } else if (event.key === '0') {
-    environment.events.stop();
-  } else if (event.key === 'm' || event.key === 'M') {
-    sfx.setMuted(!sfx.muted);
-  } else if (event.key === 'r' || event.key === 'R') {
-    session.showReview();
-  } else if (event.key === 'l' || event.key === 'L') {
-    landmarks.force((landmarks.activeIndex + 1) % landmarks.groups.length, state.travelled);
-  }
-});
-
-tick();
-
-// Handles for poking at the sim from the dev console while tuning.
 if (import.meta.env.DEV) {
-  window.__roadtrip = {
-    state,
-    environment,
-    traffic,
-    scene,
-    camera,
-    renderer,
-    post,
-    tier,
-    CONFIG,
-    physics,
-    input,
-    props,
-    features,
-    landmarks,
-    eventVisuals,
-    atmosphere,
-    sfx,
-    session,
-    collisions,
-    garage,
-    rallyUi,
-    copilot,
-    dressing,
-    stations,
-    tickets,
-    postcards,
-    gates,
-    get stages() {
-      return stages;
-    },
-    get route() {
-      return route;
-    },
-    MOOD_PROFILES,
-    TERRAIN_SETS,
-    TERRAIN_POOLS,
-    CLIMATE_PROFILES,
+  window.__drive = {
+    world, vehicle, environment, garage, scene, camera, controls, hud, CAR_MODELS,
+    get gameplay() { return gameplay; },
+    get streamer() { return streamer; },
+    get graph() { return graph; },
+    get traffic() { return traffic; },
   };
 }
 
-// PWA shell. Stubbed for now — enough structure to install, not a full offline story.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
-      // Not fatal: the game runs fine without it.
-    });
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
