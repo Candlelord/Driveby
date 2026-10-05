@@ -375,6 +375,7 @@ export function buildingMeshes(world, chunk) {
   };
 
   for (const b of chunk.buildings) {
+    if (b.landmark) continue;
     const ring = b.ring;
     if (ring.length < 3) continue;
     const s = hash2(ring[0][0], ring[0][1]);

@@ -56,7 +56,7 @@ export function buildingDetailMeshes(world, chunk) {
   };
 
   // Stable order keeps the same architecture when chunks stream back in.
-  const candidates = chunk.buildings.filter((b) => b.kind <= 3 && b.h >= 3 && b.ring.length >= 3)
+  const candidates = chunk.buildings.filter((b) => !b.landmark && b.kind <= 3 && b.h >= 3 && b.ring.length >= 3)
     .sort((a, b) => hash2(a.ring[0][0], a.ring[0][1]) - hash2(b.ring[0][0], b.ring[0][1]));
   let decorated = 0;
   for (const b of candidates) {

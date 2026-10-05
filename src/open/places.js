@@ -8,7 +8,7 @@ import { toWorld } from './geo.js';
  * `theme` picks the postcard drawing (see postcardArt.js).
  */
 const LAGOS = [
-  ['national-theatre', 'National Theatre', 6.4757, 3.3647, 'city', 'Built for FESTAC ’77 and shaped like a general’s cap. Every Lagosian has an opinion about it.', 'National Theatre! From the expressway it looks like a hat somebody left on the ground.'],
+  ['national-theatre', 'National Theatre', 6.4764727, 3.36949215, 'city', 'Built for FESTAC ’77 and shaped like a general’s cap. Every Lagosian has an opinion about it.', 'National Theatre! From the expressway it looks like a hat somebody left on the ground.'],
   ['tbs', 'Tafawa Balewa Square', 6.4485, 3.3985, 'city', 'The old racecourse, now a parade ground with the horses kept on the gate.', 'TBS. They held the independence celebrations here. The horses on the gate never moved since.'],
   ['cathedral', 'Cathedral Church of Christ', 6.4522, 3.3896, 'city', 'Gothic arches on the Marina, older than most of the skyline round it.', 'That cathedral has been standing on the Marina since before your grandpapa.'],
   ['link-bridge', 'Lekki–Ikoyi Link Bridge', 6.4489, 3.4329, 'lagoon', 'The cable-stayed bridge everyone photographs at night, white cables lit up over the lagoon.', 'The Link Bridge. People jog here at 6 a.m. like they have no fear of the hold-up at 8.'],

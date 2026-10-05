@@ -163,6 +163,7 @@ export function streetMeshes(world, chunk) {
   // Shopfronts: on building walls that face a nearby road.
   let shopCount = 0;
   for (const b of chunk.buildings) {
+    if (b.landmark) continue;
     if (shopCount >= 100) break;
     if (b.kind !== 0 && b.kind !== 1) continue;
     if (b.h > 40) continue;

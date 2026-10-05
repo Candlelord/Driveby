@@ -57,6 +57,9 @@ try {
     assert.deepEqual([...again[i].instanceColor.array], [...meshes[i].instanceColor.array]);
   }
   const distant = buildingDetailMeshes(world, { ...chunk, index: { roadsNear: () => [] } });
+  const replaced = { ...chunk, buildings: [{ ...building, landmark: 'national-theatre' }] };
+  assert.equal(buildingMeshes({ ...world, inLagos: () => true }, replaced).length,0,'custom landmark must not retain a duplicate generic shell');
+  assert.equal(buildingDetailMeshes(world,replaced).length,0);
   assert.equal(distant.length, 0, 'off-road walls must not consume detail geometry');
   const dense = buildingDetailMeshes(world, { ...chunk, buildings: Array(100).fill(building) });
   assert.ok(dense.reduce((sum, m) => sum + m.count, 0) <= 2200, 'dense chunks must respect the geometry budget');

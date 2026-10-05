@@ -1,9 +1,25 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 const server = await createServer({ configFile: false, optimizeDeps: { noDiscovery: true, include: [] }, server: { middlewareMode: true }, appType: 'custom' });
 try {
   const { nationalTheatre } = await server.ssrLoadModule('/src/open/landmarks3d.js');
   const theatre = nationalTheatre();
+  const { World } = await server.ssrLoadModule('/src/open/world.js');
+  const { THEATRE } = await server.ssrLoadModule('/src/open/landmarkSites.js');
+  const { toWorld } = await server.ssrLoadModule('/src/open/geo.js');
+  const centre = toWorld(THEATRE.lat, THEATRE.lon);
+  const cx=Math.floor(centre.x/400), cz=Math.floor(centre.z/400), key=`${cx}_${cz}`;
+  const originalFetch=globalThis.fetch;
+  try {
+    const raw=JSON.parse(await readFile(`public/world/c/${key}.json`,'utf8'));
+    globalThis.fetch=async()=>({ok:true,json:async()=>raw});
+    const world=new World(); world.north={chunks:new Map()}; world.available.add(key);
+    const chunk=await world.fetchChunk(cx,cz);
+    const matched=chunk.buildings.filter(b=>b.landmark==='national-theatre');
+    assert.equal(matched.length,1,'the exact baked theatre footprint must be identified');
+    assert.ok(matched[0].h>=12 && chunk.index.buildingsNear(centre.x,centre.z).has(matched[0]),'landmark must retain building collision');
+  } finally {globalThis.fetch=originalFetch;}
   const batches = theatre.children.filter(m => m.isInstancedMesh);
   assert.equal(batches.length, 8, 'facade repetition must be batched');
   assert.equal(batches[0].count, 128, 'both glazing tiers must wrap the building');

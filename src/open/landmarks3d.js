@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { toWorld } from './geo.js';
 import { kitInstances } from './flora.js';
+import { THEATRE } from './landmarkSites.js';
 
 /**
  * Landmarks drawn by hand, for the places a footprint and a height cannot
@@ -218,7 +219,7 @@ export class Landmarks3D {
     this.sites = [];
     const at = (lat, lon) => toWorld(lat, lon);
     const lagos = [
-      ['national-theatre', at(6.4757, 3.3647), nationalTheatre, 0],
+      ['national-theatre', at(THEATRE.lat, THEATRE.lon), nationalTheatre, 0],
       ['link-bridge', at(6.4489, 3.4329), linkBridgePylon, null],
       ['tbs', at(6.4492, 3.3992), tbsGate, 0.2],
       ['cathedral', at(6.4522, 3.3896), cathedralSpire, 0],
@@ -237,6 +238,7 @@ export class Landmarks3D {
       const near = Math.hypot(site.x - x, site.z - z) < 1500;
       if (near && !site.group) {
         site.group = site.build();
+        if (site.id === 'national-theatre') site.group.scale.set(1.5, 1, 1.5);
         let angle = site.angle;
         if (angle === null) {
           // Line up with the road it stands on (once that road has loaded).

@@ -1,5 +1,6 @@
 import { CHUNK, NORTH_EDGE, WORLD, chunkKey, fbm, smoothstep, clamp, lerp } from './geo.js';
 import { north, northHeight, biomeAt } from './north.js';
+import { isTheatreFootprint } from './landmarkSites.js';
 
 /**
  * Everything the game knows about the ground: what it is, how high it is, and
@@ -161,7 +162,8 @@ export class World {
           for (const [h, kind, ...flat] of raw.b) {
             const ring = [];
             for (let i = 0; i < flat.length; i += 2) ring.push([flat[i] / 10 + ox, flat[i + 1] / 10 + oz]);
-            buildings.push({ h: h / 10, kind, ring });
+            const landmark = isTheatreFootprint(ring) ? 'national-theatre' : null;
+            buildings.push({ h: landmark ? Math.max(12, h / 10) : h / 10, kind, ring, landmark });
           }
         } catch {
           // A missing chunk is an empty one.

@@ -195,6 +195,18 @@ budgets. The audit is reproducible via scripts/audit-facade-coverage.mjs.
 Setback facade, building geometry, driving checks and production build pass.
 Rendered visual realism still requires in-game verification.
 
+## Theatre map alignment and duplicate shell
+
+Cached OSM way 217574079 puts the theatre at 6.4764727, 3.36949215,
+approximately 540m from the old custom landmark position. Updated both the
+3D landmark and discovery marker, and scaled its horizontal dimensions by 1.5
+to approach the mapped 185m footprint. Exact footprint-bound matching tags only
+this baked building as a custom landmark: generic shell/facade/shop decorations
+are suppressed while its collision footprint remains, at a minimum wall height
+of 12m. Tests load the actual baked chunk and verify matching/collision; geometry
+checks and production build pass. The audit script records the source bounds.
+Browser visual verification is still unavailable; the realism goal is active.
+
 ## Material preload during startup
 
 Plaster loading begins in parallel with world loading at boot and shares one
