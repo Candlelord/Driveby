@@ -38,7 +38,7 @@ import { FarTerrain } from './open/farTerrain.js';
 import { updateFlora } from './open/flora.js';
 import { updateStreets } from './open/streets.js';
 import { PauseMenu, Journal } from './open/menus.js';
-import { NIGHT } from './open/materials.js';
+import { NIGHT, preloadBuildingMaterials } from './open/materials.js';
 import { biomeAt, KANO_CENTRE } from './open/north.js';
 
 /**
@@ -146,7 +146,7 @@ garage.onChange((g) => {
 });
 
 async function boot() {
-  await world.load();
+  await Promise.all([world.load(), preloadBuildingMaterials()]);
   layers = new MapLayers(world);
   const graphData = await world.loadGraph();
   graph = new RoadGraph();

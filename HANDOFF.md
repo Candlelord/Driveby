@@ -184,3 +184,12 @@ The compressed 512px WebP is 67KB and is Vite-fingerprinted for cache updates.
 Source prompt and preparation instructions are in src/assets/README.md.
 Asset inspected directly; production build passed. The final game rendering
 still needs visual review.
+
+## Material preload during startup
+
+Plaster loading begins in parallel with world loading at boot and shares one
+texture across building materials. Startup waits at most eight seconds for the
+optional asset. Failure/timeout keeps existing wall shading, and late success
+can activate detail after boot. Material loader checks cover success, failure,
+timeout and late recovery; production build passes. Hashed asset names remain
+the update mechanism for pushed texture changes. Visual completion is unproven.

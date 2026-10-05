@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { asphaltMaps, gravelMaps, groundMaps } from '../world/surfaces.js';
 import { applyRoadWear } from './roadWear.js';
 import plasterUrl from '../assets/plaster-weathered-v1.webp';
+import { loadMaterialAsset } from './materialAsset.js';
 
 /**
  * Shared materials for the open world: ground, roads, buildings, water.
@@ -16,6 +17,9 @@ export const WATER_TIME = { value: 0 };
 const WARM = new THREE.Color(1.0, 0.74, 0.44);
 
 let cache = null;
+let wallSurface;
+function plasterSurface() { return wallSurface ??= loadMaterialAsset(plasterUrl); }
+export function preloadBuildingMaterials() { return plasterSurface().loaded; }
 
 export function worldMaterials() {
   if (cache) return cache;
@@ -86,12 +90,7 @@ function dashTexture() {
  * UVs are metres: u along the wall, v up it.
  */
 function buildingMaterial() {
-  const plasterReady = { value: 0 };
-  const plaster = new THREE.TextureLoader().load(plasterUrl, () => { plasterReady.value = 1; });
-  plaster.wrapS = plaster.wrapT = THREE.RepeatWrapping;
-  plaster.anisotropy = 4;
-  // Sample this neutral surface as detail data, preserving per-building paint.
-  plaster.colorSpace = THREE.NoColorSpace;
+  const { texture: plaster, ready: plasterReady } = plasterSurface();
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.02 });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uNight = NIGHT;
