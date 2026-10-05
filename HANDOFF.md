@@ -252,3 +252,5 @@ triangle interiors with at least one metre of roof-edge clearance, avoiding
 concave courtyards and narrow roofs. Existing pitched-roof exclusions remain.
 Tank placement/geometry checks and production build pass. Runtime appearance
 still needs visual review.
+
+Ground-floor facade pass: single-storey homes now receive framed windows, with entrance clearance and no ground-level balcony slabs. Production build and building geometry regression checks pass. Browser visual verification remains unfinished after Computer Use URL-policy stop.

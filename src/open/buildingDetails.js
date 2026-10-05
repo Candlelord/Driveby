@@ -116,11 +116,13 @@ export function buildingDetailMeshes(world, chunk) {
         part('trim', len / 2, y, 0.07, len, office ? 0.16 : 0.1, 0.18);
       if (b.kind === 2) continue;
       const windowTop = office ? 0.92 : b.kind === 3 ? 0.65 : 0.82;
-      for (let floor = 1; (floor + windowTop) * storey + 0.28 < b.h; floor++) {
+      for (let floor = 0; (floor + windowTop) * storey + 0.28 < b.h; floor++) {
         const y = base + floor * storey;
         for (let col = 0; (col + 0.76) * bay < len; col++) {
           const x = (col + 0.5) * bay;
           const w = bay * (office ? 0.9 : b.kind === 3 ? 0.16 : 0.52), h = storey * (office ? 0.78 : b.kind === 3 ? 0.2 : 0.48);
+          // Keep the entrance and its surround clear on single-storey homes too.
+          if (floor === 0 && Math.abs(x - len / 2) < w / 2 + 1.05) continue;
           const cy = y + storey * (office ? 0.53 : b.kind === 3 ? 0.55 : 0.58);
           part('metal', x, cy, 0.028, w + 0.17, h + 0.17, 0.07, 0x42463f);
           const occupancy = hash1(s * 811 + col * 17 + floor * 31 + i * 13);
@@ -132,7 +134,7 @@ export function buildingDetailMeshes(world, chunk) {
           part('trim', x, cy - h / 2 - 0.07, 0.23, w + 0.35, 0.15, 0.43);
           part('metal', x, cy, 0.105, 0.055, h, 0.055, 0xb4b3a6);
           const feature = hash1(s * 271 + col * 13 + floor * 7);
-          if (!office && floor <= 4 && feature < 0.2 && distance > near.hw + 2) {
+          if (!office && floor >= 1 && floor <= 4 && feature < 0.2 && distance > near.hw + 2) {
             // Balcony slab and railings; sufficient setback from the road.
             const by = y + 0.16;
             part('render', x, by, 0.52, w + 0.7, 0.18, 1.08, trim);

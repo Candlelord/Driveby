@@ -27,6 +27,16 @@ try {
   const meshes = buildingDetailMeshes(world, chunk);
   assert.equal(meshes.length, 4, 'architecture must batch into four material draws');
   const matrix = new THREE.Matrix4();
+  const bungalow = buildingDetailMeshes(world, { ...chunk, buildings: [{ ...building, h: 3.2 }] });
+  const lowPanes = bungalow.find(mesh => mesh.name === 'facade glass');
+  assert.ok(lowPanes.count > 1, 'single-storey buildings need windows in addition to their entrance');
+  for (let i = 0; i < lowPanes.count; i++) {
+    lowPanes.getMatrixAt(i, matrix);
+    const x = matrix.elements[12], width = matrix.elements[0];
+    if (Math.abs(x - 9) < 0.01) continue; // Entrance glazing.
+    assert.ok(Math.abs(x - 9) >= Math.abs(width) / 2 + 1.05, 'ground windows must clear the entrance');
+    assert.ok(matrix.elements[13] + matrix.elements[5] / 2 < 3.2, 'ground windows must fit under bungalow eaves');
+  }
   let instances = 0;
   for (const mesh of meshes) {
     instances += mesh.count;
