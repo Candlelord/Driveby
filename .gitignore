@@ -10,3 +10,5 @@ dist-ssr/
 
 # Raw downloaded models (large); the optimised ones live in public/models
 models-src/*.glb
+models-src/
+scripts/_*.mjs

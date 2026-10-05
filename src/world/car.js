@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { buildCarParts, WHEEL_RADIUS, FRONT_AXLE, REAR_AXLE, TRACK } from './carGeometry.js';
 import { beamTexture } from './textures.js';
-import { loadGltf, tuneModel, materialsNamed, nodeNamed, mountWheel } from './models.js';
+import { loadGltf, tuneModel, materialsNamed, nodeNamed, nodesMatching, mountWheel, cloneModel } from './models.js';
+import { CAR_MODELS, DEFAULT_CAR } from './carModels.js';
 
 const AHEAD = new THREE.Vector3();
 const HERE = new THREE.Vector3();
@@ -13,7 +14,7 @@ const HERE = new THREE.Vector3();
  * this file touches the meshes, only `group.position` / `group.rotation`.
  */
 export class Car {
-  constructor(scene, { realShadow = false, headlamps = 2 } = {}) {
+  constructor(scene, { realShadow = false, headlamps = 2, model = DEFAULT_CAR } = {}) {
     this.group = new THREE.Group();
     this.realShadow = realShadow;
     this.headlampCount = headlamps;
@@ -60,33 +61,55 @@ export class Car {
 
     this.spin = 0;
     this.model = null;
-    this.paint = 0xa3201a;
+    this.paint = null;
+    this.modelId = null;
     // The real car arrives when it arrives; until then (or if it never does)
     // the procedural one drives.
-    loadGltf(CAR_MODEL).then((gltf) => this._useModel(gltf.scene)).catch(() => {});
+    this.setModel(model);
   }
 
-  /** Swap the procedural car for the loaded model. */
-  _useModel(scene) {
-    const root = tuneModel(scene, { shadows: this.realShadow });
-    // Authored nose-toward +Z; the game's car faces -Z.
-    root.rotation.y = Math.PI;
+  /** Switch to one of CAR_MODELS (a garage choice). Resolves once it is on the road. */
+  setModel(id, paint = null) {
+    const def = CAR_MODELS[id] ?? CAR_MODELS[DEFAULT_CAR];
+    this.modelId = def.id;
+    this.def = def;
+    this.paint = paint ?? this.paint ?? def.paints[0];
+    this._ticket = (this._ticket ?? 0) + 1;
+    const ticket = this._ticket;
+    return loadGltf(def.model)
+      .then((gltf) => {
+        if (ticket === this._ticket) this._useModel(gltf.scene, def);
+      })
+      .catch(() => {});
+  }
+
+  /** Swap the procedural car (or the previous model) for the loaded one. */
+  _useModel(scene, def) {
+    if (this.model) {
+      this.group.remove(this.model.group);
+      this.model = null;
+    }
+    const root = tuneModel(cloneModel(scene), { shadows: this.realShadow });
+    root.rotation.y = def.yaw;
     const model = new THREE.Group();
     model.add(root);
-    root.updateMatrixWorld(true);
-
-    const wheels = [];
-    for (const [name, steers] of [['WheelFrontL', true], ['WheelFrontR', true], ['WheelRearL', false], ['WheelRearR', false]]) {
-      const node = nodeNamed(root, name);
-      if (node) wheels.push({ ...mountWheel(node), steers });
-    }
-
-    // Sit the tyres on the road. Measured while the model is still detached,
-    // so the boxes are in the model's own space and not offset by wherever the
-    // car happens to be by the time the download finishes.
     model.updateMatrixWorld(true);
-    const tyre = new THREE.Box3().setFromObject(nodeNamed(root, 'WheelFrontL') ?? root);
-    model.position.y = -tyre.min.y;
+
+    // Wheels: named nodes, or a pattern. Front or rear is read off where the
+    // wheel sits once the model has been turned to face -Z.
+    const nodes = Array.isArray(def.wheels)
+      ? def.wheels.map((name) => nodeNamed(root, name)).filter(Boolean)
+      : nodesMatching(root, def.wheels);
+    const here = new THREE.Vector3();
+    const wheels = nodes.map((node) => {
+      node.getWorldPosition(here);
+      const steers = here.z < 0;
+      return { ...mountWheel(node, model), steers, node };
+    });
+
+    // Sit the tyres on the road: the model's lowest point is the ground.
+    model.updateMatrixWorld(true);
+    model.position.y = -new THREE.Box3().setFromObject(root).min.y;
 
     for (const part of this.proceduralParts) part.visible = false;
     for (const wheel of this.wheels) wheel.visible = false;
@@ -95,13 +118,19 @@ export class Car {
     this.model = {
       group: model,
       wheels,
-      paint: materialsNamed(root, /^Paint 1/i),
-      accent: materialsNamed(root, /^Paint 2/i),
-      head: materialsNamed(root, /^Headlight/i),
-      tail: materialsNamed(root, /^(Brakelight|Signallight)/i),
+      paint: materialsNamed(root, def.paint),
+      accent: def.accent ? materialsNamed(root, def.accent) : [],
+      head: materialsNamed(root, def.head),
+      tail: materialsNamed(root, def.tail),
     };
-    // Lamp materials are shared with nothing else, but be certain before
-    // driving their emissive from the lighting each frame.
+    // Lamp textures carry the glow too, so the same map drives the emissive.
+    for (const lamp of [...this.model.head, ...this.model.tail]) {
+      if (lamp.map) {
+        lamp.emissive.set(0xffffff);
+        lamp.emissiveMap = lamp.map;
+        lamp.needsUpdate = true;
+      }
+    }
     this.setPaint(this.paint);
   }
 
@@ -225,10 +254,8 @@ export class Car {
       if (wheel.userData.steers) wheel.rotation.y = state.steer * 0.35;
     }
     if (this.model) {
-      // The model's X axis points the other way round (it is turned to face
-      // -Z), so the same roll is the opposite angle about it.
       for (const wheel of this.model.wheels) {
-        wheel.spin(-this.spin);
+        wheel.spin(this.spin);
         if (wheel.steers) wheel.pivot.rotation.y = state.steer * 0.35;
       }
     }
@@ -275,7 +302,6 @@ export class Car {
   }
 }
 
-const CAR_MODEL = 'car-concept';
 const WARM = new THREE.Color(0xfff0d0);
 const BEAM = new THREE.Color();
 

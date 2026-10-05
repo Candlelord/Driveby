@@ -89,13 +89,26 @@ export function nodeNamed(root, name) {
  * independently, whatever rotation it was authored with. Returns
  * `{ pivot, spin(angle) }`; `spin` rolls about the pivot's X axis.
  */
-export function mountWheel(wheel) {
-  const parent = wheel.parent;
-  const pivot = new THREE.Group();
-  pivot.position.copy(wheel.position);
-  parent.add(pivot);
-  pivot.add(wheel);
-  wheel.position.set(0, 0, 0);
+export function mountWheel(wheel, space = null) {
+  let pivot;
+  if (space) {
+    // Pivot in the model's own frame, so the axle is that frame's X axis
+    // whatever rotations the wheel's ancestors were authored with. The wheel
+    // keeps its world transform through the re-parenting.
+    wheel.updateWorldMatrix(true, false);
+    space.updateWorldMatrix(true, false);
+    pivot = new THREE.Group();
+    pivot.position.copy(space.worldToLocal(wheel.getWorldPosition(new THREE.Vector3())));
+    space.add(pivot);
+    pivot.updateWorldMatrix(true, false);
+    pivot.attach(wheel);
+  } else {
+    pivot = new THREE.Group();
+    pivot.position.copy(wheel.position);
+    wheel.parent.add(pivot);
+    pivot.add(wheel);
+    wheel.position.set(0, 0, 0);
+  }
   const base = wheel.quaternion.clone();
   const spinQ = new THREE.Quaternion();
   const axis = new THREE.Vector3(1, 0, 0);
@@ -106,6 +119,33 @@ export function mountWheel(wheel) {
       wheel.quaternion.copy(spinQ).multiply(base);
     },
   };
+}
+
+/** Every node whose name matches a pattern. */
+export function nodesMatching(root, pattern) {
+  const found = [];
+  root.traverse((object) => {
+    if (pattern.test(object.name)) found.push(object);
+  });
+  return found;
+}
+
+/**
+ * An independent copy of a loaded model: its own materials, so painting or
+ * lighting one copy never touches another. Geometry and textures stay shared.
+ */
+export function cloneModel(root) {
+  const copy = root.clone(true);
+  const seen = new Map();
+  copy.traverse((object) => {
+    if (!object.isMesh) return;
+    const own = [].concat(object.material).map((m) => {
+      if (!seen.has(m)) seen.set(m, m.clone());
+      return seen.get(m);
+    });
+    object.material = own.length === 1 ? own[0] : own;
+  });
+  return copy;
 }
 
 /** World-space height of the lowest point of a node, for sitting it on the road. */

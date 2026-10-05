@@ -2,11 +2,47 @@
   "models": {
     "car-concept": {
       "src": "car-concept.src.glb",
-      "strip": ["^Interior", "Wiper", "^Engine$", "BrakePad", "BrakeDisc", "HoodInterior", "HoodUnder", "Underside", "Gasket", "Handle"],
+      "strip": [
+        "^Interior",
+        "Wiper",
+        "^Engine$",
+        "BrakePad",
+        "BrakeDisc",
+        "HoodInterior",
+        "HoodUnder",
+        "Underside",
+        "Gasket",
+        "Handle"
+      ],
       "simplify": 0.3,
       "maxTexture": 1024,
       "license": "CC BY 4.0",
       "credit": "CarConcept © 2024 Darmstadt Graphics Group GmbH — https://creativecommons.org/licenses/by/4.0/ (via KhronosGroup/glTF-Sample-Assets; simplified and compressed)"
+    },
+    "rally-car": {
+      "src": "cartoon_sports_car/scene.gltf",
+      "strip": [
+        "^node_BASE",
+        "steering_wheel"
+      ],
+      "simplify": 0.6,
+      "maxTexture": 2048,
+      "license": "CC BY 4.0",
+      "credit": "\"Cartoon Sports Car\" by RCC Design (https://sketchfab.com/retrovalorem), CC BY 4.0 — simplified and compressed",
+      "neutralise": [
+        {
+          "texture": "CARRERA_4096_diffuse",
+          "gOverR": 1.15,
+          "bOverR": 1.05,
+          "gain": 1.75
+        }
+      ],
+      "textureMax": {
+        "HEADLIGHTS": 512
+      },
+      "trim": [
+        "^node_brakes"
+      ]
     }
   }
 }
