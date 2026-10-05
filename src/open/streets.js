@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NORTH_EDGE, hash1, hash2 } from './geo.js';
 import { distToSeg } from './world.js';
 import { NIGHT } from './materials.js';
+import { streetGlowMeshes } from './streetGlow.js';
 
 /**
  * What makes a Lagos street a Lagos street, beyond the buildings: painted
@@ -43,6 +44,19 @@ function materials() {
     signs: new THREE.MeshStandardMaterial({ map: signAtlas(), roughness: 0.7, emissive: 0xffffff, emissiveMap: signAtlas(), emissiveIntensity: 0.0 }),
     ads: new THREE.MeshStandardMaterial({ map: adAtlas(), roughness: 0.6, emissive: 0xffffff, emissiveMap: adAtlas(), emissiveIntensity: 0.05 }),
     storefront: new THREE.MeshStandardMaterial({ map: storefrontAtlas(), roughness: 0.55, metalness: 0.08 }),
+  };
+  shared.storefront.onBeforeCompile = (shader) => {
+    shader.uniforms.uShopNight = NIGHT;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uShopNight;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        // Atlas cell two is a closed shutter; light only the open interiors.
+        float shopCell = floor(vMapUv.x * 4.0);
+        vec2 shopUv = vec2(fract(vMapUv.x * 4.0), vMapUv.y);
+        float openShop = 1.0 - step(1.5, shopCell) * step(shopCell, 2.5);
+        float interior = step(0.09, shopUv.x) * step(shopUv.x, 0.94) * step(0.08, shopUv.y) * step(shopUv.y, 0.94);
+        totalEmissiveRadiance += diffuseColor.rgb * vec3(1.3, 1.08, 0.8) * openShop * interior * uShopNight * 1.5;
+      `);
   };
   return shared;
 }
@@ -243,6 +257,7 @@ export function streetMeshes(world, chunk) {
   add(storefronts, m.storefront);
 
   if (lamps.length) {
+    for (const mesh of streetGlowMeshes(lamps, world, ox, oz)) place(mesh);
     const pole = new THREE.CylinderGeometry(0.09, 0.13, 8, 6).translate(0, 4, 0);
     const arm = new THREE.BoxGeometry(0.12, 0.12, 2.2).translate(0, 7.9, 1.0);
     const head = new THREE.BoxGeometry(0.4, 0.18, 0.8).translate(0, 7.8, 2.0);

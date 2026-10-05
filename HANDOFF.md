@@ -103,3 +103,13 @@ road widths and pavement height. Water, bridge roads, building interiors and
 unloaded road paths are rejected. Pedestrian regression checks cover gait,
 pavement placement and immediate removal of blocked walkers. Rendered visual
 quality still needs in-game review; the overall city-feel goal remains active.
+
+## Night street atmosphere
+
+Street lamps now have small camera-facing halos and soft warm pavement pools,
+batched in two additional draws per chunk and faded with the existing NIGHT
+uniform. Pools use lamp-arm positions and reject water/bridge surfaces. Open
+shop interiors gain warm emissive detail at dusk; the atlas shutter cell stays
+dark. This is inexpensive projected illumination rather than extra shadowed
+lights. Placement/render-state checks pass. Browser shader compilation and
+the final night appearance remain unverified and need in-game review.
