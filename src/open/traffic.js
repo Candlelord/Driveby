@@ -67,7 +67,7 @@ export class Traffic {
       const edges = g.adj[node].filter((e) => e.cls <= 7);
       if (!edges.length) continue;
       const edge = edges[Math.floor(Math.random() * edges.length)];
-      Object.assign(car, { edge, d: Math.random() * edge.len * 0.5, speed: SPEED[edge.cls] * 0.6, kind: this._kind(g.x[node], g.z[node]), paint: Math.floor(Math.random() * PAINT.length), hit: 0, spin: 0, active: true });
+      Object.assign(car, { edge, d: Math.random() * edge.len * 0.5, speed: SPEED[edge.cls] * 0.6, kind: this._kind(g.x[node], g.z[node]), paint: Math.floor(Math.random() * PAINT.length), hit: 0, spin: 0, spinYaw: 0, active: true });
       car.kind ??= null;
       return true;
     }
@@ -120,7 +120,8 @@ export class Traffic {
       }
       this._locate(car.edge, car.d, here);
       // Keep to the right of a two-way road.
-      const lane = car.edge.oneway ? 0 : (WIDTH[car.edge.cls] ?? 7) * 0.25;
+      const roadWidth = this.world.surfaceAt(here.x, here.z).road?.width ?? WIDTH[car.edge.cls] ?? 7;
+      const lane = car.edge.oneway ? 0 : Math.min(roadWidth * 0.25, Math.max(0, roadWidth / 2 - 1.2));
       const x = here.x + Math.cos(here.yaw) * lane;
       const z = here.z + Math.sin(here.yaw) * lane;
 
@@ -161,6 +162,7 @@ export class Traffic {
         sfx?.crash(strength);
       }
       car.spinYaw = (car.spinYaw ?? 0) + car.spin * dt;
+      if (car.hit <= 0) car.spinYaw *= Math.exp(-3 * dt);
       const y = this.world.surfaceAt(x, z).y;
       car.pose = { x, y, z, yaw: here.yaw + car.spinYaw };
       void i;

@@ -45,3 +45,17 @@ with a quality-scaled part limit and distance visibility. Geometry checks pass
 for outside placement, positive transform determinants, both footprint windings,
 deterministic rebuilds, roof slopes and normals matching triangles. A fresh
 interactive visual check is still pending; these are geometry/build results.
+
+## Bridge and traffic fixes
+
+Road runs now split at chunk boundaries and surface queries also examine adjacent
+chunks. Bridge elevations follow the actual direction of connected OSM ways
+and reconcile branching ramps at shared nodes. Bridge ends start at normal
+road height rather than the lagoon bed. Paved driving height matches the
+rendered road lift. Parapets stop sideways slides; elevated cars ignore low
+buildings below them, and recovery resets falling/tilted vehicle state.
+Traffic crash rotation returns to its road heading and resets on respawn; lane
+offsets use the actual road width. `node scripts/test-driving.mjs` reproduces
+bridge seams, reversed ways, underpasses, barriers and sideways crash recovery.
+These regressions and existing geometry/cache checks pass. Visual playtesting
+remains user-side.

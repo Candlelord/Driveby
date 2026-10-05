@@ -1,4 +1,5 @@
 import { WORLD, clamp, lerp } from './geo.js';
+import { distToSeg } from './world.js';
 
 /**
  * Driving, properly: your throttle, your brakes, your steering, anywhere.
@@ -56,6 +57,8 @@ export class Vehicle {
     this.yaw = yaw;
     this.vx = this.vz = this.vy = 0;
     this.speed = 0;
+    this.grounded = true;
+    this.pitch = this.roll = this.bodyRoll = 0;
     this.y = this.world.surfaceAt(x, z).y;
     this.lastSafe = { x, z, yaw };
   }
@@ -132,6 +135,7 @@ export class Vehicle {
     const pz = this.z;
     this.x += this.vx * dt;
     this.z += this.vz * dt;
+    if (here.road?.flags & 1) this._bridgeEdge(here.road);
     this._collide(px, pz);
     this._bounds();
 
@@ -200,6 +204,8 @@ export class Vehicle {
         const cx = this.x + fx * k;
         const cz = this.z + fz * k;
         for (const b of this.world.buildingsNear(cx, cz)) {
+          // An elevated road can pass over a low building footprint.
+          if (this.y > this.world.terrainHeight(cx, cz) + b.h + 1) continue;
           const [minX, minZ, maxX, maxZ] = b.box;
           if (cx < minX - RADIUS || cx > maxX + RADIUS || cz < minZ - RADIUS || cz > maxZ + RADIUS) continue;
           const hit = circlePolygon(cx, cz, RADIUS, b.ring);
@@ -230,6 +236,26 @@ export class Vehicle {
       this.vx *= -0.3;
       this.vz *= -0.3;
     }
+  }
+
+  /** Bridge parapets are solid: a scrape must not launch the car into water. */
+  _bridgeEdge(road) {
+    let best = null;
+    for (let i = 0; i < road.pts.length - 1; i++) {
+      const p = road.pts[i], q = road.pts[i + 1];
+      const seg = { x0: p[0], z0: p[1], x1: q[0], z1: q[1] };
+      const hit = distToSeg(this.x, this.z, seg);
+      if (!best || hit.dist < best.hit.dist) best = { seg, hit };
+    }
+    if (!best || best.hit.t <= 0 || best.hit.t >= 1) return;
+    const { seg, hit } = best;
+    const max = Math.max(0.5, road.width / 2 - RADIUS - 0.15);
+    if (hit.dist <= max) return;
+    const cx = lerp(seg.x0, seg.x1, hit.t), cz = lerp(seg.z0, seg.z1, hit.t);
+    const nx = (this.x - cx) / hit.dist, nz = (this.z - cz) / hit.dist;
+    this.x = cx + nx * max; this.z = cz + nz * max;
+    const speed = this.vx * nx + this.vz * nz;
+    if (speed > 0) { this.vx -= nx * speed; this.vz -= nz * speed; this._hit(Math.min(0.6, speed / 15)); }
   }
 
   /** Something hit the car (or the car hit something): `strength` 0..1. */

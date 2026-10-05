@@ -192,13 +192,19 @@ export class World {
     const ground = this.terrainHeight(x, z);
     let best = null;
     let bestY = -Infinity;
-    const chunk = this.data.get(chunkKey(Math.floor(x / CHUNK), Math.floor(z / CHUNK)));
-    const candidates = chunk ? chunk.index.roadsNear(x, z) : [];
+    // A segment is stored by its midpoint; its deck can cross chunk boundaries.
+    const candidates = [];
+    const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      const chunk = this.data.get(chunkKey(cx + dx, cz + dz));
+      if (chunk) candidates.push(...chunk.index.roadsNear(x, z));
+    }
     for (const seg of candidates) {
       const d = distToSeg(x, z, seg);
       if (d.dist > seg.hw) continue;
-      const deck = seg.y0 > 0 || seg.y1 > 0 ? lerp(seg.y0, seg.y1, d.t) : null;
-      const y = deck !== null ? deck : ground + 0.04;
+      const deck = seg.road.flags & 1 || seg.y0 > 0 || seg.y1 > 0 ? lerp(seg.y0, seg.y1, d.t) : null;
+      const lift = [0.2, 0.19, 0.18, 0.17, 0.16, 0.15, 0.14, 0.13, 0.12][seg.road.cls] ?? 0.06;
+      const y = deck !== null ? deck : ground + lift;
       if (nearY !== null && deck !== null && Math.abs(deck - nearY) > 3.2 && nearY < deck) continue;
       if (y > bestY) {
         bestY = y;

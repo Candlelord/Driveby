@@ -14,6 +14,7 @@
  */
 import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises';
 import sharp from 'sharp';
+import { bridgeDecks } from './bridge-decks.mjs';
 
 const ORIGIN = { lat: 6.455, lon: 3.39 };
 const BBOX = { south: 6.41, west: 3.34, north: 6.6, east: 3.5 };
@@ -230,61 +231,8 @@ for (const name of files.filter((f) => f.startsWith('roads_'))) {
 }
 console.log(`roads: ${roadWays.size}`);
 
-// Bridges: chains of connected bridge ways get a deck that ramps up and down.
-const bridgeWays = [...roadWays.values()].filter((w) => w.tags.bridge && w.tags.bridge !== 'no');
-const byEnd = new Map();
-for (const w of bridgeWays) {
-  for (const n of [w.nodes[0], w.nodes[w.nodes.length - 1]]) {
-    if (!byEnd.has(n)) byEnd.set(n, []);
-    byEnd.get(n).push(w);
-  }
-}
-const deck = new Map(); // way id -> per-node elevations (m)
-const seen = new Set();
-for (const start of bridgeWays) {
-  if (seen.has(start.id)) continue;
-  // Walk the chain in both directions.
-  const chain = [start];
-  seen.add(start.id);
-  for (const dir of [0, 1]) {
-    let cur = start;
-    let node = dir === 0 ? cur.nodes[cur.nodes.length - 1] : cur.nodes[0];
-    for (;;) {
-      const next = (byEnd.get(node) ?? []).find((w) => !seen.has(w.id));
-      if (!next) break;
-      seen.add(next.id);
-      if (dir === 0) chain.push(next);
-      else chain.unshift(next);
-      node = next.nodes[0] === node ? next.nodes[next.nodes.length - 1] : next.nodes[0];
-      cur = next;
-    }
-  }
-  // Order points along the chain and measure.
-  let total = 0;
-  const lengths = chain.map((w) => {
-    let l = 0;
-    for (let i = 0; i < w.geometry.length - 1; i++) l += Math.hypot(toX(w.geometry[i + 1].lon) - toX(w.geometry[i].lon), toZ(w.geometry[i + 1].lat) - toZ(w.geometry[i].lat));
-    total += l;
-    return l;
-  });
-  const layer = Math.max(...chain.map((w) => Number(w.tags.layer) || 1));
-  const H_DECK = Math.min(12, 5.5 + Math.max(0, layer - 1) * 4 + (total > 1500 ? 3 : 0));
-  const ramp = Math.min(160, total / 3);
-  let along = 0;
-  chain.forEach((w, k) => {
-    const el = [];
-    let l = 0;
-    for (let i = 0; i < w.geometry.length; i++) {
-      if (i > 0) l += Math.hypot(toX(w.geometry[i].lon) - toX(w.geometry[i - 1].lon), toZ(w.geometry[i].lat) - toZ(w.geometry[i - 1].lat));
-      const d = along + l;
-      const t = Math.min(1, Math.min(d, total - d) / ramp);
-      el.push(H_DECK * (t * t * (3 - 2 * t)));
-    }
-    // Chains may run against a way's own direction; heights are symmetric, so it does not matter.
-    deck.set(w.id, el);
-    along += lengths[k];
-  });
-}
+// Connected bridge ways share a continuous elevation profile.
+const deck = bridgeDecks([...roadWays.values()], toX, toZ);
 
 // Chunks.
 const chunks = new Map();
@@ -304,19 +252,31 @@ for (const w of roadWays.values()) {
   const flags = (deck.has(w.id) ? 1 : 0) | (unpaved ? 2 : 0) | (t.oneway === 'yes' || t.junction === 'roundabout' ? 4 : 0);
   const heights = deck.get(w.id);
   const pts = w.geometry.map((p, i) => [toX(p.lon), toZ(p.lat), heights ? heights[i] : 0]);
-  // Split into runs, one per chunk, by segment midpoint.
-  let run = null;
-  let runKey = null;
+  // Split at actual chunk boundaries so every stretch has local collision data.
+  let run = null, runKey = null;
   for (let i = 0; i < pts.length - 1; i++) {
-    const cx = Math.floor((pts[i][0] + pts[i + 1][0]) / 2 / CHUNK);
-    const cz = Math.floor((pts[i][1] + pts[i + 1][1]) / 2 / CHUNK);
-    const key = `${cx}_${cz}`;
-    if (key !== runKey) {
-      run = [cls, dm(width), flags, cx, cz, pts[i]];
-      chunk(cx, cz).r.push(run);
-      runKey = key;
+    const a = pts[i], b = pts[i + 1], cuts = [0, 1];
+    for (const axis of [0, 1]) {
+      const delta = b[axis] - a[axis];
+      if (Math.abs(delta) < 1e-6) continue;
+      for (let k = Math.floor(Math.min(a[axis], b[axis]) / CHUNK) + 1; k <= Math.floor(Math.max(a[axis], b[axis]) / CHUNK); k++) {
+        const t = (k * CHUNK - a[axis]) / delta;
+        if (t > 1e-8 && t < 1 - 1e-8) cuts.push(t);
+      }
     }
-    run.push(pts[i + 1]);
+    const ordered = [...new Set(cuts)].sort((a, b) => a - b);
+    const at = (t) => a.map((value, axis) => value + (b[axis] - value) * t);
+    for (let k = 0; k < ordered.length - 1; k++) {
+      if (ordered[k + 1] - ordered[k] < 1e-8) continue;
+      const p = at(ordered[k]), q = at(ordered[k + 1]);
+      const cx = Math.floor((p[0] + q[0]) / 2 / CHUNK), cz = Math.floor((p[1] + q[1]) / 2 / CHUNK);
+      const key = cx + '_' + cz;
+      if (key !== runKey) {
+        run = [cls, dm(width), flags, cx, cz, p];
+        chunk(cx, cz).r.push(run); runKey = key;
+      }
+      run.push(q);
+    }
   }
 }
 
