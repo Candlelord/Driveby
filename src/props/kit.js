@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { seg, subdiv } from './detail.js';
 import { EXTRA_KIT } from './extras.js';
-import { REGIONAL_KIT } from './regional.js';
+import { REGIONAL_KIT, MODEL_KIT } from './regional.js';
 import {
   leafCards, crownCore, needleCards, coniferCore, palmFrondCards, rockGeometry, grassCards,
 } from './foliage.js';
@@ -440,4 +440,5 @@ const CORE_KIT = {
 /** Trees and landforms in kit.js, everything smaller in extras.js, route regions in regional.js. */
 export const PROP_KIT = { ...CORE_KIT, ...EXTRA_KIT, ...REGIONAL_KIT };
 
+export { MODEL_KIT };
 export const PROP_NAMES = Object.keys(PROP_KIT);

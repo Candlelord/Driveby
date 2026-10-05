@@ -12,3 +12,4 @@ dist-ssr/
 models-src/*.glb
 models-src/
 scripts/_*.mjs
+public/models/bldg-*.glb

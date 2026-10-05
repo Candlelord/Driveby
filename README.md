@@ -40,6 +40,8 @@ still run against a stand-in library.
 | Arrow keys / `A` `D` | Steer (desktop) |
 | Drag anywhere | Steer — drag across ~¼ of the screen is full lock |
 | Device tilt | Steer. On iOS, tap **enable tilt steering** first (the OS requires a gesture before handing over orientation events) |
+| Space / `S` | Handbrake (route mode) |
+| `V` | Co-driver voice on/off |
 | `1`–`5` | Force tornado / lightning / snow / sandstorm / aurora |
 | `0` | Stop the running event |
 | `M` | Mute audio |
@@ -61,6 +63,38 @@ it. Pedestrians step out of your way. There is still no game over.
 the tab is hidden or closed — in this browser's local storage. The start
 screen then offers *Continue*, with where you were ("near Kano, Nigeria ·
 1,187 km · saved 2 h ago").
+
+## Rally
+
+Route mode is a rally. Every leg between two stops is a timed stage; the
+cities at either end are liaison, and nothing is counted there.
+
+- **Handling** (`physics.js`): the road bends and the car, left alone, goes
+  straight on — so it drifts toward the outside of the bend by however much
+  `speed² × curvature` exceeds the grip. Gravel and the wet cut the grip. The
+  car lifts for corners it can see unless you hold the pedal. The handbrake
+  locks the rears: a hard stop and the nose swings where you steer.
+- **Roads** (`path.js`, `rally/track.js`): each stage has a surface profile
+  (tarmac, gravel, dirt) and a windiness profile that adds rally corners to the
+  highway curve; both are pure functions of distance. Dirt is a shader on the
+  road (`withDirt`), with dust and tyre smoke.
+- **Stages** (`rally/stages.js`): start gate, countdown with the car held on
+  the line, timer and progress, three splits against the fastest crew, results
+  table (invented crews, `rally/field.js`), prize money. Roads are closed:
+  no traffic. Saves include the stage clock.
+- **Co-driver** (`rally/copilot.js`): corners are read off `heading(s)`
+  (`rally/corners.js`), graded hairpin/1–6, shown as chips and spoken with the
+  browser's speech synthesis. `V` or the speaker button mutes the voice.
+- **Trackside** (`rally/dressing.js`): tape on the outside of bends, tyre
+  stacks (solid, they fall over), chevron boards, spectators; three
+  collectible postcards a stage (`rally/postcards.js`).
+- **Garage** (`garage/`, `garage.js`): cars, paint, liveries, a turntable,
+  postcard book, and a *Clean* / *Gritty* look switch (a heavier grade).
+- **Controls**: arrows or A/D steer, up/W boost, space/S handbrake; on touch
+  there are on-screen arrows, pedal and handbrake.
+
+Buildings in Paris and Amsterdam are baked from real models into facade
+textures (`scripts/bake-facades.mjs`) on the high and medium tiers.
 
 ## Route mode: Lagos → Paris
 

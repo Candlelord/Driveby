@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { hash, windAt } from '../path.js';
 import { terrainHeight } from './terrain.js';
-import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
+import { PROP_KIT, PROP_NAMES, MODEL_KIT } from '../props/kit.js';
+import { updateFacades } from './facades.js';
 import { PARKED_LATERAL } from '../props/regional.js';
 import { TERRAIN_SETS } from '../terrainSets.js';
 import { softDotTexture } from './textures.js';
@@ -129,6 +130,7 @@ export class Props {
     this.slotMaterials = { a: [], b: [], f: [] };
     const slotCache = new Map();
     const materialFor = (part) => {
+      if (part.materialInstance) return part.materialInstance;
       if (part.color) return surfaceMaterial(part.surface ?? 'plain', part.color);
       // Billboard faces show the ad atlas rather than a flat glow.
       if (part.surface === 'screen') {
@@ -150,7 +152,8 @@ export class Props {
     // One entry per prop type, each holding its parts' instanced meshes.
     this.types = {};
     for (const name of PROP_NAMES) {
-      const def = PROP_KIT[name];
+      // Baked-facade streets replace the procedural ones where the tier allows.
+      const def = (tier.facades && MODEL_KIT[name]) || PROP_KIT[name];
       // Measured rather than authored: every part's horizontal extent at unit
       // scale, so a new prop gets sensible spacing without anyone remembering
       // to give it a number.
@@ -178,7 +181,7 @@ export class Props {
         // Per-instance colour: identical props in a row is the single biggest
         // tell that a scene is instanced. A small deterministic jitter around
         // the set's colour breaks it up for one attribute.
-        mesh.userData.tint = part.color ? 'fixed' : part.surface === 'screen' ? 'screen' : part.material;
+        mesh.userData.tint = part.color || part.materialInstance ? 'fixed' : part.surface === 'screen' ? 'screen' : part.material;
         scene.add(mesh);
         return mesh;
       });
@@ -301,6 +304,7 @@ export class Props {
       this.screenMaterial.color.setScalar(0.6 + live.lampIntensity * 0.35 * live.propEmissive);
     }
     updateCity(live);
+    updateFacades(live);
   }
 
   /**

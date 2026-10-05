@@ -431,6 +431,8 @@ for (const side of [-1, 1]) {
 }
 const AMSTERDAM_FRONT = 12.5;
 
+import { facadeRow, facadeMaterial } from '../world/facades.js';
+
 export const REGIONAL_KIT = {
   medinaStreet: {
     parts: [
@@ -656,5 +658,66 @@ export const REGIONAL_KIT = {
     parts: [{ geometry: canalHouses, material: 'b' }],
     spread: 22,
     jitter: 20,
+  },
+};
+
+// --- streets built from real buildings ----------------------------------------
+//
+// The same two streets, with facades baked from real models (see
+// scripts/bake-facades.mjs) in place of the box-and-shader walls. Used on the
+// tiers that can afford the textures; the procedural versions above remain the
+// fallback and the lowest tier's streets.
+
+const PARIS_FRONT = STREET_SETBACK - 6.5;
+/** A 48 m wall of Haussmann blocks, wide and narrow in turn. */
+const PARIS_ROW = (() => {
+  const order = ['haussmann-a', 'haussmann-b', 'haussmann-a', 'haussmann-b', 'haussmann-a', 'haussmann-b', 'haussmann-a'];
+  const widths = { 'haussmann-a': 8.4, 'haussmann-b': 4.83 };
+  const total = order.reduce((n, k) => n + widths[k], 0);
+  let x = -total / 2;
+  return order.map((name) => {
+    const w = widths[name];
+    const entry = [name, x + w / 2];
+    x += w;
+    return entry;
+  });
+})();
+const parisLayout = (side) => PARIS_ROW.map(([name, x], i) => [name, side > 0 ? -x : x, side, 1, 1, (i + (side > 0 ? 1 : 0)) % 4 === 3]);
+
+const AMS_HEIGHTS = [1, 0.94, 1.06, 0.97];
+const amsterdamLayout = (side) =>
+  AMS_HEIGHTS.map((h, i) => ['canal-a', -18 + i * 12, side, 1.12, side > 0 ? AMS_HEIGHTS[(i + 2) % 4] : h, (i + (side > 0 ? 1 : 0)) % 2 === 1]);
+
+const facadeParts = (layout, front, backColor, slab = 9) => {
+  const rows = facadeRow(layout, front);
+  return [
+    ...Object.entries(rows).map(([name, geometry]) => ({ geometry: () => geometry, materialInstance: facadeMaterial(name) })),
+    // A dark slab behind, so a facade seen along the street reads as solid.
+    { geometry: () => merge([-1, 1].map((side) => box(STREET_LENGTH, slab, 1).translate(0, slab / 2, side * (front + 0.6)))), color: backColor },
+  ];
+};
+
+export const MODEL_KIT = {
+  haussmannStreet: {
+    parts: [
+      ...facadeParts([...parisLayout(1), ...parisLayout(-1)], PARIS_FRONT, 0x6b655c, 9),
+      ...parkedCars(PARKED.slice(0, 3), PARKED.slice(3), 0x2a2e36, 0x8a8e94),
+    ],
+    front: PARIS_FRONT,
+    parked: [0, 1, 2, 3, 4, 5].map((k) => PARKED[k]),
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
+  },
+  amsterdamStreet: {
+    parts: [
+      ...facadeParts([...amsterdamLayout(1), ...amsterdamLayout(-1)], AMSTERDAM_FRONT, 0x5a4a40, 8),
+      ...parkedCars(PARKED.slice(0, 2), PARKED.slice(3, 5), 0x2a2e36, 0x6a7078),
+    ],
+    front: AMSTERDAM_FRONT,
+    parked: [0, 1, 3, 4].map((k) => PARKED[k]),
+    length: STREET_LENGTH,
+    spread: 0,
+    jitter: 0,
   },
 };

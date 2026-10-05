@@ -1,0 +1,38 @@
+{
+  "haussmann-a": {
+    "size": [
+      8.398436545510751,
+      14.130053680027562,
+      6.8932288856698545
+    ],
+    "files": {
+      "albedo": "haussmann-a.albedo.7b30f300.webp",
+      "normal": "haussmann-a.normal.a53f34fd.webp",
+      "windows": "haussmann-a.windows.c5832d30.webp"
+    }
+  },
+  "haussmann-b": {
+    "size": [
+      4.836451587104671,
+      14.12820053100586,
+      6.029035240575018
+    ],
+    "files": {
+      "albedo": "haussmann-b.albedo.7276768f.webp",
+      "normal": "haussmann-b.normal.186b43cb.webp",
+      "windows": "haussmann-b.windows.7e81beca.webp"
+    }
+  },
+  "canal-a": {
+    "size": [
+      10.756289133799918,
+      13.708543116188942,
+      14.266599633531417
+    ],
+    "files": {
+      "albedo": "canal-a.albedo.eaca49b1.webp",
+      "normal": "canal-a.normal.802a2819.webp",
+      "windows": "canal-a.windows.e2271ca4.webp"
+    }
+  }
+}

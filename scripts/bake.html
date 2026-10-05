@@ -1,0 +1,109 @@
+<!doctype html>
+<!--
+  Facade baker (a dev tool, driven by scripts/bake-facades.mjs).
+
+  Renders a building model straight on, orthographically, into three images:
+  albedo (colour with a cut-out silhouette), a tangent-space-style normal map,
+  and a mask of the window glass. The game then draws the building as one
+  textured quad, which keeps the real detail of a 60,000-triangle model at the
+  cost of two triangles.
+
+  ?model=<name in model-manifest.json>&yaw=<radians to turn it to face +Z>&ppm=<pixels per metre>
+-->
+<html>
+  <body style="margin:0;background:#444">
+    <canvas id="c"></canvas>
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+      import manifest from '/src/world/model-manifest.json';
+
+      const q = new URLSearchParams(location.search);
+      const name = q.get('model');
+      const yaw = Number(q.get('yaw') ?? 0);
+      const ppm = Number(q.get('ppm') ?? 80);
+      const glassPattern = new RegExp(q.get('glass') ?? 'glass|vitre|window|verre', 'i');
+      const crop = (q.get('crop') ?? '').split(',').map(Number); // optional: minY,maxY to cut a base slab off
+
+      const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/models/' + manifest[name]);
+      const root = new THREE.Group();
+      root.add(gltf.scene);
+      root.rotation.y = yaw;
+      root.updateMatrixWorld(true);
+
+      const box = new THREE.Box3().setFromObject(root);
+      let minY = box.min.y;
+      let maxY = box.max.y;
+      if (crop.length === 2 && !crop.some(Number.isNaN)) {
+        minY = crop[0];
+        maxY = crop[1];
+      }
+      const size = box.getSize(new THREE.Vector3());
+      const width = size.x;
+      const height = maxY - minY;
+      const px = [Math.round(width * ppm), Math.round(height * ppm)];
+
+      const canvas = document.getElementById('c');
+      canvas.width = px[0];
+      canvas.height = px[1];
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, premultipliedAlpha: false });
+      renderer.setSize(px[0], px[1], false);
+      renderer.setPixelRatio(1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      const centreX = (box.min.x + box.max.x) / 2;
+      const camera = new THREE.OrthographicCamera(-width / 2, width / 2, maxY, minY, 0.1, size.z * 4 + 20);
+      camera.position.set(centreX, 0, box.max.z + 5);
+      camera.lookAt(centreX, 0, 0);
+      camera.updateProjectionMatrix();
+
+      const originals = new Map();
+      root.traverse((o) => {
+        if (o.isMesh) originals.set(o, o.material);
+      });
+      const isGlass = (m) => glassPattern.test(m.name) || (m.transparent && m.opacity < 0.85 && !m.map);
+
+      const swap = (build) => {
+        for (const [mesh, m] of originals) mesh.material = Array.isArray(m) ? m.map(build) : build(m);
+      };
+      const scene = new THREE.Scene();
+      scene.add(root);
+
+      const grab = () => canvas.toDataURL('image/png');
+      const out = { size: [width, height, size.z], px };
+
+      // Albedo: textures and colours, unlit, glass a dark blue-grey.
+      renderer.setClearColor(0x000000, 0);
+      swap((m) => {
+        if (isGlass(m)) return new THREE.MeshBasicMaterial({ color: 0x1d252c, side: THREE.DoubleSide });
+        return new THREE.MeshBasicMaterial({
+          map: m.map ?? null,
+          color: m.color ?? 0xffffff,
+          vertexColors: Boolean(m.vertexColors),
+          alphaTest: m.alphaTest || (m.alphaMode === 'MASK' ? 0.5 : 0),
+          transparent: false,
+          side: THREE.DoubleSide,
+        });
+      });
+      renderer.render(scene, camera);
+      out.albedo = grab();
+
+      // Normals: view space, which for a camera looking straight at a wall is
+      // the same frame a tangent-space normal map is read in.
+      renderer.setClearColor(new THREE.Color(0.5, 0.5, 1), 1);
+      swap(() => new THREE.MeshNormalMaterial({ side: THREE.DoubleSide }));
+      renderer.render(scene, camera);
+      out.normal = grab();
+
+      // Windows: white where there is glass.
+      renderer.setClearColor(0x000000, 1);
+      swap((m) => new THREE.MeshBasicMaterial({ color: isGlass(m) ? 0xffffff : 0x000000, side: THREE.DoubleSide }));
+      renderer.render(scene, camera);
+      out.windows = grab();
+
+      window.__bake = out;
+      document.title = 'done';
+    </script>
+  </body>
+</html>

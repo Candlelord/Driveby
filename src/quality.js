@@ -10,6 +10,7 @@
 export const TIERS = {
   high: {
     name: 'high',
+    facades: true, // streets of baked real-building facades
     pixelRatio: 2,
     bloom: true,
     detail: 1.55, // geometry segment multiplier
@@ -39,6 +40,7 @@ export const TIERS = {
   },
   medium: {
     name: 'medium',
+    facades: true,
     pixelRatio: 1.5,
     bloom: true,
     detail: 1.0,

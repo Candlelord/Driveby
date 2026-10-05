@@ -107,7 +107,10 @@ for (const [name, spec] of Object.entries(config.models)) {
   }
   await doc.transform(prune());
 
-  // 2. Geometry.
+  // 2. Geometry. Buildings and the like are merged first (one mesh per
+  // material), so the simplifier works on the whole object rather than on
+  // every window frame separately.
+  if (spec.join) await doc.transform(flatten(), join({ keepMeshes: false, keepNamed: false }), prune());
   await doc.transform(
     weld(),
     ...(spec.simplify ? [simplify({ simplifier: MeshoptSimplifier, ratio: spec.simplify, error: spec.error ?? 0.001 })] : []),
