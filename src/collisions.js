@@ -14,7 +14,8 @@ const KERB_LINE = CONFIG.roadHalfWidth + 0.2;
  * the solid world is exactly the one on screen.
  */
 export class Collisions {
-  constructor({ physics, props, sfx }) {
+  constructor({ physics, props, sfx, dressing = null }) {
+    this.dressing = dressing;
     this.physics = physics;
     this.props = props;
     this.sfx = sfx;
@@ -50,6 +51,21 @@ export class Collisions {
       physics.impact = Math.max(physics.impact, 0.18);
     }
     this.wasOnPavement = onPavement;
+
+    // Tyre stacks at the edge of a stage: heavy, and they go over.
+    if (this.dressing && this.cooldown === 0) {
+      for (const stack of this.dressing.solids) {
+        const ds = stack.s - s;
+        const dl = stack.lateral - state.lateral;
+        if (Math.abs(ds) > 2.9 || Math.abs(dl) > 1.55) continue;
+        const strength = Math.min(1, 0.22 + state.speed / 75);
+        physics.collide(state.speed * 0.66, -Math.sign(dl || 1) * (1.5 + strength * 3), strength * 0.55);
+        this.sfx?.crash(strength * 0.6);
+        this.dressing.knock(stack.id, Math.sign(ds) || 1, dl);
+        this.cooldown = 0.35;
+        break;
+      }
+    }
 
     // Parked cars are as solid as moving ones, and do not move.
     for (const car of props.parked) {

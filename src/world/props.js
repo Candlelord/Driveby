@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
-import { hash } from '../path.js';
+import { hash, windAt } from '../path.js';
 import { terrainHeight } from './terrain.js';
 import { PROP_KIT, PROP_NAMES } from '../props/kit.js';
 import { PARKED_LATERAL } from '../props/regional.js';
@@ -325,6 +325,10 @@ export class Props {
 
       const run = this._runAt(slot, set);
       if (!run) continue;
+
+      // A closed rally road is lined with tape and tyres, not crash barriers
+      // (see rally/dressing.js).
+      if ((run.name === 'guardrail' || run.name === 'barrier') && windAt(s) > 0.15) continue;
 
       const type = this.types[run.name];
       if (!type || type.used >= this.slots) continue;
@@ -711,26 +715,29 @@ export class Props {
       const s = slot * lampSpacing;
       // The head hangs inboard of the pole; the light belongs under the head,
       // not under the post.
-      const armX = side * (lateral - 0.85 * on);
+      // No street lighting on a rally stage.
+      const keep = 1 - clamp01(windAt(s) * 6);
+      const lampOn = on * keep;
+      const armX = side * (lateral - 0.85 * lampOn);
       frame.point(s, side * lateral, 0, POSITION);
 
       DUMMY.position.copy(POSITION);
       DUMMY.rotation.set(0, side > 0 ? 0 : Math.PI, 0);
-      DUMMY.scale.setScalar(on);
+      DUMMY.scale.setScalar(Math.max(0.0001, lampOn));
       DUMMY.updateMatrix();
       this.lampPole.setMatrixAt(i, DUMMY.matrix);
       this.lampHead.setMatrixAt(i, DUMMY.matrix);
 
-      frame.point(s, armX, 6.35 * on, POSITION);
+      frame.point(s, armX, 6.35 * lampOn, POSITION);
       DUMMY.position.copy(POSITION);
       DUMMY.rotation.set(0, 0, 0);
-      DUMMY.scale.setScalar(2.6 + glow * 1.6);
+      DUMMY.scale.setScalar(Math.max(0.0001, (2.6 + glow * 1.6) * keep));
       DUMMY.updateMatrix();
       this.lampGlow.setMatrixAt(i, DUMMY.matrix);
 
       frame.point(s, armX, 0.06, POSITION);
       DUMMY.position.copy(POSITION);
-      DUMMY.scale.set(7.5, 1, 7.5);
+      DUMMY.scale.set(7.5 * Math.max(0.0001, keep), 1, 7.5 * Math.max(0.0001, keep));
       DUMMY.updateMatrix();
       this.lampPool.setMatrixAt(i, DUMMY.matrix);
 
@@ -738,7 +745,7 @@ export class Props {
       // lamp is behind the camera, so the handover is never on screen, and the
       // last stretch fades rather than cutting.
       const ahead = s - state.travelled;
-      if (lit < this.lampLights.length && ahead > -22 && ahead < LAMP_LIGHT_RANGE) {
+      if (keep > 0.5 && lit < this.lampLights.length && ahead > -22 && ahead < LAMP_LIGHT_RANGE) {
         const light = this.lampLights[lit++];
         frame.point(s, armX, 6.1 * on, POSITION);
         light.position.copy(POSITION);

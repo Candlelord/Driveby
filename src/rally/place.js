@@ -19,7 +19,7 @@ export function placeAt(object, frame, s, w, { y = 0, yaw = 0, live = null, grou
   const lift = ground && live ? terrainHeight(w, s, live) : 0;
   frame.point(s, w, y + lift, SCRATCH);
   object.position.copy(SCRATCH);
-  object.rotation.y = -(heading(s) - heading(frame.s0)) + yaw;
+  object.rotation.set(0, -(heading(s) - heading(frame.s0)) + yaw, 0);
   return object;
 }
 

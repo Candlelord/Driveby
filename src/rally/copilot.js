@@ -1,24 +1,9 @@
-import { curvature, heading } from '../path.js';
+import { scanCorners } from './corners.js';
 
 // Where the co-driver looks, how finely, and what counts as a corner.
 const LOOK = 190;
-const STEP = 4;
-const CORNER_AT = 0.0075; // curvature above this is a corner (a radius under ~130)
 const SHOW_WITHIN = 150; // chips appear this far ahead
 const VOICE_KEY = 'driveby.voice';
-
-// Pace-note scale. 1 is the tightest corner you can take without stopping, 6
-// is a gentle sweep; a hairpin is its own call. The numbers are the corner's
-// radius in game units, which are metres for all practical purposes.
-const SCALE = [
-  [14, 0], // hairpin
-  [21, 1],
-  [31, 2],
-  [46, 3],
-  [70, 4],
-  [110, 5],
-  [Infinity, 6],
-];
 
 const WORDS = ['hairpin', 'one', 'two', 'three', 'four', 'five', 'six'];
 
@@ -110,55 +95,7 @@ export class Copilot {
 
   /** The corners in the next LOOK units, nearest first. */
   _scan(from) {
-    const corners = [];
-    const first = Math.ceil((from + 4) / STEP);
-    const last = first + Math.floor(LOOK / STEP);
-    let cur = null;
-    let insideAtStart = Math.abs(curvature(first * STEP)) > CORNER_AT;
-
-    const close = () => {
-      if (!cur) return;
-      const turned = Math.abs(heading(cur.end) - heading(cur.start));
-      cur.angle = turned;
-      cur.length = cur.end - cur.start + STEP;
-      cur.radius = 1 / cur.peak;
-      cur.severity = SCALE.find(([r]) => cur.radius < r)[1];
-      const mid = (cur.start + cur.end) / 2;
-      cur.tightens = cur.peakAt > mid + cur.length * 0.18;
-      cur.opens = cur.peakAt < mid - cur.length * 0.18;
-      cur.dir = cur.sign > 0 ? 'right' : 'left';
-      cur.key = Math.round(cur.start / STEP);
-      // Ignore the corner we are already inside, and tiny wobbles.
-      if (!cur.partial && cur.severity <= 5) corners.push(cur);
-      cur = null;
-    };
-
-    for (let k = first; k <= last; k++) {
-      const s = k * STEP;
-      const kappa = curvature(s);
-      const mag = Math.abs(kappa);
-      if (mag > CORNER_AT) {
-        const sign = Math.sign(kappa);
-        if (cur && sign !== cur.sign) close();
-        if (!cur) cur = { start: s, end: s, sign, peak: mag, peakAt: s, partial: insideAtStart && k === first };
-        cur.end = s;
-        if (mag > cur.peak) {
-          cur.peak = mag;
-          cur.peakAt = s;
-        }
-      } else {
-        insideAtStart = false;
-        close();
-      }
-    }
-    close();
-
-    // Link corners that follow each other closely.
-    for (let i = 0; i < corners.length - 1; i++) {
-      const gap = corners[i + 1].start - corners[i].end;
-      if (gap < 28) corners[i].into = corners[i + 1];
-    }
-    return corners;
+    return scanCorners(from + 4, LOOK);
   }
 
   _announce(state) {

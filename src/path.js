@@ -43,6 +43,11 @@ export function setWindProfile(fn) {
   wind = fn ?? (() => 0);
 }
 
+/** How twisty the road is at `s`, 0..1 (see setWindProfile). */
+export function windAt(s) {
+  return wind(s);
+}
+
 /** A piecewise-smooth profile from [s, value] breakpoints (smoothstep between). */
 export function profileFrom(points) {
   if (!points.length) return () => 0;

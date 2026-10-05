@@ -66,6 +66,14 @@ export class StageRunner {
     }
   }
 
+  /** The stage whose roadside should be dressed: the one in play, or the next one up. */
+  get region() {
+    if (['approach', 'grid', 'countdown', 'running', 'finish', 'results'].includes(this.phase) && this.geometry) {
+      return { start: this.geometry.start, end: this.geometry.end, index: this.index };
+    }
+    return this.gates ? { start: this.gates.start, end: this.gates.end, index: -1 } : null;
+  }
+
   /** True while the road is closed to traffic: from the approach to the gate until the results. */
   get closed() {
     return ['approach', 'grid', 'countdown', 'running', 'finish', 'results'].includes(this.phase);

@@ -41,6 +41,7 @@ import { RallyUi } from './rally/ui.js';
 import { StageRunner } from './rally/stages.js';
 import { Gates } from './rally/gates.js';
 import { Copilot } from './rally/copilot.js';
+import { Dressing } from './rally/dressing.js';
 
 const tier = tierFromQuery() ?? detectTier();
 applyTier(tier);
@@ -137,10 +138,11 @@ const rallyUi = new RallyUi();
 ui.rally = rallyUi;
 input.bindButtons(rallyUi.buttons);
 const gates = new Gates(scene);
+const dressing = new Dressing(scene);
 const copilot = new Copilot({ ui: rallyUi, physics });
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
-const collisions = new Collisions({ physics, props, sfx });
+const collisions = new Collisions({ physics, props, sfx, dressing });
 const session = new Session(environment);
 
 // Audio cannot start until the browser has seen a gesture, so the first real
@@ -289,6 +291,7 @@ function tick(now) {
   route?.update(state);
   stages?.update(state);
   gates.update(state, frame, stages?.gates ?? null);
+  dressing.update(state, frame, stages?.region ?? null);
   rallyUi.update(state);
   copilot.update(state);
   landmarks.update(state, frame, environment);
@@ -496,6 +499,7 @@ if (import.meta.env.DEV) {
     garage,
     rallyUi,
     copilot,
+    dressing,
     gates,
     get stages() {
       return stages;
