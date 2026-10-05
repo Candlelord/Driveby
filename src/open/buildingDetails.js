@@ -45,8 +45,9 @@ export function buildingDetailMeshes(world, chunk) {
   const colour = new THREE.Color();
   const limit = Math.round(2200 * detailLevel());
   let count = 0;
+  let buildingStart = 0, buildingBudget = limit;
   const box = (type, x, y, z, w, h, d, tx, tz, nx, nz, paint, light = 0) => {
-    if (count >= limit || w <= 0 || h <= 0) return;
+    if (count >= limit || count - buildingStart >= buildingBudget || w <= 0 || h <= 0) return;
     tangent.set(tx, 0, tz); outward.set(nx, 0, nz);
     matrix.makeBasis(tangent, up, outward);
     matrix.scale(scale.set(w, h, d));
@@ -58,9 +59,12 @@ export function buildingDetailMeshes(world, chunk) {
   // Stable order keeps the same architecture when chunks stream back in.
   const candidates = chunk.buildings.filter((b) => !b.landmark && b.kind <= 3 && b.h >= 3 && b.ring.length >= 3)
     .sort((a, b) => hash2(a.ring[0][0], a.ring[0][1]) - hash2(b.ring[0][0], b.ring[0][1]));
+  // A tower must not consume all the street's architecture budget.
+  buildingBudget = Math.max(80, Math.min(240, Math.floor(limit / Math.min(20, Math.max(1, candidates.length)))));
   let decorated = 0;
   for (const b of candidates) {
     if (count >= limit || decorated >= 100 * detailLevel()) break;
+    buildingStart = count;
     const s = hash2(b.ring[0][0], b.ring[0][1]);
     let area = 0;
     for (let i = 0; i < b.ring.length; i++) {

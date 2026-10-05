@@ -254,3 +254,5 @@ Tank placement/geometry checks and production build pass. Runtime appearance
 still needs visual review.
 
 Ground-floor facade pass: single-storey homes now receive framed windows, with entrance clearance and no ground-level balcony slabs. Production build and building geometry regression checks pass. Browser visual verification remains unfinished after Computer Use URL-policy stop.
+
+Rendered local Obalende scene verified through Windows Chrome: terrain, roads, player car and pedestrians render. Facades still read flat. Architecture allocation now caps each building's share so an early tower cannot exhaust a whole chunk's detail budget. Building checks and production build pass; broader visual quality remains unfinished.
