@@ -3,6 +3,7 @@ import { NORTH_EDGE, hash1, hash2 } from './geo.js';
 import { distToSeg } from './world.js';
 import { NIGHT } from './materials.js';
 import { streetGlowMeshes } from './streetGlow.js';
+import { shopfrontRoad } from './shopfrontSite.js';
 
 /**
  * What makes a Lagos street a Lagos street, beyond the buildings: painted
@@ -187,9 +188,7 @@ export function streetMeshes(world, chunk) {
       const mx = (x0 + x1) / 2;
       const mz = (z0 + z1) / 2;
       // Is a road just in front of this wall?
-      let near = Infinity;
-      for (const seg of chunk.index.roadsNear(mx + nx * 6, mz + nz * 6)) near = Math.min(near, distToSeg(mx + nx * 6, mz + nz * 6, seg).dist - seg.hw);
-      if (near > 6) continue;
+      if (!shopfrontRoad(chunk.index, mx, mz, nx, nz)) continue;
       const seed = hash2(mx, mz);
       if (seed < 0.25) continue;
       shopCount++;

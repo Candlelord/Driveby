@@ -207,6 +207,15 @@ of 12m. Tests load the actual baked chunk and verify matching/collision; geometr
 checks and production build pass. The audit script records the source bounds.
 Browser visual verification is still unavailable; the realism goal is active.
 
+## Shopfront road-facing placement
+
+Shopfront placement now uses a radius road query and verifies the road lies in
+front of the wall. A minimum two-metre setback leaves the 1.7m awning clear of
+traffic, with a maximum twelve-metre setback for street shops. Bridge and dirt
+track frontage are excluded. Site regression checks cover grid boundaries,
+facing direction, awning clearance and bridge exclusion; production build passes.
+Rendered appearance still requires visual verification.
+
 ## Material preload during startup
 
 Plaster loading begins in parallel with world loading at boot and shares one
