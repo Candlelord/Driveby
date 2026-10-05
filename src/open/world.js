@@ -17,6 +17,10 @@ export const GROUND = { WATER: 0, LAND: 1, RESIDENTIAL: 2, COMMERCIAL: 3, INDUST
 const BASE = `${import.meta.env.BASE_URL}world/`;
 const WATER_DEPTH = -2.6;
 const LAND_HEIGHT = 0.3;
+const fetchWorld = (url) => fetch(url, { cache: 'no-cache' }).then((response) => {
+  if (!response.ok) throw new Error(`World download failed: ${response.status}`);
+  return response;
+});
 
 export class World {
   constructor() {
@@ -32,7 +36,7 @@ export class World {
 
   async load() {
     try {
-      const [meta, pois] = await Promise.all([fetch(BASE + 'meta.json').then((r) => r.json()), fetch(BASE + 'pois.json').then((r) => r.json())]);
+      const [meta, pois] = await Promise.all([fetchWorld(BASE + 'meta.json').then((r) => r.json()), fetchWorld(BASE + 'pois.json').then((r) => r.json())]);
       this.meta = meta;
       this.pois = pois;
       for (const key of meta.chunks) this.available.add(key);
@@ -56,7 +60,7 @@ export class World {
   async loadGraph() {
     if (this.graph) return this.graph;
     try {
-      this.graph = await fetch(BASE + 'graph.json').then((r) => r.json());
+      this.graph = await fetchWorld(BASE + 'graph.json').then((r) => r.json());
     } catch {
       this.graph = { nodes: [], edges: [] };
     }
@@ -148,7 +152,7 @@ export class World {
       const buildings = [];
       if (this.available.has(key)) {
         try {
-          const raw = await fetch(`${BASE}c/${key}.json`).then((r) => r.json());
+          const raw = await fetchWorld(`${BASE}c/${key}.json`).then((r) => r.json());
           for (const [cls, width, flags, ...flat] of raw.r) {
             const pts = [];
             for (let i = 0; i < flat.length; i += 3) pts.push([flat[i] / 10 + ox, flat[i + 1] / 10 + oz, flat[i + 2] / 10]);
@@ -259,8 +263,11 @@ export class World {
 /** Decode the ground raster PNG to one byte per cell. */
 async function loadRaster(url, width, height) {
   const image = new Image();
-  image.src = url;
-  await image.decode();
+  const imageUrl = URL.createObjectURL(await (await fetchWorld(url)).blob());
+  try {
+    image.src = imageUrl;
+    await image.decode();
+  } finally { URL.revokeObjectURL(imageUrl); }
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

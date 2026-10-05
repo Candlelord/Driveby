@@ -133,3 +133,14 @@ and crack positions use world metres, so their pattern remains continuous
 across streamed chunks. Road roughness varies slightly across wheel paths and
 edges. This uses the existing asphalt draw with no extra meshes or textures.
 Production build passes; final shader appearance needs browser visual review.
+
+## Occupied windows and fresh world downloads
+
+Detailed facade panes now carry deterministic per-instance occupancy and warm
+curtain shading at night, so their glass no longer hides all illumination from
+the underlying shell. Occupancy attributes are chunk-local, leaving shared
+geometry untouched. Building detail regression checks pass.
+World JSON and the raster now request HTTP revalidation on load. Service-worker
+network-first requests also use no-cache, closing the separate HTTP-cache stale
+data path after deployments while preserving offline fallback. Cache tests and
+production build pass. Visual realism remains unproven without in-game review.

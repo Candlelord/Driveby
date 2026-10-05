@@ -8,6 +8,7 @@ const stored = new Map();
 let calls = 0;
 let offline = false;
 let status = 200;
+let fetchOptions;
 const context = {
   URL,
   self: {
@@ -18,7 +19,8 @@ const context = {
     match: async (r) => stored.get(typeof r === 'string' ? r : r.url),
     open: async () => ({ put: async (r, response) => stored.set(r.url, response) }),
   },
-  fetch: async () => {
+  fetch: async (request, options) => {
+    fetchOptions = options;
     calls++;
     if (offline) throw new Error('offline');
     return { ok: status === 200, status, clone() { return this; } };
@@ -39,6 +41,7 @@ const world = request('world/meta.json');
 stored.set(world.url, { status: 200, old: true });
 assert.equal((await run(world)).old, undefined, 'map must refresh despite a cached copy');
 assert.equal(calls, 1);
+assert.equal(fetchOptions.cache, 'no-cache', 'world refresh must revalidate the browser HTTP cache too');
 offline = true;
 assert.equal((await run(world)).status, 200, 'cached map works offline');
 stored.set('./index.html', { html: true });

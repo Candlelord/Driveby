@@ -17,7 +17,7 @@
 //   assets     cache first. The filename carries a content hash, so a hit is
 //              always correct and a new build simply asks for new names.
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `road-trip-${VERSION}`;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
@@ -56,7 +56,8 @@ self.addEventListener('fetch', (event) => {
 /** Fresh whenever the network can be reached; cached only when it cannot. */
 async function networkFirst(request, isDocument = false) {
   try {
-    const response = await fetch(request);
+    // Network-first must also bypass a fresh-but-outdated HTTP cache entry.
+    const response = await fetch(request, { cache: 'no-cache' });
     if (response.ok) {
       const copy = response.clone();
       caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { hash1, hash2 } from './geo.js';
 import { distToSeg } from './world.js';
 import { detailLevel } from '../props/detail.js';
+import { NIGHT } from './materials.js';
 
 // Street-facing architecture, batched by material instead of one mesh per window.
 // The footprint remains authoritative: decorations never move the building.
@@ -16,6 +17,19 @@ function resources() {
     metal: new THREE.MeshStandardMaterial({ roughness: 0.65, metalness: 0.35 }),
     glass: new THREE.MeshStandardMaterial({ roughness: 0.28, metalness: 0.25 }),
   } };
+  shared.materials.glass.onBeforeCompile = (shader) => {
+    shader.uniforms.uInteriorNight = NIGHT;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aInteriorLight;\nvarying float vInteriorLight;\nvarying vec2 vInteriorUv;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInteriorLight = aInteriorLight;\nvInteriorUv = uv;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uInteriorNight;\nvarying float vInteriorLight;\nvarying vec2 vInteriorUv;')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        float curtain = 0.72 + 0.14 * sin(vInteriorUv.x * 60.0);
+        float recess = smoothstep(0.0, 0.12, vInteriorUv.y) * (1.0 - smoothstep(0.88, 1.0, vInteriorUv.y));
+        totalEmissiveRadiance += vec3(1.0, 0.68, 0.35) * vInteriorLight * uInteriorNight * curtain * recess * 1.2;`);
+  };
+  shared.materials.glass.customProgramCacheKey = () => 'facade-interiors-v1';
   return shared;
 }
 
@@ -30,13 +44,13 @@ export function buildingDetailMeshes(world, chunk) {
   const colour = new THREE.Color();
   const limit = Math.round(2200 * detailLevel());
   let count = 0;
-  const box = (type, x, y, z, w, h, d, tx, tz, nx, nz, paint) => {
+  const box = (type, x, y, z, w, h, d, tx, tz, nx, nz, paint, light = 0) => {
     if (count >= limit || w <= 0 || h <= 0) return;
     tangent.set(tx, 0, tz); outward.set(nx, 0, nz);
     matrix.makeBasis(tangent, up, outward);
     matrix.scale(scale.set(w, h, d));
     matrix.setPosition(x - ox, y, z - oz);
-    batches[type].push({ matrix: matrix.clone(), paint });
+    batches[type].push({ matrix: matrix.clone(), paint, light });
     count++;
   };
 
@@ -79,9 +93,9 @@ export function buildingDetailMeshes(world, chunk) {
       }
       if (!near) continue;
       selected = true;
-      const part = (type, along, y, offset, w, h, depth, paint = trim) =>
+      const part = (type, along, y, offset, w, h, depth, paint = trim, light = 0) =>
         box(type, p[0] + tx * along + nx * offset, y, p[1] + tz * along + nz * offset,
-          w, h, depth, tx, tz, nx, nz, paint);
+          w, h, depth, tx, tz, nx, nz, paint, light);
       // Plinth, projecting cornice and a solid parapet give the shell a silhouette.
       part('render', len / 2, base + 0.3, 0.09, len, 0.6, 0.18, accent);
       part('trim', len / 2, top - 0.12, 0.17, len + 0.2, 0.24, 0.38);
@@ -97,7 +111,9 @@ export function buildingDetailMeshes(world, chunk) {
           const w = bay * (office ? 0.9 : 0.52), h = storey * (office ? 0.78 : 0.48);
           const cy = y + storey * (office ? 0.53 : 0.58);
           part('metal', x, cy, 0.028, w + 0.17, h + 0.17, 0.07, 0x42463f);
-          part('glass', x, cy, 0.07, w, h, 0.035, office ? 0x526f80 : 0x283b42);
+          const occupancy = hash1(s * 811 + col * 17 + floor * 31 + i * 13);
+          const light = occupancy < (office ? 0.32 : 0.46) ? 0.65 + hash1(s * 719 + col + floor) * 0.35 : 0;
+          part('glass', x, cy, 0.07, w, h, 0.035, office ? 0x526f80 : 0x283b42, light);
           for (const side of [-1, 1])
             part('trim', x + side * (w / 2 + 0.065), cy, 0.14, 0.13, h + 0.28, 0.23);
           part('trim', x, cy + h / 2 + 0.07, 0.14, w + 0.26, 0.14, 0.23);
@@ -128,7 +144,13 @@ export function buildingDetailMeshes(world, chunk) {
   }
   const { cube, materials } = resources();
   return Object.entries(batches).filter(([, list]) => list.length).map(([type, list]) => {
-    const mesh = new THREE.InstancedMesh(cube, materials[type], list.length);
+    // Occupancy belongs to this chunk's instances, never to shared geometry.
+    const geometry = type === 'glass' ? cube.clone() : cube;
+    if (type === 'glass') {
+      delete geometry.userData.shared;
+      geometry.setAttribute('aInteriorLight', new THREE.InstancedBufferAttribute(new Float32Array(list.map(item => item.light)), 1));
+    }
+    const mesh = new THREE.InstancedMesh(geometry, materials[type], list.length);
     list.forEach((item, i) => { mesh.setMatrixAt(i, item.matrix); mesh.setColorAt(i, colour.setHex(item.paint)); });
     mesh.position.set(ox, 0, oz);
     mesh.castShadow = type !== 'glass'; mesh.receiveShadow = true;

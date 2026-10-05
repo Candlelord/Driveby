@@ -9,6 +9,7 @@ const server = await createServer({
     if (id.replaceAll('\\', '/').endsWith('/src/open/materials.js')) return `
       import * as THREE from 'three';
       const buildings = new THREE.MeshStandardMaterial();
+      export const NIGHT = { value: 0 };
       export function worldMaterials() { return { buildings, thatch: buildings }; }
     `;
   } }],
@@ -38,6 +39,12 @@ try {
   }
   assert.ok(instances > 50 && instances <= 2200);
   const again = buildingDetailMeshes(world, chunk);
+  const glass = meshes.find(mesh => mesh.name === 'facade glass');
+  const lights = [...glass.geometry.attributes.aInteriorLight.array];
+  assert.equal(lights.length, glass.count, 'every pane must have its own occupancy value');
+  assert.ok(lights.some(value => value > 0) && lights.some(value => value === 0), 'facade must mix occupied and dark windows');
+  assert.notEqual(glass.geometry, again.find(mesh => mesh.name === 'facade glass').geometry, 'instance light data must not leak between chunks');
+  assert.deepEqual(lights, [...again.find(mesh => mesh.name === 'facade glass').geometry.attributes.aInteriorLight.array], 'occupancy must survive chunk rebuilds');
   for (let i = 0; i < meshes.length; i++) {
     assert.deepEqual([...again[i].instanceMatrix.array], [...meshes[i].instanceMatrix.array]);
     assert.deepEqual([...again[i].instanceColor.array], [...meshes[i].instanceColor.array]);
