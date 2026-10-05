@@ -1,0 +1,185 @@
+/*
+ * Main menu and garage: paper white cut by a black diagonal, lime brush
+ * buttons, hand-roughened lettering. Shares its tokens and the `.gfx` and
+ * `.brush` classes with the rally HUD (rally/rally.css).
+ */
+
+#screens:has(.mm) {
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+body.rally-on #tilt-btn { display: none; }
+
+.mm {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  color: var(--ink);
+  font-family: var(--rl-body);
+  overflow: hidden;
+}
+.mm::before {
+  /* the paper, with a little tooth in it */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(0, 0, 0, 0.05), transparent 38%),
+    radial-gradient(circle at 70% 85%, rgba(0, 0, 0, 0.06), transparent 40%),
+    repeating-linear-gradient(94deg, rgba(0, 0, 0, 0.018) 0 2px, transparent 2px 7px),
+    var(--paper);
+}
+.mm-slab {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  clip-path: polygon(58% 0, 100% 0, 100% 100%, 41% 100%);
+}
+.mm-slab::after {
+  /* a lime stroke along the cut */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--lime);
+  clip-path: polygon(57.2% 0, 58% 0, 41.0% 100%, 40.2% 100%);
+}
+.mm-scribbles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: url(#rl-rough); }
+
+.mm-title {
+  position: absolute;
+  left: clamp(20px, 5vw, 70px);
+  top: clamp(24px, 9vh, 90px);
+  max-width: 54%;
+}
+.mm-word {
+  font-size: clamp(64px, 17vmin, 190px);
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+  text-shadow: 0.045em 0.05em 0 var(--lime);
+  transform: rotate(-4deg) skewX(-6deg);
+  transform-origin: left bottom;
+}
+.mm-word span { color: var(--paper); -webkit-text-stroke: 0.06em var(--ink); text-shadow: 0.05em 0.05em 0 var(--ink); margin-left: 0.04em; }
+.mm-tag {
+  margin-top: clamp(14px, 3vh, 28px);
+  display: inline-block;
+  padding: 6px 14px 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: clamp(11px, 1.9vmin, 16px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transform: rotate(-1.5deg);
+  clip-path: polygon(0 0, 100% 6%, 98% 100%, 1% 94%);
+}
+.mm-tag b { color: var(--lime); }
+.mm-note {
+  position: absolute;
+  left: clamp(20px, 5vw, 70px);
+  bottom: clamp(24px, 7vh, 64px);
+  max-width: 40%;
+  font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(13px, 2.1vmin, 18px);
+  line-height: 1.35;
+  transform: rotate(-2deg);
+}
+.mm-note b { background: var(--lime); padding: 0 6px; font-style: normal; }
+
+.mm-nav {
+  position: absolute;
+  right: clamp(20px, 5vw, 70px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(380px, 40vw);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2vh, 18px);
+  align-items: stretch;
+}
+.mm-nav .brush { text-align: left; padding: 0.55em 1.6em 0.7em; font-size: clamp(22px, 4vmin, 34px); line-height: 1; }
+.mm-nav .brush small { display: block; margin-top: 4px; font-family: var(--rl-body); font-style: normal; font-weight: 700; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+.mm-nav .brush.is-primary { transform: rotate(-2.4deg) scale(1.04); }
+.mm-nav .brush.ghost { background: transparent; color: var(--paper); box-shadow: inset 0 0 0 2px rgba(245, 242, 232, 0.55); clip-path: none; font-size: 16px; padding: 0.55em 1em; transform: none; }
+.mm-fine { margin-top: 6px; color: rgba(245, 242, 232, 0.55); font-size: 11px; line-height: 1.5; letter-spacing: 0.02em; }
+
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  .mm-slab { clip-path: polygon(0 52%, 100% 36%, 100% 100%, 0 100%); }
+  .mm-slab::after { clip-path: polygon(0 51.4%, 100% 35.4%, 100% 36.2%, 0 52.2%); }
+  .mm-title { max-width: 92%; top: clamp(16px, 5vh, 50px); }
+  .mm-word { font-size: clamp(60px, 20vw, 130px); }
+  .mm-note { display: none; }
+  .mm-nav { right: 50%; transform: translateX(50%); top: auto; bottom: clamp(16px, 4vh, 40px); width: min(92vw, 420px); }
+}
+@media (max-height: 520px) and (min-aspect-ratio: 1/1) {
+  .mm-nav { gap: 6px; }
+  .mm-nav .brush { font-size: 20px; padding: 0.35em 1.3em 0.5em; }
+  .mm-nav .brush small { display: none; }
+}
+
+/* --- garage --- */
+.gr {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  pointer-events: none;
+  color: var(--ink);
+  font-family: var(--rl-body);
+}
+.gr[hidden] { display: none; }
+.gr-panel {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: min(440px, 92vw);
+  padding: clamp(18px, 3.4vh, 34px) clamp(18px, 3vw, 34px) clamp(14px, 3vh, 28px);
+  background: linear-gradient(105deg, var(--paper) 0 72%, rgba(245, 242, 232, 0) 100%);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.gr-panel::-webkit-scrollbar { display: none; }
+.gr-tabs { display: flex; gap: 8px; }
+.gr-tab { appearance: none; border: 0; cursor: pointer; padding: 6px 16px 8px; background: transparent; font-family: var(--rl-display); font-style: italic; font-size: 20px; text-transform: uppercase; color: var(--ink); opacity: 0.45; transform: skewX(-8deg); }
+.gr-tab.is-on { opacity: 1; background: var(--ink); color: var(--lime); }
+.gr-name { font-size: clamp(36px, 7vmin, 60px); color: var(--ink); -webkit-text-stroke: 0; text-shadow: 0.05em 0.05em 0 var(--lime); transform: rotate(-2deg); transform-origin: left; }
+.gr-blurb { margin: 0; font-family: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive; font-style: italic; font-weight: 700; font-size: 14px; line-height: 1.4; transform: rotate(-0.8deg); }
+.gr-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 0; padding: 10px 14px; background: var(--ink); color: var(--paper); clip-path: polygon(0 0, 100% 4%, 98% 100%, 1% 96%); list-style: none; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+.gr-specs li::before { content: '▸ '; color: var(--lime); }
+.gr-label { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 6px; }
+.gr-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.gr-swatch { appearance: none; width: 34px; height: 34px; border: 3px solid var(--ink); cursor: pointer; padding: 0; clip-path: polygon(8% 0, 100% 6%, 94% 100%, 0 92%); transition: transform 0.1s; }
+.gr-swatch:hover { transform: scale(1.12); }
+.gr-swatch.is-on { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); }
+.gr-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.gr-chip { appearance: none; border: 0; cursor: pointer; padding: 7px 14px 8px; background: rgba(11, 11, 12, 0.1); color: var(--ink); font-family: var(--rl-display); font-style: italic; font-size: 15px; text-transform: uppercase; clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%); }
+.gr-chip.is-on { background: var(--ink); color: var(--lime); }
+.gr-buy { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+.gr-buy .price { font-family: var(--rl-display); font-style: italic; font-size: 28px; }
+.gr-buy .price small { display: block; font-family: var(--rl-body); font-style: normal; font-size: 11px; letter-spacing: 0.12em; font-weight: 800; opacity: 0.6; text-transform: uppercase; }
+.gr-nav { position: absolute; bottom: clamp(16px, 4vh, 40px); left: calc(min(440px, 92vw) + 18px); display: flex; gap: 12px; pointer-events: auto; }
+.gr-nav .brush { padding: 0.4em 1.2em 0.5em; font-size: clamp(20px, 3.4vmin, 28px); }
+.gr-cash { position: absolute; top: clamp(14px, 3vh, 30px); right: clamp(14px, 3vw, 30px); text-align: right; pointer-events: auto; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.gr-cash .money { font-size: clamp(30px, 6vmin, 52px); }
+.gr-looks { display: flex; gap: 6px; }
+.gr-looks .gr-chip { background: var(--ink); color: var(--paper); }
+.gr-looks .gr-chip.is-on { background: var(--lime); color: var(--ink); }
+.gr-back { position: absolute; bottom: clamp(16px, 4vh, 40px); right: clamp(16px, 3vw, 36px); pointer-events: auto; }
+.gr-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; padding: 4px 4px 14px; }
+.gr-cards canvas, .gr-cards .locked { width: 100%; height: auto; aspect-ratio: 220 / 264; display: block; box-shadow: 3px 4px 0 rgba(11, 11, 12, 0.85); transform: rotate(var(--tilt, 0deg)); }
+.gr-cards .locked { background: #cfcabb; display: grid; place-items: center; font-family: var(--rl-display); font-style: italic; font-size: 38px; color: rgba(11, 11, 12, 0.35); }
+.gr-count { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+@media (max-width: 760px), (max-aspect-ratio: 1/1) {
+  .gr-panel { width: 100%; height: 52%; top: auto; bottom: 0; background: linear-gradient(180deg, rgba(245, 242, 232, 0) 0, var(--paper) 14%); padding-top: 34px; }
+  .gr-nav { left: 14px; bottom: calc(52% + 8px); }
+  .gr-back { bottom: calc(52% + 8px); }
+}

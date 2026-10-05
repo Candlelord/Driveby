@@ -40,6 +40,8 @@ import { Garage } from './garage.js';
 import { RallyUi } from './rally/ui.js';
 import { StageRunner } from './rally/stages.js';
 import { Gates } from './rally/gates.js';
+import { GarageStage } from './garage/stage.js';
+import { GarageUi } from './garage/ui.js';
 import { Copilot } from './rally/copilot.js';
 import { Dressing } from './rally/dressing.js';
 import { Postcards, ALL_POSTCARDS } from './rally/postcards.js';
@@ -156,6 +158,29 @@ garage.onChange((g) => post.setLook(g.look));
 const collisions = new Collisions({ physics, props, sfx, dressing });
 const session = new Session(environment);
 
+// The garage replaces the world with a turntable while it is open.
+const garageStage = new GarageStage(renderer);
+garageStage.bindDrag(renderer.domElement);
+const garageUi = new GarageUi({ garage, stage: garageStage });
+let garageOpen = false;
+session.screens.hooks = {
+  stats: () => ({
+    stages: `${loadSave()?.route?.stages?.completed?.length ?? 0} of ${Object.values(ROUTES)[0].legs.filter((l) => l.stage).length}`,
+    postcards: `${garage.postcards.length} of ${ALL_POSTCARDS.length}`,
+    cash: garage.cash,
+  }),
+};
+session.screens.onGarage = () => {
+  garageOpen = true;
+  session.screens.hide();
+  garageStage.resize(window.innerWidth, window.innerHeight);
+  garageUi.open(() => {
+    garageOpen = false;
+    session.screens.reshowMenu();
+    clock.reset();
+  });
+};
+
 // Audio cannot start until the browser has seen a gesture, so the first real
 // input is what opens the context.
 const startAudio = () => {
@@ -254,6 +279,7 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
   post.setSize(width, height);
+  garageStage.resize(width, height);
 }
 window.addEventListener('resize', resize);
 // Mobile browsers collapse the address bar without firing a window resize.
@@ -278,6 +304,11 @@ function tick(now) {
   // Filtered, not raw: see loop.js. Safari's rAF jitter is what makes an
   // otherwise framerate-independent sim shimmer on an iPhone.
   const dt = clock.tick(now ?? performance.now());
+  if (garageOpen) {
+    garageStage.render(dt);
+    requestAnimationFrame(tick);
+    return;
+  }
   state.dt = dt;
   state.time += dt;
 

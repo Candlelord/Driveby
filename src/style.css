@@ -286,7 +286,7 @@ body {
   color: #ff8a8a;
 }
 
-#screens button {
+#screens .panel button {
   display: block;
   width: 100%;
   margin-top: 10px;
@@ -301,7 +301,7 @@ body {
   cursor: pointer;
 }
 
-#screens button.primary {
+#screens .panel button.primary {
   background: var(--accent);
   border-color: transparent;
   color: #06080c;

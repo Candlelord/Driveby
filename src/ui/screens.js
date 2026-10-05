@@ -1,5 +1,6 @@
 import { MOODS } from '../spotify/genreMap.js';
 import { ROUTES } from '../routes/lagosParis.js';
+import './menus.css';
 
 const MOOD_LABELS = { sad: 'Sad', chill: 'Chill', happy: 'Happy', hiphop: 'Hip-Hop' };
 
@@ -24,6 +25,9 @@ export class Screens {
     // Set by main.js when there is saved progress: { title, sub }. When there
     // is, picking up where you left off is the default.
     this.resume = null;
+    // Set by main.js: { stats() } for the menu, and onGarage() to open the garage.
+    this.hooks = null;
+    this.onGarage = null;
   }
 
   offerResume(resume) {
@@ -71,33 +75,68 @@ export class Screens {
     this.root.classList.add('is-open');
   }
 
+  /**
+   * The main menu: a paper-white sheet cut by a black diagonal, the title
+   * painted across the cut, the ways to play down the black side.
+   */
   showConnect({ configured, error }) {
+    this._menuArgs = { configured, error };
+    const stats = this.hooks?.stats?.() ?? null;
+    const resume = this.resume;
+    const trips = Object.values(ROUTES);
+    const route = trips[0];
     this._open(`
-      <div class="panel">
-        <h1>Endless Road Trip</h1>
-        <p class="lede">Your library becomes the road. Songs play in mood blocks,
-        and the country and the weather change with them.</p>
-        ${this._tripPicker()}
+      <div class="mm">
+        <div class="mm-slab"></div>
+        <svg class="mm-scribbles" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M5 63 C 14 59, 24 66, 36 61" fill="none" stroke="#c6f000" stroke-width="1.1" stroke-linecap="round"/>
+          <path d="M8 66 C 18 63, 26 69, 34 65" fill="none" stroke="#0b0b0c" stroke-width="0.5" stroke-linecap="round"/>
+          <path d="M43 12 l3 5 l-6 -1 z M47 8 l1.4 3 l-3 -0.4 z" fill="#c6f000"/>
+          <path d="M31 83 q4 -6 9 -2 t 8 -3" fill="none" stroke="#0b0b0c" stroke-width="0.6" stroke-linecap="round"/>
+        </svg>
+        <header class="mm-title">
+          <div class="mm-word gfx">Drive<span>by</span></div>
+          <div class="mm-tag">a rally · Lagos <b>→</b> Paris <b>→</b> Amsterdam</div>
+        </header>
         ${
-          configured
-            ? `<button class="primary" data-action="connect">Connect Spotify</button>`
-            : `<p class="note">No Spotify client ID is configured, so the live
-                connection is unavailable in this build. You can still drive, and
-                still see the classifier and review screen running against a
-                stand-in library.</p>`
+          stats
+            ? `<p class="mm-note">stages done: <b>${stats.stages}</b><br/>postcards: <b>${stats.postcards}</b><br/>garage: <b>$${stats.cash.toLocaleString('en-GB')}</b></p>`
+            : ''
         }
-        <button class="ghost" data-action="skip">
-          ${configured ? 'Just drive' : 'Continue'}
-        </button>
-        ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
-        <p class="fineprint">Nothing is ever written back to your Spotify account.
-        Your mood corrections stay on this device.</p>
-      </div>
-    `);
+        <nav class="mm-nav">
+          ${resume ? `<button class="brush is-primary" data-trip="resume">Continue<small>${escapeHtml(resume.sub)}</small></button>` : ''}
+          ${trips
+            .map(
+              (r, i) =>
+                `<button class="brush${!resume && i === 0 ? ' is-primary' : ' alt'}" data-trip="${r.id}">${escapeHtml(r.title.replace('→', '→'))}${'<small>a rally in ' + r.legs.filter((l) => l.stage).length + ' stages</small>'}</button>`
+            )
+            .join('')}
+          <button class="brush alt" data-trip="endless">Endless drive<small>your music picks the places</small></button>
+          <button class="brush alt" data-action="garage">Garage<small>cars, paint, postcards</small></button>
+          ${configured ? '<button class="brush ghost" data-action="connect">Connect Spotify</button>' : ''}
+          ${
+            configured
+              ? ''
+              : '<p class="mm-fine">Spotify is not set up in this build, so music runs from a stand-in playlist. Nothing is ever written to your account.</p>'
+          }
+          ${error ? `<p class="mm-fine" style="color:#ff3d8b">${escapeHtml(error)}</p>` : ''}
+        </nav>
+      </div>`);
+    void route;
 
-    this._wireTripPicker();
+    this.root.querySelectorAll('[data-trip]').forEach((button) =>
+      button.addEventListener('click', () => {
+        this.trip = button.dataset.trip;
+        this.onSkip();
+      })
+    );
+    this.root.querySelector('[data-action="garage"]').addEventListener('click', () => this.onGarage?.());
     this.root.querySelector('[data-action="connect"]')?.addEventListener('click', () => this.onConnect());
-    this.root.querySelector('[data-action="skip"]').addEventListener('click', () => this.onSkip());
+  }
+
+  /** Back to the menu as it was (after the garage). */
+  reshowMenu() {
+    if (this._menuArgs) this.showConnect(this._menuArgs);
   }
 
   showLoading(stage, progress) {
