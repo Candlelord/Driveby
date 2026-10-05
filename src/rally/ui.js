@@ -40,6 +40,8 @@ export class RallyUi {
         <div class="trip"></div>
       </div>
       <div class="rl-dial"><div class="readout"><span class="kmh">0</span><small>km/h</small></div></div>
+      <div class="rl-fuel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15zM15 9h2.2a1.8 1.8 0 0 1 1.8 1.8V16a1 1 0 0 0 2 0V8.4L18.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7.5 6.5h5v4h-5z" fill="currentColor"/></svg><div class="bar"><i></i></div></div>
+      <div class="rl-fuelhint"></div>
       <button class="rl-voice" aria-label="Co-driver voice" title="Co-driver voice (V)"></button>
       <div class="rl-count gfx"></div>
       <div class="rl-split"><span class="what"></span><span class="delta"></span></div>
@@ -83,6 +85,9 @@ export class RallyUi {
     this.keys = q('.rl-keys');
     this.resultsEl = q('.rl-results');
     this.kmhEl = q('.kmh');
+    this.fuelEl = q('.rl-fuel');
+    this.fuelFill = q('.rl-fuel .bar i');
+    this.fuelHint = q('.rl-fuelhint');
 
     this.voiceEl = q('.rl-voice');
     this.onVoiceToggle = () => {};
@@ -154,6 +159,26 @@ export class RallyUi {
         ? '<path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
         : '<path d="M15 9l6 6M21 9l-6 6" fill="none" stroke="#ff3d8b" stroke-width="2" stroke-linecap="round"/>'
     }</svg>`;
+  }
+
+  /** The fuel gauge, and the nudge toward a station. */
+  setFuel({ level, refuelling, out, hint, price }) {
+    const pct = Math.round(level * 100);
+    if (pct !== this._last.fuel) {
+      this._last.fuel = pct;
+      this.fuelFill.style.width = pct + "%";
+    }
+    const mode = out ? "out" : refuelling ? "filling" : level < 0.2 ? "low" : "";
+    if (mode !== this._last.fuelMode) {
+      this._last.fuelMode = mode;
+      this.fuelEl.className = "rl-fuel " + mode;
+    }
+    const text = refuelling ? "filling · $" + price + " a tank" : out ? "out of fuel · crawl on" : hint;
+    if (text !== this._last.fuelText) {
+      this._last.fuelText = text;
+      this.fuelHint.textContent = text;
+      this.fuelHint.classList.toggle("is-on", Boolean(text));
+    }
   }
 
   /** Per-frame: the speedometer. */

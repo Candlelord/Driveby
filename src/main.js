@@ -44,6 +44,7 @@ import { Gates } from './rally/gates.js';
 import { GarageStage } from './garage/stage.js';
 import { GarageUi } from './garage/ui.js';
 import { Copilot } from './rally/copilot.js';
+import { FuelStations } from './rally/stations.js';
 import { Dressing } from './rally/dressing.js';
 import { Postcards, ALL_POSTCARDS } from './rally/postcards.js';
 
@@ -154,8 +155,10 @@ const gates = new Gates(scene);
 const dressing = new Dressing(scene);
 const postcards = new Postcards(scene, garage);
 const copilot = new Copilot({ ui: rallyUi, physics });
+const stations = new FuelStations(scene, { garage, physics, ui: rallyUi, sfx: null });
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
+stations.sfx = sfx;
 post.setLook(garage.look);
 garage.onChange((g) => post.setLook(g.look));
 const collisions = new Collisions({ physics, props, sfx, dressing });
@@ -224,6 +227,9 @@ session.onStart = (picked) => {
     route = new RouteDirector(ROUTES[trip], { environment, landmarks, ui });
     route.start(physics.travelled, resume?.route ?? null);
     input.buttonMode = rallyUi.touch;
+    physics.fuelOn = true;
+    physics.fuel = resume?.fuel ?? 1;
+    stations.setRoute(ROUTES[trip], route);
     stages = new StageRunner({ director: route, physics, ui: rallyUi, sfx, wallet: garage, copilot });
     stages.start(resume?.route?.stages ?? null);
   }
@@ -238,6 +244,7 @@ function saveGame() {
   const ok = writeSave({
     trip: onRoute ? trip : 'endless',
     travelled: physics.travelled,
+    fuel: physics.fuel,
     blockIndex: environment.blockIndex,
     route: onRoute ? { ...route.snapshot(physics.travelled), stages: stages?.snapshot() } : null,
   });
@@ -343,6 +350,7 @@ function tick(now) {
     setTimeout(() => sfx.beep(1320, 0.3, 0.2), 120);
     ui.toast('Postcard collected', `${found.caption} · ${garage.postcards.length} of ${ALL_POSTCARDS.length}`, 4);
   }
+  stations.update(state, frame);
   rallyUi.update(state);
   copilot.update(state);
   landmarks.update(state, frame, environment);
@@ -551,6 +559,7 @@ if (import.meta.env.DEV) {
     rallyUi,
     copilot,
     dressing,
+    stations,
     postcards,
     gates,
     get stages() {

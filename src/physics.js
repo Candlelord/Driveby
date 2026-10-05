@@ -8,6 +8,8 @@ import { dirtAt } from './rally/track.js';
 const GRIP_ACCEL = 34;
 const SLIDE_GAIN = 0.34; // lateral units/s of drift per unit of lateral acceleration over the limit
 const HANDBRAKE_DRAG = 12;
+const FUEL_RANGE = 15000; // units of road on a full tank
+const LIMP_SPEED = 6; // what an empty tank still manages
 const BRAKING = 9; // units/s² the governor assumes when it looks for a corner ahead
 const CORNER_LOOK = [6, 16, 30, 50, 78];
 // How much faster than the grip allows a driver will still take a corner: the
@@ -57,6 +59,9 @@ export class CarPhysics {
     this.smoke = 0; // 0..1, tyre smoke on a hard surface
     // True while the car is held on a start line.
     this.hold = false;
+    // Fuel: 1 is a full tank. Only drains on a route (see rally/stations.js).
+    this.fuel = 1;
+    this.fuelOn = false;
     // Per-car handling, from the garage: grip and speed multipliers.
     this.stats = { grip: 1, speed: 1, tank: 1 };
     // A distance to stop at: the car slows so as to rest exactly there.
@@ -94,6 +99,11 @@ export class CarPhysics {
     this._updateSteering(dt, input);
     this._updateSuspension(dt, live, shake + this.impact * 1.4);
     this.travelled += this.speed * dt;
+    if (this.fuelOn) {
+      // About three average stages to a tank, and boost drinks it.
+      const range = FUEL_RANGE * this.stats.tank;
+      this.fuel = Math.max(0, this.fuel - ((this.speed * dt) / range) * (1 + throttle * 0.8));
+    }
 
     // Collision aftermath decays away over a second or so. (The knock itself
     // is applied in _updateSteering, before the wall and verge checks.)
@@ -189,6 +199,8 @@ export class CarPhysics {
       // Rest exactly on the mark: v² = 2·a·d, with a gentle approach.
       limit = Math.min(limit, Math.sqrt(2 * 4.5 * Math.max(0, this.holdAt - this.travelled)) + 0.15);
     }
+    // An empty tank crawls.
+    if (this.fuelOn && this.fuel <= 0.001) limit = Math.min(limit, LIMP_SPEED);
     this.targetSpeed = this.hold ? 0 : limit;
 
     // Asymmetric: pulling away takes longer than easing off, which is what

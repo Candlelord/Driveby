@@ -129,6 +129,47 @@
 .rl-voice.is-off { color: rgba(245, 242, 232, 0.55); }
 .rl-voice svg { width: 100%; height: 100%; display: block; }
 
+/* --- fuel --- */
+.rl-fuel {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + clamp(118px, 21.4vmin, 178px));
+  right: calc(env(safe-area-inset-right, 0px) + 56px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 6px;
+  height: 26px;
+  background: var(--ink);
+  color: var(--paper);
+  clip-path: polygon(3% 0, 100% 8%, 97% 100%, 0 92%);
+}
+.rl-fuel svg { width: 17px; height: 17px; flex: none; }
+.rl-fuel .bar { width: clamp(54px, 9vmin, 84px); height: 7px; background: rgba(245, 242, 232, 0.22); transform: skewX(-22deg); overflow: hidden; }
+.rl-fuel .bar i { display: block; height: 100%; width: 100%; background: var(--lime); }
+.rl-fuel.low .bar i, .rl-fuel.out .bar i { background: var(--pink); }
+.rl-fuel.low { animation: rl-blink 0.9s steps(2) infinite; }
+.rl-fuel.out { animation: rl-blink 0.5s steps(2) infinite; }
+.rl-fuel.filling .bar i { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+@keyframes rl-blink { 50% { opacity: 0.45; } }
+.rl-fuelhint {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%) rotate(-1deg);
+  padding: 6px 18px 8px;
+  background: var(--lime);
+  color: var(--ink);
+  font-family: var(--rl-display);
+  font-style: italic;
+  font-size: clamp(18px, 3.2vmin, 28px);
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: polygon(2% 0, 100% 8%, 98% 100%, 0 92%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.rl-fuelhint.is-on { opacity: 1; }
+
 /* --- countdown, centre --- */
 .rl-count {
   position: absolute;
