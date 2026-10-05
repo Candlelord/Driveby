@@ -246,7 +246,7 @@ export class Car {
 
     // Suspension bob and body roll both come from the physics model now.
     this.group.position.set(state.lateral, HERE.y + state.bob, 0);
-    this.group.rotation.set(pitch, -state.steer * 0.1 + (state.impactYaw ?? 0), state.roll);
+    this.group.rotation.set(pitch, -state.steer * 0.1 + (state.impactYaw ?? 0) + (state.bodyYaw ?? 0), state.roll);
 
     this.spin -= (state.speed / WHEEL_RADIUS) * state.dt;
     for (const wheel of this.wheels) {

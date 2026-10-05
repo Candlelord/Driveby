@@ -20,12 +20,61 @@ const Y_TERMS = [
   [1.8, 0.0087, 2.3],
 ];
 
+// Rally corners. Added on top of the gentle highway curve, scaled by a
+// "windiness" profile that is itself a function of distance (see
+// setWindProfile), so the road stays a pure function of `s`. At full wind the
+// tightest bends have a radius a little over ten metres and the heading swings
+// well past fifty degrees — hairpins, rather than lazy sweeps.
+const RALLY_TERMS = [
+  [22, 0.04, 0.9],
+  [10, 0.075, 2.2],
+  [3.5, 0.11, 4.7],
+];
+
+let wind = () => 0;
+
+/**
+ * Install how twisty the road is along its length: `fn(s)` returns 0 (the
+ * ordinary highway curve) to 1 (full rally). Must be smooth and must not
+ * depend on anything but `s`, or scenery already placed would no longer sit on
+ * the road.
+ */
+export function setWindProfile(fn) {
+  wind = fn ?? (() => 0);
+}
+
+/** A piecewise-smooth profile from [s, value] breakpoints (smoothstep between). */
+export function profileFrom(points) {
+  if (!points.length) return () => 0;
+  let hint = 0;
+  return (s) => {
+    if (s <= points[0][0]) return points[0][1];
+    const last = points.length - 1;
+    if (s >= points[last][0]) return points[last][1];
+    if (s < points[hint][0]) hint = 0;
+    while (hint < last - 1 && s >= points[hint + 1][0]) hint++;
+    const [s0, v0] = points[hint];
+    const [s1, v1] = points[hint + 1];
+    const t = (s - s0) / (s1 - s0);
+    return v0 + (v1 - v0) * t * t * (3 - 2 * t);
+  };
+}
+
 /** Lateral position of the centreline at distance `s`. */
 export function roadX(s) {
   let x = 0;
   for (let i = 0; i < X_TERMS.length; i++) {
     const [a, f, p] = X_TERMS[i];
     x += a * Math.sin(s * f + p);
+  }
+  const w = wind(s);
+  if (w > 0) {
+    let r = 0;
+    for (let i = 0; i < RALLY_TERMS.length; i++) {
+      const [a, f, p] = RALLY_TERMS[i];
+      r += a * Math.sin(s * f + p);
+    }
+    x += w * r;
   }
   return x;
 }
@@ -47,7 +96,27 @@ export function roadDX(s) {
     const [a, f, p] = X_TERMS[i];
     d += a * f * Math.cos(s * f + p);
   }
+  const w = wind(s);
+  if (w > 0) {
+    let r = 0;
+    let dr = 0;
+    for (let i = 0; i < RALLY_TERMS.length; i++) {
+      const [a, f, p] = RALLY_TERMS[i];
+      r += a * Math.sin(s * f + p);
+      dr += a * f * Math.cos(s * f + p);
+    }
+    // Product rule; the profile's own slope is taken numerically.
+    d += w * dr + ((wind(s + 0.5) - wind(s - 0.5)) / 1) * r;
+  }
   return d;
+}
+
+/**
+ * Signed curvature of the road at `s`, in 1/units: positive bends right, the
+ * radius of the bend is 1 / |curvature|.
+ */
+export function curvature(s) {
+  return (heading(s + 2) - heading(s - 2)) / 4;
 }
 
 /**

@@ -49,6 +49,10 @@ export class Input {
     /** 0..1 — how hard the driver is asking for speed. */
     this.throttle = 0;
     this._throttleHeld = false;
+    /** The handbrake: Space, S or the down arrow, or the on-screen button. */
+    this.handbrake = false;
+    this._handbrakeKeys = false;
+    this._handbrakeButton = false;
 
     this._keys = new Set();
     this._pointerId = null;
@@ -83,6 +87,7 @@ export class Input {
       1
     );
 
+    this.handbrake = this._handbrakeKeys || this._handbrakeButton;
     this._drawStick();
   }
 
@@ -108,13 +113,22 @@ export class Input {
       this.keyboard = clamp(value, -1, 1);
     };
 
-    const isGo = (key) => key === 'ArrowUp' || key === 'w' || key === 'W' || key === ' ';
+    const isGo = (key) => key === 'ArrowUp' || key === 'w' || key === 'W';
+    const isBrake = (key) => key === ' ' || key === 's' || key === 'S' || key === 'ArrowDown';
+    const brakes = new Set();
 
     window.addEventListener('keydown', (event) => {
       if (event.repeat) return;
       if (isGo(event.key)) {
         event.preventDefault();
         this._throttleHeld = true;
+        this.hasInput = true;
+        return;
+      }
+      if (isBrake(event.key)) {
+        event.preventDefault();
+        brakes.add(event.key);
+        this._handbrakeKeys = true;
         this.hasInput = true;
         return;
       }
@@ -127,6 +141,10 @@ export class Input {
 
     window.addEventListener('keyup', (event) => {
       if (isGo(event.key)) this._throttleHeld = false;
+      if (isBrake(event.key)) {
+        brakes.delete(event.key);
+        this._handbrakeKeys = brakes.size > 0;
+      }
       this._keys.delete(event.key);
       recompute();
     });
@@ -135,6 +153,8 @@ export class Input {
       this._keys.clear();
       this.keyboard = 0;
       this._throttleHeld = false;
+      brakes.clear();
+      this._handbrakeKeys = false;
     });
   }
 

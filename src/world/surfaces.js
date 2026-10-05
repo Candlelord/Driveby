@@ -529,6 +529,54 @@ export function withPuddles(material, wetness, aspect = 1) {
   return material;
 }
 
+/**
+ * A road that turns to dirt. `aDirt` is a per-vertex 0..1 (see Ribbon's
+ * rowAttribute); where it is up, the asphalt becomes packed earth in the
+ * colour `dirtColor` (a uniform object the caller drives): two darker, smoother
+ * wheel ruts, a loose crown down the middle, pale gravel flecks, and a rough,
+ * matte finish.
+ */
+export function withDirt(material, dirtColor) {
+  const macro = macroMap();
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.call(material, shader, renderer);
+    shader.uniforms.uDirtColor = dirtColor;
+    shader.uniforms.dirtNoise = { value: macro };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float aDirt;\nvarying float vDirt;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDirt = aDirt;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vDirt;\nuniform vec3 uDirtColor;\nuniform sampler2D dirtNoise;')
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        float dirtMix = smoothstep( 0.02, 0.5, vDirt );
+        float across = vMapUv.x;
+        float rutA = exp( -pow( ( across - 0.29 ) / 0.075, 2.0 ) );
+        float rutB = exp( -pow( ( across - 0.71 ) / 0.075, 2.0 ) );
+        float rut = max( rutA, rutB );
+        float crown = exp( -pow( ( across - 0.5 ) / 0.13, 2.0 ) );
+        float coarse = texture2D( dirtNoise, vMapUv * vec2( 1.6, 4.0 ) ).r;
+        float fine = texture2D( dirtNoise, vMapUv * vec2( 9.0, 22.0 ) + 0.4 ).r;
+        float fleck = step( 0.86, texture2D( dirtNoise, vMapUv * vec2( 15.0, 38.0 ) + 0.7 ).r );
+        vec3 earth = uDirtColor * ( 0.78 + coarse * 0.34 + ( fine - 0.5 ) * 0.22 );
+        earth *= 1.0 - rut * 0.26;
+        earth = mix( earth, earth * 1.18 + 0.03, crown * 0.5 );
+        earth += fleck * 0.07;
+        diffuseColor.rgb = mix( diffuseColor.rgb, earth, dirtMix );`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        roughnessFactor = mix( roughnessFactor, 0.96 - rut * 0.18, dirtMix );`
+      );
+  };
+  const key = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () => `dirt-${key ? key() : ''}`;
+  return material;
+}
+
 function glsl(value) {
   const s = String(Number(value.toFixed(6)));
   return s.includes('.') || s.includes('e') ? s : s + '.0';

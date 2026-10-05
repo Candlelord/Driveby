@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { installTrack, clearTrack } from '../rally/track.js';
 
 // Game units per leg. Real distance would make Lagos → Amsterdam a sixty-hour
 // drive; a straight scale would make the 128 km to Ibadan a blink beside the
@@ -60,6 +61,7 @@ export class RouteDirector {
     this.origin = travelled - progress;
     this.ferriesDone = new Set(resume?.ferriesDone ?? []);
     this.fade = null;
+    installTrack(this.route, { origin: this.origin, legStarts: this.legStarts, legLengths: this.legLengths });
 
     const pending = this._pendingFerryAt(progress);
     this.legIndex = pending ?? this._legAt(progress);

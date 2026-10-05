@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { Ribbon } from './ribbon.js';
-import { asphaltMaps, gravelMaps, paintMap, withMacroVariation, withPuddles } from './surfaces.js';
+import { asphaltMaps, gravelMaps, paintMap, withDirt, withMacroVariation, withPuddles } from './surfaces.js';
+import { dirtAt } from '../rally/track.js';
 
 const NEAR_LEFT = new THREE.Vector3();
 const NEAR_RIGHT = new THREE.Vector3();
@@ -32,11 +33,15 @@ export class Road {
     // whose polished wheel tracks are what a wet road lights up first.
     const asphalt = asphaltMaps();
     this.wetness = { value: 0 };
+    this.dirtColor = { value: new THREE.Color(0x7a6448) };
     this.surfaceMaterial = withPuddles(
-      withMacroVariation(
-        surface(0x3a4048, { ...asphalt, normalScale: new THREE.Vector2(0.3, 0.3) }),
-        [1, 9],
-        0.14
+      withDirt(
+        withMacroVariation(
+          surface(0x3a4048, { ...asphalt, normalScale: new THREE.Vector2(0.3, 0.3) }),
+          [1, 9],
+          0.14
+        ),
+        this.dirtColor
       ),
       this.wetness,
       ROAD_TILE / (2 * inner)
@@ -62,6 +67,7 @@ export class Road {
       material: this.surfaceMaterial,
       uv: { u: (w) => (w + inner) / (2 * inner), length: ROAD_TILE },
       smoothNormals: true,
+      rowAttribute: { name: 'aDirt', value: dirtAt },
     });
 
     // Two edge stripes in one ribbon; quad 1 (the gap across the road) is dropped.
@@ -201,11 +207,16 @@ export class Road {
 
     const live = state.live;
     this.surfaceMaterial.color.copy(live.roadColor);
-    this.lineMaterial.color.copy(live.lineColor);
+    // Earth takes the colour of the country it crosses, lightened and warmed.
+    this.dirtColor.value.copy(live.groundColor).lerp(DIRT_WARM, 0.45).multiplyScalar(1.12);
+    // Where the road turns to dirt the edge paint goes with it: the strip
+    // becomes the same earth as the road, and the dashes stop (see below).
+    this.lineMaterial.color.copy(live.lineColor).lerp(this.dirtColor.value, Math.min(1, (state.dirt ?? 0) * 1.4));
     this.dashMaterial.color.copy(live.dashColor);
     this.shoulderMaterial.color
       .copy(live.shoulderColor)
-      .lerp(live.groundTint, live.groundTintStrength * 0.85);
+      .lerp(live.groundTint, live.groundTintStrength * 0.85)
+      .lerp(this.dirtColor.value, (state.dirt ?? 0) * 0.85);
 
     // Wet moods drop the roughness so the key light lays a sheen down the
     // asphalt — the cheapest "it has been raining" cue there is.
@@ -230,6 +241,10 @@ export class Road {
     while (drawn < this.maxDashes && index < firstIndex + this.rows) {
       const s0 = index * segmentLength;
       const s1 = s0 + DASH_LENGTH;
+      if (dirtAt(s0) > 0.3) {
+        index += 2;
+        continue;
+      }
 
       frame.setRow(s0);
       frame.column(-DASH_HALF_WIDTH, LINE_LIFT, NEAR_LEFT);
@@ -262,6 +277,7 @@ function writeVertex(array, offset, v) {
 }
 
 const ROAD_TILE = 12;
+const DIRT_WARM = new THREE.Color(0x9a7650);
 const KERB_WIDTH = 0.38;
 const KERB_HEIGHT = 0.16;
 const KERB_BLOCK = 1; // metres per painted block

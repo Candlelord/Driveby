@@ -20,6 +20,7 @@ export class Ribbon {
     vertexColors = false,
     uv = null,
     smoothNormals = false,
+    rowAttribute = null,
   }) {
     this.columns = columns;
     this.rows = rows;
@@ -48,6 +49,14 @@ export class Ribbon {
         for (let c = 0; c < columns.length; c++) this.uvs[(r * columns.length + c) * 2] = uv.u(columns[c]);
       }
       geometry.setAttribute('uv', new THREE.BufferAttribute(this.uvs, 2));
+    }
+
+    // One float per vertex, the same for every column of a row: `value(s)` of
+    // the row's distance, for materials that change along the road.
+    this.rowAttribute = rowAttribute;
+    if (rowAttribute) {
+      this.rowValues = new Float32Array(vertexCount);
+      geometry.setAttribute(rowAttribute.name, new THREE.BufferAttribute(this.rowValues, 1));
     }
 
     if (vertexColors) {
@@ -90,6 +99,10 @@ export class Ribbon {
     for (let r = 0; r < this.rows; r++) {
       const s = distanceForRow(r);
       frame.setRow(s);
+      if (this.rowValues) {
+        const value = this.rowAttribute.value(s);
+        for (let c = 0; c < columns.length; c++) this.rowValues[r * columns.length + c] = value;
+      }
       if (uvs) {
         const v = (s - origin) / uvSpec.length;
         for (let c = 0; c < columns.length; c++) uvs[(r * columns.length + c) * 2 + 1] = v;
@@ -112,6 +125,7 @@ export class Ribbon {
     this.geometry.attributes.position.needsUpdate = true;
     if (colors) this.geometry.attributes.color.needsUpdate = true;
     if (uvs) this.geometry.attributes.uv.needsUpdate = true;
+    if (this.rowValues) this.geometry.attributes[this.rowAttribute.name].needsUpdate = true;
     // Smooth shading needs real normals; cheap at ribbon vertex counts.
     if (this.smoothNormals) this.geometry.computeVertexNormals();
   }

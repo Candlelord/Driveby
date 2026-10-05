@@ -88,7 +88,7 @@ export const LAGOS_PARIS = {
     { km: 315, regions: [['marseilleCity', 0], ['lavenderFields', 0.1], ['orchardHills', 0.55], ['lyonCity', 0.92]] },
     {
       km: 465,
-      regions: [['lyonCity', 0], ['wheatFields', 0.08], ['ruralCrossroads', 0.45], ['parisCity', 0.78]],
+      regions: [['lyonCity', 0], ['wheatFields', 0.08], ['pineForest', 0.24], ['ruralCrossroads', 0.64], ['parisCity', 0.78]],
       landmarks: [['eiffelTower', 0.96]],
     },
     {
@@ -105,5 +105,33 @@ export const LAGOS_PARIS = {
     },
   ],
 };
+
+/**
+ * Every leg is a timed rally stage. `surface` is [type, fraction-of-leg-where-
+ * it-begins]; the first and last tenth of a leg are the cities either side, so
+ * stages only get loose and twisty between them. `wind` is how twisty (0 the
+ * ordinary highway curve, 1 hairpins). The names are the game's own.
+ */
+const STAGES = [
+  { name: 'Lagoon Run', surface: [['tarmac', 0]], wind: 0.25 },
+  { name: 'Cocoa Belt Sprint', surface: [['tarmac', 0], ['gravel', 0.4]], wind: 0.45 },
+  { name: 'Niger Bend', surface: [['tarmac', 0], ['gravel', 0.15], ['tarmac', 0.62]], wind: 0.6 },
+  { name: 'Granite Hills', surface: [['tarmac', 0]], wind: 0.6 },
+  { name: 'Harmattan Road', surface: [['tarmac', 0], ['gravel', 0.3], ['tarmac', 0.7]], wind: 0.4 },
+  { name: 'Border Dust', surface: [['gravel', 0], ['dirt', 0.25]], wind: 0.6 },
+  { name: 'Sahel Piste', surface: [['dirt', 0]], wind: 0.55 },
+  { name: 'Hoggar Crossing', surface: [['dirt', 0], ['gravel', 0.7]], wind: 0.8 },
+  { name: 'Tidikelt Track', surface: [['dirt', 0], ['gravel', 0.75]], wind: 0.6 },
+  { name: 'M’zab Run', surface: [['gravel', 0], ['tarmac', 0.75]], wind: 0.55 },
+  { name: 'Atlas Climb', surface: [['tarmac', 0]], wind: 1 },
+  null, // the ferry
+  { name: 'Lavender Stage', surface: [['tarmac', 0], ['gravel', 0.25], ['tarmac', 0.7]], wind: 0.7 },
+  { name: 'Morvan Forest', surface: [['tarmac', 0], ['dirt', 0.24], ['tarmac', 0.64]], wind: 1 },
+  { name: 'Ardennes Hustle', surface: [['tarmac', 0]], wind: 0.6 },
+  { name: 'Polder Dash', surface: [['tarmac', 0]], wind: 0.25 },
+];
+LAGOS_PARIS.legs.forEach((leg, i) => {
+  leg.stage = STAGES[i];
+});
 
 export const ROUTES = { [LAGOS_PARIS.id]: LAGOS_PARIS };

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { softDotTexture } from './textures.js';
 
+const DUST_LIGHT = new THREE.Color(0xd2bc96);
+const SMOKE = new THREE.Color(0xc8c8c6);
+
 /**
  * Small moving life: birds on the wing, fireflies at night, exhaust off the
  * car and spray off the tyres.
@@ -16,6 +19,7 @@ export class Atmosphere {
     this._buildFireflies(scene, Math.max(24, Math.round(90 * scale)));
     this._buildExhaust(scene, Math.max(20, Math.round(60 * scale)));
     this._buildSpray(scene, Math.max(30, Math.round(110 * scale)));
+    this._buildDust(scene, Math.max(48, Math.round(170 * scale)));
   }
 
   _points(scene, count, { size, color, opacity = 0, blending = THREE.NormalBlending }) {
@@ -72,12 +76,20 @@ export class Atmosphere {
     for (let i = 0; i < count; i++) this.sprayAge[i] = Math.random();
   }
 
+  /** Dust off a gravel road, or tyre smoke off a hard one: one cloud, two colours. */
+  _buildDust(scene, count) {
+    this.dust = this._points(scene, count, { size: 1.6, color: 0xb59a74 });
+    this.dustAge = new Float32Array(count);
+    for (let i = 0; i < count; i++) this.dustAge[i] = Math.random();
+  }
+
   update(state) {
     const live = state.live;
     this._updateBirds(state, live);
     this._updateFireflies(state, live);
     this._updateExhaust(state, live);
     this._updateSpray(state, live);
+    this._updateDust(state, live);
   }
 
   /**
@@ -152,6 +164,38 @@ export class Atmosphere {
     geometry.attributes.position.needsUpdate = true;
     material.opacity = amount * 0.22;
     material.size = 0.5 + amount * 0.7;
+  }
+
+  /**
+   * Thrown up by the rear wheels. It billows backwards and up, spreads wider
+   * the more the car is sliding, and takes the colour of the ground it was
+   * kicked off (or, on tarmac, the grey of burnt rubber).
+   */
+  _updateDust(state, live) {
+    const amount = Math.min(1, Math.max(state.spray ?? 0, state.smoke ?? 0));
+    this.dust.points.visible = amount > 0.06;
+    if (!this.dust.points.visible) return;
+
+    const { positions, count, geometry, material } = this.dust;
+    const slip = state.slip ?? 0;
+    const side = Math.sign(state.slide || 0);
+    const rate = state.dt * (0.55 + amount * 0.5);
+    for (let i = 0; i < count; i++) {
+      let age = this.dustAge[i] + rate;
+      if (age > 1) age -= 1;
+      this.dustAge[i] = age;
+      const wheel = i % 2 ? 1 : -1;
+      const spread = age * (0.8 + slip * 3.2);
+      positions[i * 3] = state.lateral + wheel * 0.9 + Math.sin(i * 4.7) * spread - side * age * slip * 2.5;
+      positions[i * 3 + 1] = 0.25 + age * (0.9 + amount * 1.9) + Math.abs(Math.cos(i * 1.9)) * age * 0.8;
+      positions[i * 3 + 2] = 1.7 + age * (7 + state.speed * 0.5);
+    }
+    geometry.attributes.position.needsUpdate = true;
+    // Fades in, then out: a puff, not a trail of dots.
+    material.opacity = amount * 0.34;
+    material.size = 1.2 + amount * 2.1 + slip * 0.8;
+    const hard = 1 - (state.dirt ?? 0);
+    material.color.copy(live.groundColor).lerp(DUST_LIGHT, 0.42).lerp(SMOKE, hard);
   }
 
   /** Wheel spray — only on a wet road, and only while actually moving. */

@@ -1,4 +1,18 @@
 import { CONFIG } from './config.js';
+import { curvature } from './path.js';
+import { dirtAt } from './rally/track.js';
+
+// Lateral acceleration (units/s²) a car on dry tarmac can hold in a corner.
+// Past it the car understeers toward the outside of the bend, which on gravel
+// and in the wet happens at a fraction of the speed.
+const GRIP_ACCEL = 34;
+const SLIDE_GAIN = 0.34; // lateral units/s of drift per unit of lateral acceleration over the limit
+const HANDBRAKE_DRAG = 12;
+const BRAKING = 9; // units/s² the governor assumes when it looks for a corner ahead
+const CORNER_LOOK = [6, 16, 30, 50, 78];
+// How much faster than the grip allows a driver will still take a corner: the
+// margin is what the slide and the handbrake are for.
+const CORNER_MARGIN = 1.22; // units/s² of deceleration with the handbrake hard on
 
 /**
  * Arcade car feel — not a simulation.
@@ -29,6 +43,20 @@ export class CarPhysics {
     // when the car meets it.
     this.wall = null;
     this.wallHit = 0;
+
+    // Rally handling (see _updateRally). `slide` is the car's drift toward the
+    // outside of a bend, in lateral units/s; `bodyYaw` is how far the nose has
+    // swung from the road's direction, for the look of it.
+    this.slide = 0;
+    this.bodyYaw = 0;
+    this.handbrake = 0; // 0..1, smoothed
+    this.slip = 0; // 0..1, how much the tyres are giving up
+    this.dirt = 0; // 0..1, how loose the road under the car is
+    this.grip = 1;
+    this.spray = 0; // 0..1.5, dust or mud being thrown up
+    this.smoke = 0; // 0..1, tyre smoke on a hard surface
+    // True while the car is held on a start line.
+    this.hold = false;
   }
 
   /**
@@ -53,7 +81,8 @@ export class CarPhysics {
    * @param {object} live blended environment profile
    * @param {number} shake extra irregular motion from an extreme weather event
    */
-  update(dt, input, live, shake = 0, throttle = 0) {
+  update(dt, input, live, shake = 0, throttle = 0, handbrake = false) {
+    this._updateRally(dt, input, live, handbrake);
     this._updateSpeed(dt, live, throttle);
     this._updateSteering(dt, input);
     this._updateSuspension(dt, live, shake + this.impact * 1.4);
@@ -66,6 +95,74 @@ export class CarPhysics {
     this.impactYaw *= Math.exp(-2.8 * dt);
   }
 
+  /**
+   * Rally handling, in the road's own frame.
+   *
+   * The road bends and the car, left alone, goes straight on: relative to the
+   * road that is a drift toward the outside of the bend. How hard it drifts is
+   * how much more lateral acceleration the corner asks for than the surface
+   * can give, `speed² × curvature − grip`. On dry tarmac the highway curves ask
+   * for almost nothing; on gravel, and in the wet, rally bends ask for a lot.
+   * Steering into the bend wins the ground back, and the slide itself scrubs
+   * speed, so a car pushed wide slows down on its own.
+   *
+   * The handbrake locks the rears: a hard stop, and the nose swings to where
+   * you are steering.
+   */
+  _updateRally(dt, input, live, handbrake) {
+    const s = this.travelled;
+    const dirt = dirtAt(s);
+    const wet = clamp((0.72 - (live.roadRoughness ?? 1)) / 0.38, 0, 1);
+    this.dirt = dirt;
+    this.grip = (1 - dirt * 0.42) * (1 - wet * 0.22);
+
+    this.handbrake += ((handbrake && !this.hold ? 1 : 0) - this.handbrake) * (1 - Math.exp(-9 * dt));
+    const hb = this.handbrake;
+
+    const bend = curvature(s + 5);
+    const needed = bend * this.speed * this.speed;
+    const available = GRIP_ACCEL * this.grip * (1 - hb * 0.5);
+    const excess = Math.max(0, Math.abs(needed) - available);
+    const target = -Math.sign(needed) * excess * SLIDE_GAIN * (1 - hb * 0.35);
+    this.slide += (target - this.slide) * (1 - Math.exp(-3.5 * dt));
+
+    // Scrub: sliding and braking cost speed. The handbrake only bites while the
+    // car is moving, so it cannot be used to reverse.
+    const scrub = Math.abs(this.slide) * 0.35 + hb * HANDBRAKE_DRAG * Math.min(1, this.speed / 14);
+    this.speed = Math.max(0, this.speed - scrub * dt);
+
+    const slipNow = clamp(Math.abs(this.slide) / 5.5 + hb * (this.speed > 6 ? 0.9 : 0), 0, 1.2);
+    this.slip += (slipNow - this.slip) * (1 - Math.exp(-6 * dt));
+
+    // The nose: into the bend as the tyres give up, and wherever you are
+    // steering when the rears are locked.
+    const into = -Math.sign(bend) * Math.min(0.42, this.slip * 0.36 + Math.min(0.12, Math.abs(bend) * this.speed * 0.2) * dirt);
+    const yawTarget = into - input * 0.3 * hb;
+    this.bodyYaw += (yawTarget - this.bodyYaw) * (1 - Math.exp(-5 * dt));
+
+    const fast = Math.min(1.2, this.speed / CONFIG.speed);
+    this.spray = clamp(dirt * fast * (0.3 + this.slip * 1.1), 0, 1.5);
+    this.smoke = clamp((1 - dirt) * (this.slip - 0.3) * 1.6, 0, 1);
+  }
+
+  /**
+   * The fastest the car should be going now, given the bends it can see. Each
+   * look-ahead point allows the speed its own bend permits plus what braking
+   * can shed over the distance to it (v² = vSafe² + 2·a·d), and the slowest of
+   * them wins — so the car is already down to speed when it gets there.
+   */
+  _cornerSpeed() {
+    const available = GRIP_ACCEL * this.grip;
+    let allowed = Infinity;
+    for (const d of CORNER_LOOK) {
+      const bend = Math.abs(curvature(this.travelled + d));
+      if (bend < 0.0005) continue;
+      const safe = Math.sqrt(available / bend) * CORNER_MARGIN;
+      allowed = Math.min(allowed, Math.sqrt(safe * safe + 2 * BRAKING * d));
+    }
+    return allowed;
+  }
+
   _updateSpeed(dt, live, throttle) {
     // Each terrain set has its own comfortable cruise: open highway runs
     // faster than a forest or a mountain pass.
@@ -74,13 +171,18 @@ export class CarPhysics {
     // than replacing it, so a mountain pass still feels slower flat out than an
     // open highway does — the boost is the driver leaning on it, not a
     // different road.
-    this.cruise = CONFIG.speed * live.speedScale;
-    this.targetSpeed = this.cruise * (1 + throttle * (CONFIG.boostScale - 1));
+    this.cruise = CONFIG.speed * live.speedScale * (1 - this.dirt * 0.1);
+    // The pedal asks for more than the road allows: the governor lifts for a
+    // corner ahead unless the throttle is held, which carries the speed in
+    // and lets the car push wide.
+    const wanted = this.cruise * (1 + throttle * (CONFIG.boostScale - 1));
+    const governed = this._cornerSpeed() * (1 + throttle * 0.9);
+    this.targetSpeed = this.hold ? 0 : Math.min(wanted, governed);
 
     // Asymmetric: pulling away takes longer than easing off, which is what
     // makes a standing start feel like effort rather than a jump cut.
     const gap = this.targetSpeed - this.speed;
-    const rate = gap > 0 ? CONFIG.accelRate : CONFIG.brakeRate;
+    const rate = gap > 0 ? CONFIG.accelRate : this.hold ? 6 : CONFIG.brakeRate;
 
     // Acceleration falls off as the car approaches its cap, so the last few
     // units per second take the longest — a torque curve without the maths.
@@ -102,8 +204,11 @@ export class CarPhysics {
     // car covers ground faster but does not also change lanes faster, which is
     // what keeps a boost controllable instead of skittish.
     const speedFactor = Math.min(1.25, this.speed / CONFIG.speed);
-    this.lateral += this.steer * CONFIG.steerRate * speedFactor * dt;
+    // A loose surface gives the front tyres less to bite on, so the same lock
+    // moves the car a little less.
+    this.lateral += this.steer * CONFIG.steerRate * speedFactor * (1 - this.dirt * 0.16) * dt;
     this.lateral += this.knock * dt;
+    this.lateral += this.slide * dt;
 
     // In a street the buildings are a hard edge: the car stops against them,
     // and how fast it was moving sideways says how hard it hit.

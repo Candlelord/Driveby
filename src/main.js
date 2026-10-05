@@ -297,7 +297,7 @@ function tick(now) {
 }
 
 function updateDriving(dt) {
-  physics.update(dt, input.value, state.live, state.live.shake, input.throttle);
+  physics.update(dt, input.value, state.live, state.live.shake, input.throttle, input.handbrake);
 
   state.travelled = physics.travelled;
   state.lateral = physics.lateral;
@@ -307,6 +307,13 @@ function updateDriving(dt) {
   state.bob = physics.bob;
   state.edgePressure = physics.edgePressure;
   state.impactYaw = physics.impactYaw;
+  state.bodyYaw = physics.bodyYaw;
+  state.slide = physics.slide;
+  state.slip = physics.slip;
+  state.dirt = physics.dirt;
+  state.spray = physics.spray;
+  state.smoke = physics.smoke;
+  state.handbrake = physics.handbrake;
   state.throttle = input.throttle;
 }
 
@@ -384,7 +391,10 @@ function updateCamera(dt) {
   // Bank into the corner. Curvature comes from the road itself rather than the
   // player's steering, so the horizon tilts with the bend, not with a tap.
   const curvature = heading(state.travelled + 55) - state.heading;
-  cameraRoll += (curvature * CONFIG.camRoll - cameraRoll) * (1 - Math.exp(-2.4 * dt));
+  // Capped: a hairpin turns the road by a radian or more, and the horizon
+  // should lean into it, not fall over.
+  const lean = Math.max(-0.16, Math.min(0.16, curvature * CONFIG.camRoll));
+  cameraRoll += (lean - cameraRoll) * (1 - Math.exp(-2.4 * dt));
   camera.rotateZ(cameraRoll + (physics.shakeRoll ?? 0));
 
   // Field of view is part of each mood: wide and open for happy, tighter and
