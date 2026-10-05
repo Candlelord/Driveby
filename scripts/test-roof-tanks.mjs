@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { roofTankPosition, roofTankGeometry } from '../src/open/roofTank.js';
+const find = ring => roofTankPosition(ring, THREE.ShapeUtils.triangulateShape(ring.map(p=>new THREE.Vector2(...p)), []));
+assert.equal(find([[0,0],[20,0],[20,1],[0,1]]), null, 'narrow roofs cannot support a tank');
+const ring = [[0,0],[12,0],[12,12],[8,12],[8,4],[4,4],[4,12],[0,12]];
+const p = find(ring);
+assert.ok(p && !(p[0]>4 && p[0]<8 && p[1]>4), 'concave roofs must not place tanks in the open courtyard');
+assert.deepEqual(find(ring), p, 'placement must be stable after streaming');
+const geometry = roofTankGeometry(); geometry.computeBoundingBox();
+assert.ok(geometry.boundingBox.max.y > 1.9 && geometry.boundingBox.min.y === 0, 'tank base must sit directly on its roof');
+for (const value of geometry.attributes.normal.array) assert.ok(Number.isFinite(value));
+console.log('Roof tank checks passed: narrow-roof rejection, concave support, stable placement and ribbed geometry.');

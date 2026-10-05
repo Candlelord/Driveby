@@ -4,6 +4,7 @@ import { GROUND, distToSeg } from './world.js';
 import { biomeWeights } from './north.js';
 import { worldMaterials } from './materials.js';
 import { pitchedRoof } from './roofProfile.js';
+import { roofTankPosition, roofTankGeometry } from './roofTank.js';
 
 /**
  * Geometry for one chunk: the ground, the roads on it, the buildings on it.
@@ -476,13 +477,8 @@ export function buildingMeshes(world, chunk) {
     }
     // Lagos: black plastic water tanks on a lot of the roofs.
     if (!pitched && b.kind === 0 && world.inLagos(ring[0][0], ring[0][1]) && hash1(s * 13) < 0.45 && b.h < 20) {
-      let cx = 0;
-      let cz = 0;
-      for (const [x, z] of ring) {
-        cx += x;
-        cz += z;
-      }
-      tanks.push([cx / ring.length - ox + (hash1(s * 7) - 0.5) * 2, top, cz / ring.length - oz + (hash1(s * 5) - 0.5) * 2]);
+      const supported = roofTankPosition(pts, tris);
+      if (supported) tanks.push([supported[0] - ox, top, supported[1] - oz]);
     }
   }
 
@@ -517,7 +513,7 @@ export function buildingMeshes(world, chunk) {
     meshes.push(mesh);
   }
   if (tanks.length) {
-    const geometry = new THREE.CylinderGeometry(0.75, 0.8, 1.7, 10).translate(0, 0.85, 0);
+    const geometry = roofTankGeometry();
     const mesh = new THREE.InstancedMesh(geometry, tankMaterial(), tanks.length);
     const dummy = new THREE.Object3D();
     tanks.forEach(([x, y, z], i) => {
@@ -526,6 +522,7 @@ export function buildingMeshes(world, chunk) {
       mesh.setMatrixAt(i, dummy.matrix);
     });
     mesh.position.set(ox, 0, oz);
+    mesh.castShadow = true; mesh.receiveShadow = true;
     meshes.push(mesh);
   }
   return meshes;
