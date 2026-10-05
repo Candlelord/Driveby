@@ -70,6 +70,12 @@ try {
     if (shading.y > 0.1 && shading.y < 0.99) slopes++;
   }
   assert.ok(slopes >= 4, 'suitable houses must have two pitched roof slopes');
+  const pitchedDetails = buildingDetailMeshes(world, { ...chunk, buildings: [{ ...building, h: 6 }] });
+  const renderParts = pitchedDetails.find(mesh => mesh.name === 'facade render');
+  for (let i = 0; i < renderParts.count; i++) {
+    renderParts.getMatrixAt(i, matrix);
+    assert.ok(matrix.elements[13] + matrix.elements[5] / 2 <= 6.31, 'pitched roof must not receive a flat-roof parapet');
+  }
   console.log(`Building checks passed: ${instances} parts, four draws, outward transforms, deterministic rebuilds and bounded dense chunks.`);
 } finally {
   await server.close();

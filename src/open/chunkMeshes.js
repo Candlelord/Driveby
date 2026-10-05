@@ -3,6 +3,7 @@ import { CHUNK, NORTH_EDGE, fbm, hash1, hash2, smoothstep, clamp, lerp } from '.
 import { GROUND, distToSeg } from './world.js';
 import { biomeWeights } from './north.js';
 import { worldMaterials } from './materials.js';
+import { pitchedRoof } from './roofProfile.js';
 
 /**
  * Geometry for one chunk: the ground, the roads on it, the buildings on it.
@@ -458,15 +459,10 @@ export function buildingMeshes(world, chunk) {
     // Modest rectangular homes get a zinc gable above the original flat cap.
     // Irregular footprints and towers retain their flat concrete roof.
     let pitched = false;
-    if (b.kind === 0 && b.h < 10 && pts.length === 4 && s < 0.45) {
-      let corners = pts.slice();
-      const distance = (a, c) => Math.hypot(a[0] - c[0], a[1] - c[1]);
-      if (distance(corners[0], corners[1]) < distance(corners[1], corners[2])) corners.push(corners.shift());
-      const [a, c, d, e] = corners;
-      const length = distance(a, c), width = distance(c, d);
-      const perpendicular = Math.abs((c[0] - a[0]) * (d[0] - c[0]) + (c[1] - a[1]) * (d[1] - c[1])) / (length * width);
-      if (length > 4 && length < 35 && width > 4 && width < 20 && perpendicular < 0.1 && Math.abs(distance(d, e) - length) < 0.5 && Math.abs(distance(e, a) - width) < 0.5) {
-        const rise = Math.min(2.8, width * 0.28);
+    const profile = pitchedRoof(b, pts);
+    if (profile) {
+      const [a, c, d, e] = profile.corners;
+      const rise = profile.rise;
         const rA = [(a[0] + e[0]) / 2, top + rise, (a[1] + e[1]) / 2];
         const rB = [(c[0] + d[0]) / 2, top + rise, (c[1] + d[1]) / 2];
         const at = (p) => [p[0], top, p[1]];
@@ -477,7 +473,6 @@ export function buildingMeshes(world, chunk) {
         face([at(a), rA, at(e)], wall, 4, s, axis.clone().negate());
         face([at(c), at(d), rB], wall, 4, s, axis);
         pitched = true;
-      }
     }
     // Lagos: black plastic water tanks on a lot of the roofs.
     if (!pitched && b.kind === 0 && world.inLagos(ring[0][0], ring[0][1]) && hash1(s * 13) < 0.45 && b.h < 20) {

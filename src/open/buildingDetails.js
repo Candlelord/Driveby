@@ -3,6 +3,7 @@ import { hash1, hash2 } from './geo.js';
 import { distToSeg } from './world.js';
 import { detailLevel } from '../props/detail.js';
 import { NIGHT } from './materials.js';
+import { pitchedRoof } from './roofProfile.js';
 
 // Street-facing architecture, batched by material instead of one mesh per window.
 // The footprint remains authoritative: decorations never move the building.
@@ -67,6 +68,7 @@ export function buildingDetailMeshes(world, chunk) {
       area += p[0] * q[1] - q[0] * p[1];
     }
     const ring = area > 0 ? b.ring.slice().reverse() : b.ring;
+    const roof = pitchedRoof(b, ring);
     const heights = ring.map(([x, z]) => world.terrainHeight(x, z));
     const base = Math.min(...heights), top = Math.max(...heights) + b.h;
     const office = b.kind === 1;
@@ -99,8 +101,17 @@ export function buildingDetailMeshes(world, chunk) {
       // Plinth, projecting cornice and a solid parapet give the shell a silhouette.
       part('render', len / 2, base + 0.3, 0.09, len, 0.6, 0.18, accent);
       part('trim', len / 2, top - 0.12, 0.17, len + 0.2, 0.24, 0.38);
-      part('render', len / 2, top + 0.32, -0.05, len, 0.64, 0.24, trim);
-      part('trim', len / 2, top + 0.66, 0, len + 0.12, 0.12, 0.38);
+      if (!roof) {
+        part('render', len / 2, top + 0.32, -0.05, len, 0.64, 0.24, trim);
+        part('trim', len / 2, top + 0.66, 0, len + 0.12, 0.12, 0.38);
+      }
+      const eave = !roof || Math.abs(tx * roof.tx + tz * roof.tz) > 0.9;
+      if (eave) {
+        part('metal', len / 2, top - 0.04, 0.27, len, 0.12, 0.14, 0x6f7770);
+        part('metal', 0.5, base + b.h / 2, 0.2, 0.1, b.h - 0.3, 0.1, 0x707970);
+        for (let height = base + 0.7; height < top - 0.3; height += 2.2)
+          part('metal', 0.5, height, 0.18, 0.2, 0.045, 0.19, 0x424a44);
+      }
       for (let y = base + storey; y < top - 0.5; y += storey)
         part('trim', len / 2, y, 0.07, len, office ? 0.16 : 0.1, 0.18);
       if (b.kind === 2) continue;

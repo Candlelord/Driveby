@@ -144,3 +144,11 @@ World JSON and the raster now request HTTP revalidation on load. Service-worker
 network-first requests also use no-cache, closing the separate HTTP-cache stale
 data path after deployments while preserving offline fallback. Cache tests and
 production build pass. Visual realism remains unproven without in-game review.
+
+## Coherent roofs and rainwater fittings
+
+Building shells and facade details now share the pitched-roof selector. Pitched
+homes no longer receive flat-roof parapets. Road-facing eaves gain gutters,
+downpipes and fixing brackets using existing metal batches. Flat roofs retain
+their parapets. Building checks include a parapet-height regression for pitched
+homes; production build passes. Final appearance still needs in-game review.
