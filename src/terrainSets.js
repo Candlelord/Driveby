@@ -1329,6 +1329,32 @@ export const TERRAIN_SETS = {
     speedScale: 0.95,
   }),
 
+  // A forest stage: dark pines close to the road, overcast, the ground brown
+  // and olive. Used where the route turns to dirt among trees.
+  rallyForest: set({
+    label: 'forest stage',
+    climate: 'overcast',
+    people: 0.02,
+    peopleStyle: 'europe',
+    propMix: [['pine', 0.7], ['shrub', 0.12], ['rock', 0.08], ['deadTree', 0.05], ['grass', 0.05]],
+    groundColorBase: 0x3d4630,
+    groundAccent: 0x2d3524,
+    propA: 0x223829,
+    propB: 0x382b20,
+    ridgeNearColor: 0x38483c,
+    ridgeFarColor: 0x69786f,
+    hillHeight: 5.5,
+    hillScale: 1.1,
+    propDensity: 1.15,
+    propScale: 1.3,
+    shafts: 0.35,
+    shaftColor: 0xe6eed0,
+    groundFogAmount: 0.3,
+    roughness: 1.3,
+    speedScale: 0.92,
+    seasonReach: 0.9,
+  }),
+
   polder: set({
     people: 0.08,
     peopleStyle: 'europe',

@@ -16,6 +16,7 @@ export class Garage {
     this.owned = new Set([DEFAULT_CAR]);
     this.selected = DEFAULT_CAR;
     this.paints = {}; // car id -> hex
+    this.liveries = {}; // car id -> livery id
     this.look = 'real'; // 'real' or 'drive'
     this.postcards = []; // ids of collected postcards
     this._listeners = new Set();
@@ -29,6 +30,15 @@ export class Garage {
 
   paintOf(id = this.selected) {
     return this.paints[id] ?? CAR_MODELS[id]?.paints[0] ?? 0xc8221b;
+  }
+
+  liveryOf(id = this.selected) {
+    return this.liveries[id] ?? 'plain';
+  }
+
+  setLivery(livery, id = this.selected) {
+    this.liveries[id] = livery;
+    this._commit();
   }
 
   add(amount) {
@@ -82,6 +92,7 @@ export class Garage {
           owned: [...this.owned],
           selected: this.selected,
           paints: this.paints,
+          liveries: this.liveries,
           look: this.look,
           postcards: this.postcards,
         })
@@ -101,6 +112,7 @@ export class Garage {
       this.owned = new Set([DEFAULT_CAR, ...(data.owned ?? []).filter((id) => CAR_MODELS[id])]);
       this.selected = this.owned.has(data.selected) ? data.selected : DEFAULT_CAR;
       this.paints = data.paints ?? {};
+      this.liveries = data.liveries ?? {};
       this.look = data.look === 'drive' ? 'drive' : 'real';
       this.postcards = Array.isArray(data.postcards) ? data.postcards : [];
     } catch {

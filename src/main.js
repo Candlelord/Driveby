@@ -125,6 +125,13 @@ const traffic = new Traffic(scene, tier);
 const garage = new Garage();
 const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps, model: garage.selected });
 car.setPaint(garage.paintOf());
+car.setLivery(garage.liveryOf());
+// The garage changes the player's car; the world follows.
+garage.onChange((g) => {
+  if (car.modelId !== g.selected) car.setModel(g.selected, g.paintOf());
+  car.setPaint(g.paintOf());
+  car.setLivery(g.liveryOf());
+});
 const weather = new Weather(scene, tier);
 const grass = tier.grass ? new Grass(scene, tier) : null;
 const people = new People(scene, tier);
@@ -144,6 +151,8 @@ const postcards = new Postcards(scene, garage);
 const copilot = new Copilot({ ui: rallyUi, physics });
 const post = new Post(renderer, scene, camera, tier);
 const sfx = new Sfx();
+post.setLook(garage.look);
+garage.onChange((g) => post.setLook(g.look));
 const collisions = new Collisions({ physics, props, sfx, dressing });
 const session = new Session(environment);
 

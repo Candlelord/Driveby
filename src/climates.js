@@ -100,6 +100,24 @@ export const CLIMATE_PROFILES = {
     groundTintStrength: 0.35,
   }),
 
+  // A grey day with a little weight in the air, but you can see the trees:
+  // the rally forest's weather. Damp rather than wet — the road is matte.
+  overcast: climate({
+    label: 'overcast',
+    veilColor: 0xa0a8a8,
+    veilStrength: 0.42,
+    fogDensityBase: 0.0092,
+    lightDamp: 0.5,
+    ambientScale: 1.15,
+    hazeColor: 0xb4bcbc,
+    haze: 0.14,
+    hazeSize: 2.2,
+    wind: 0.12,
+    roadRoughness: 0.8,
+    groundTint: 0x8c8a7c,
+    groundTintStrength: 0.16,
+  }),
+
   rain: climate({
     label: 'rain',
     veilColor: 0x9aa6b0,

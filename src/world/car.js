@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { buildCarParts, WHEEL_RADIUS, FRONT_AXLE, REAR_AXLE, TRACK } from './carGeometry.js';
 import { beamTexture } from './textures.js';
-import { loadGltf, tuneModel, materialsNamed, nodeNamed, nodesMatching, mountWheel, cloneModel } from './models.js';
+import { loadGltf } from './models.js';
+import { buildCarModel } from './carBuild.js';
 import { CAR_MODELS, DEFAULT_CAR } from './carModels.js';
+import { createLivery } from './livery.js';
 
 const AHEAD = new THREE.Vector3();
 const HERE = new THREE.Vector3();
@@ -61,6 +63,9 @@ export class Car {
 
     this.spin = 0;
     this.model = null;
+    this.livery = createLivery();
+    this.liveryId = 'plain';
+    this.number = '07';
     this.paint = null;
     this.modelId = null;
     // The real car arrives when it arrives; until then (or if it never does)
@@ -89,54 +94,26 @@ export class Car {
       this.group.remove(this.model.group);
       this.model = null;
     }
-    const root = tuneModel(cloneModel(scene), { shadows: this.realShadow });
-    root.rotation.y = def.yaw;
-    const model = new THREE.Group();
-    model.add(root);
-    model.updateMatrixWorld(true);
-
-    // Wheels: named nodes, or a pattern. Front or rear is read off where the
-    // wheel sits once the model has been turned to face -Z.
-    const nodes = Array.isArray(def.wheels)
-      ? def.wheels.map((name) => nodeNamed(root, name)).filter(Boolean)
-      : nodesMatching(root, def.wheels);
-    const here = new THREE.Vector3();
-    const wheels = nodes.map((node) => {
-      node.getWorldPosition(here);
-      const steers = here.z < 0;
-      return { ...mountWheel(node, model), steers, node };
-    });
-
-    // Sit the tyres on the road: the model's lowest point is the ground.
-    model.updateMatrixWorld(true);
-    model.position.y = -new THREE.Box3().setFromObject(root).min.y;
-
+    const model = buildCarModel(scene, def, { shadows: this.realShadow });
     for (const part of this.proceduralParts) part.visible = false;
     for (const wheel of this.wheels) wheel.visible = false;
-    this.group.add(model);
-
-    this.model = {
-      group: model,
-      wheels,
-      paint: materialsNamed(root, def.paint),
-      accent: def.accent ? materialsNamed(root, def.accent) : [],
-      head: materialsNamed(root, def.head),
-      tail: materialsNamed(root, def.tail),
-    };
-    // Lamp textures carry the glow too, so the same map drives the emissive.
-    for (const lamp of [...this.model.head, ...this.model.tail]) {
-      if (lamp.map) {
-        lamp.emissive.set(0xffffff);
-        lamp.emissiveMap = lamp.map;
-        lamp.needsUpdate = true;
-      }
-    }
+    this.group.add(model.group);
+    this.model = model;
+    for (const material of model.paint) this.livery.apply(material);
     this.setPaint(this.paint);
+  }
+
+  /** A livery by id (see world/livery.js), drawn over the paint. */
+  setLivery(id, number = this.number) {
+    this.liveryId = id;
+    this.number = number;
+    this.livery.set(id, this.paint, number);
   }
 
   /** Change the car's paint (a hex colour). */
   setPaint(hex) {
     this.paint = hex;
+    this.livery.set(this.liveryId, hex, this.number);
     this.bodyMaterial.color.set(hex);
     if (this.model) for (const m of this.model.paint) m.color.set(hex);
   }
@@ -254,6 +231,7 @@ export class Car {
       if (wheel.userData.steers) wheel.rotation.y = state.steer * 0.35;
     }
     if (this.model) {
+      this.livery.track(this.model.group);
       for (const wheel of this.model.wheels) {
         wheel.spin(this.spin);
         if (wheel.steers) wheel.pivot.rotation.y = state.steer * 0.35;

@@ -88,7 +88,7 @@ export const LAGOS_PARIS = {
     { km: 315, regions: [['marseilleCity', 0], ['lavenderFields', 0.1], ['orchardHills', 0.55], ['lyonCity', 0.92]] },
     {
       km: 465,
-      regions: [['lyonCity', 0], ['wheatFields', 0.08], ['pineForest', 0.24], ['ruralCrossroads', 0.64], ['parisCity', 0.78]],
+      regions: [['lyonCity', 0], ['wheatFields', 0.08], ['rallyForest', 0.24], ['ruralCrossroads', 0.64], ['parisCity', 0.78]],
       landmarks: [['eiffelTower', 0.96]],
     },
     {

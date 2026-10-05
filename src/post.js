@@ -29,6 +29,7 @@ const GradeShader = {
     uShadowLift: { value: new THREE.Vector3(0, 0, 0) },
     uGrain: { value: 0 },
     uAberration: { value: 0 },
+    uDrive: { value: 0 },
   },
 
   vertexShader: /* glsl */ `
@@ -52,6 +53,7 @@ const GradeShader = {
     uniform vec3 uShadowLift;
     uniform float uGrain;
     uniform float uAberration;
+    uniform float uDrive;
 
     varying vec2 vUv;
 
@@ -76,6 +78,21 @@ const GradeShader = {
       float luma = dot(color, LUMA);
       color = mix(vec3(luma), color, uSaturation);
 
+      // The rally look: a flatter, heavier frame. Greens go olive and brown,
+      // the whole thing drops a stop, shadows are cold and a little crushed,
+      // and the sky settles to overcast grey.
+      if (uDrive > 0.001) {
+        float greenness = max(0.0, color.g - max(color.r, color.b));
+        color.r += greenness * 0.42 * uDrive;
+        color.g -= greenness * 0.2 * uDrive;
+        float l = dot(color, LUMA);
+        color = mix(vec3(l), color, mix(1.0, 0.72, uDrive));
+        color *= mix(1.0, 0.84, uDrive);
+        color = (color - 0.5) * mix(1.0, 1.14, uDrive) + 0.5;
+        color = mix(color, color * vec3(0.9, 0.97, 1.06), uDrive * 0.5 * (1.0 - smoothstep(0.1, 0.7, l)));
+        color = mix(color, color * vec3(1.03, 1.0, 0.94), uDrive * 0.35 * smoothstep(0.35, 0.9, l));
+      }
+
       // Split tone: shadows and highlights pull toward different hues, which is
       // most of what separates a "coloured" frame from a tinted one.
       vec3 tint = mix(uShadowTint, uHighlightTint, smoothstep(0.05, 0.95, luma));
@@ -87,10 +104,10 @@ const GradeShader = {
       float darkness = pow(1.0 - smoothstep(0.0, 0.4, luma), 2.0);
       color += uShadowLift * darkness;
 
-      color *= 1.0 - uVignette * smoothstep(0.32, 0.92, radius);
+      color *= 1.0 - (uVignette + uDrive * 0.38) * smoothstep(0.28, 0.9, radius);
 
       float grain = fract(sin(dot(vUv * uResolution + uTime, vec2(12.9898, 78.233))) * 43758.5453);
-      color += (grain - 0.5) * uGrain;
+      color += (grain - 0.5) * (uGrain + uDrive * 0.02);
 
       gl_FragColor = vec4(max(color, 0.0), 1.0);
     }
@@ -151,6 +168,9 @@ export class Post {
     }
 
     this.bloomEnabled = true;
+    // 0 the realistic grade, 1 the rally look; eased so a switch fades.
+    this.look = 0;
+    this.lookTarget = 0;
     this.setSize(window.innerWidth, window.innerHeight);
 
     // Frame-time watchdog state.
@@ -168,6 +188,11 @@ export class Post {
     this.grade.uniforms.uResolution.value.set(width * pixelRatio, height * pixelRatio);
   }
 
+  /** 'real' or 'drive'. */
+  setLook(look) {
+    this.lookTarget = look === 'drive' ? 1 : 0;
+  }
+
   setBloomEnabled(enabled) {
     this.bloomEnabled = enabled;
     this.bloom.enabled = enabled;
@@ -178,6 +203,8 @@ export class Post {
     const u = this.grade.uniforms;
 
     u.uTime.value = state.time;
+    this.look += (this.lookTarget - this.look) * (1 - Math.exp(-3.5 * state.dt));
+    u.uDrive.value = this.look;
 
     // Exposure is applied before tone mapping, so it rolls highlights off the
     // way a real stop change does instead of just lifting the whole image.
