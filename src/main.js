@@ -37,6 +37,7 @@ import { RouteDirector } from './routes/director.js';
 import { ROUTES } from './routes/lagosParis.js';
 import { loadSave, writeSave, savedAgo } from './save.js';
 import { Garage } from './garage.js';
+import { CAR_MODELS } from './world/carModels.js';
 import { RallyUi } from './rally/ui.js';
 import { StageRunner } from './rally/stages.js';
 import { Gates } from './rally/gates.js';
@@ -125,12 +126,14 @@ const eventVisuals = new EventVisuals(scene, tier);
 const atmosphere = tier.atmosphere ? new Atmosphere(scene, tier) : null;
 const traffic = new Traffic(scene, tier);
 const garage = new Garage();
+physics.stats = CAR_MODELS[garage.selected]?.stats ?? physics.stats;
 const car = new Car(scene, { realShadow: Boolean(tier.shadows), headlamps: tier.headlamps, model: garage.selected });
 car.setPaint(garage.paintOf());
 car.setLivery(garage.liveryOf());
 // The garage changes the player's car; the world follows.
 garage.onChange((g) => {
   if (car.modelId !== g.selected) car.setModel(g.selected, g.paintOf());
+  physics.stats = CAR_MODELS[g.selected]?.stats ?? physics.stats;
   car.setPaint(g.paintOf());
   car.setLivery(g.liveryOf());
 });

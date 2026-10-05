@@ -70,6 +70,105 @@
       "credit": "\"Dutch Canals House Amsterdam #3\" by ustoopia (https://sketchfab.com/ustoopia), CC-BY-4.0, https://sketchfab.com/3d-models/dutch-canals-house-amsterdam-3-d0c7594bd37441f284ed1053b7cb1574 — simplified and compressed",
       "error": 0.1,
       "join": true
+    },
+    "car-cicada": {
+      "src": "cicada_-_retro_cartoon_car/scene.gltf",
+      "strip": [
+        "^steering_wheel",
+        "^inside",
+        "shadow"
+      ],
+      "simplify": 0.7,
+      "error": 0.01,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "\"Cicada - Retro Cartoon Car\" by RCC Design (https://sketchfab.com/retrovalorem), CC-BY-4.0, https://sketchfab.com/3d-models/cicada-retro-cartoon-car-135b16b4f77249d8ad13185270f94251 — interior and shadow stripped, compressed"
+    },
+    "car-sedan": {
+      "src": "executive_sedan/scene.gltf",
+      "strip": [
+        "^Object_47$"
+      ],
+      "trim": [
+        "WHEEL",
+        "BRAKES",
+        "PARENT"
+      ],
+      "simplify": 0.5,
+      "error": 0.01,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "\"Executive Sedan\" by RCC Design (https://sketchfab.com/retrovalorem), CC-BY-4.0, https://sketchfab.com/3d-models/executive-sedan-eadf0e3171d74e4999e37898f95578c8 — ground stripped, compressed"
+    },
+    "car-ambulance": {
+      "src": "ambulance/scene.gltf",
+      "strip": [
+        "^Object_4$"
+      ],
+      "simplify": 0.7,
+      "error": 0.01,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "\"Ambulance\" by RCC Design (https://sketchfab.com/retrovalorem), CC-BY-4.0, https://sketchfab.com/3d-models/ambulance-1061168f9ec345db81cffb81c17f3649 — ground stripped, compressed"
+    },
+    "traffic-van": {
+      "src": "retro_anime_vintage_volkswagen_van/scene.gltf",
+      "simplify": 0.12,
+      "error": 0.05,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Retro Anime Vintage Volkswagen Van\" by Jungle Jim (https://sketchfab.com/jungle_jim), CC-BY-4.0, https://sketchfab.com/3d-models/retro-anime-vintage-volkswagen-van-5772dc675e5347e09979998bfcf54938 — simplified, compressed"
+    },
+    "traffic-zhiguli": {
+      "src": "zhiguli_soviet_cars/scene.gltf",
+      "simplify": 1,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Zhiguli Soviet Cars\" by spacelynxcanfly (https://sketchfab.com/spacelynxcanfly), CC-BY-4.0, https://sketchfab.com/3d-models/zhiguli-soviet-cars-7c3f4bee5d37401d853d2206dc7859fc — compressed"
+    },
+    "prop-stall": {
+      "src": "shop (1)/scene.gltf",
+      "join": true,
+      "simplify": 0.4,
+      "error": 0.1,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Shop\" by Vadim Rychkov (https://sketchfab.com/vadim_rychkov), CC-BY-4.0, https://sketchfab.com/3d-models/shop-a1242d77341545b59c50960395753f3a — compressed"
+    },
+    "prop-shop": {
+      "src": "low_poly_shop/scene.gltf",
+      "join": true,
+      "simplify": 0.5,
+      "error": 0.05,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Low Poly Shop\" by Samad.Ahmed (https://sketchfab.com/Samad.Ahmed), CC-BY-4.0, https://sketchfab.com/3d-models/low-poly-shop-19dd73f779cd49709ceafd92a6f12850 — compressed"
+    },
+    "prop-barrier": {
+      "src": "street_barrier_-_5mb/scene.gltf",
+      "join": true,
+      "simplify": 0.8,
+      "maxTexture": 512,
+      "license": "CC BY 4.0",
+      "credit": "\"Street Barrier - 5Mb\" by Mehdi Shahsavan (https://sketchfab.com/ahmagh2e), CC-BY-4.0, https://sketchfab.com/3d-models/street-barrier-5mb-21eba22d4ea645be89a3812f492fb5b2 — compressed"
+    },
+    "prop-tree-orchid": {
+      "src": "realistic_hd_hong_kong_orchid_tree_1740/scene.gltf",
+      "join": true,
+      "simplify": 0.03,
+      "error": 0.3,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "\"Realistic HD Hong Kong orchid tree (17/40)\" by PlantCatalog (https://sketchfab.com/PlantCatalog), CC-BY-4.0, https://sketchfab.com/3d-models/realistic-hd-hong-kong-orchid-tree-1740-c3596d8da4d84284a43d115a947fd6a0 — simplified, compressed"
+    },
+    "prop-tent": {
+      "src": "tent_shop_market_21_mb/scene.gltf",
+      "join": true,
+      "simplify": 0.1,
+      "error": 0.1,
+      "maxTexture": 1024,
+      "license": "CC BY 4.0",
+      "credit": "\"Tent_Shop_Market_21_MB\" by Mehdi Shahsavan (https://sketchfab.com/ahmagh2e), CC-BY-4.0, https://sketchfab.com/3d-models/tent-shop-market-21-mb-909cad203ea64624bbd496d0379c6dbc — simplified, compressed"
     }
   }
 }

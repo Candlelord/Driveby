@@ -57,6 +57,8 @@ export class CarPhysics {
     this.smoke = 0; // 0..1, tyre smoke on a hard surface
     // True while the car is held on a start line.
     this.hold = false;
+    // Per-car handling, from the garage: grip and speed multipliers.
+    this.stats = { grip: 1, speed: 1, tank: 1 };
     // A distance to stop at: the car slows so as to rest exactly there.
     this.holdAt = null;
     // How many times the car has hit something (for clean-stage bonuses).
@@ -126,7 +128,7 @@ export class CarPhysics {
 
     const bend = curvature(s + 5);
     const needed = bend * this.speed * this.speed;
-    const available = GRIP_ACCEL * this.grip * (1 - hb * 0.5);
+    const available = GRIP_ACCEL * this.grip * this.stats.grip * (1 - hb * 0.5);
     const excess = Math.max(0, Math.abs(needed) - available);
     const target = -Math.sign(needed) * excess * SLIDE_GAIN * (1 - hb * 0.35);
     this.slide += (target - this.slide) * (1 - Math.exp(-3.5 * dt));
@@ -157,7 +159,7 @@ export class CarPhysics {
    * them wins — so the car is already down to speed when it gets there.
    */
   _cornerSpeed() {
-    const available = GRIP_ACCEL * this.grip;
+    const available = GRIP_ACCEL * this.grip * this.stats.grip;
     let allowed = Infinity;
     for (const d of CORNER_LOOK) {
       const bend = Math.abs(curvature(this.travelled + d));
@@ -176,7 +178,7 @@ export class CarPhysics {
     // than replacing it, so a mountain pass still feels slower flat out than an
     // open highway does — the boost is the driver leaning on it, not a
     // different road.
-    this.cruise = CONFIG.speed * live.speedScale * (1 - this.dirt * 0.1);
+    this.cruise = CONFIG.speed * live.speedScale * (1 - this.dirt * 0.1) * this.stats.speed;
     // The pedal asks for more than the road allows: the governor lifts for a
     // corner ahead unless the throttle is held, which carries the speed in
     // and lets the car push wide.

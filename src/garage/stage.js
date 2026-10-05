@@ -76,6 +76,10 @@ export class GarageStage {
     this.model = buildCarModel(gltf.scene, def, { shadows: false });
     for (const material of this.model.paint) this.livery.apply(material);
     this.turntable.add(this.model.group);
+    // Bigger vehicles need the camera further back.
+    const size = new THREE.Box3().setFromObject(this.model.group).getSize(new THREE.Vector3());
+    this.fit = Math.max(1, Math.max(size.x, size.z) / 4.4);
+    this.resize(this.width ?? window.innerWidth, this.height ?? window.innerHeight);
     this.setLook(paint, livery);
     // Lamps: the showroom has them lit a little.
     for (const m of this.model.head) m.emissiveIntensity = 0.9;
@@ -90,9 +94,11 @@ export class GarageStage {
   }
 
   resize(width, height) {
+    this.width = width;
+    this.height = height;
     this.camera.aspect = width / height;
-    // A narrow screen needs the car further off to fit.
-    this.camera.position.set(5.6, 1.9, 6.4).multiplyScalar(width / height < 1 ? 1.5 : 1);
+    // A narrow screen, or a big vehicle, needs the car further off to fit.
+    this.camera.position.set(5.6, 1.9, 6.4).multiplyScalar((width / height < 1 ? 1.5 : 1) * (this.fit ?? 1));
     this.camera.lookAt(0, 0.75, 0);
     this.camera.updateProjectionMatrix();
   }

@@ -36,8 +36,8 @@ export function buildCarModel(scene, def, { shadows = false } = {}) {
     wheels,
     paint: materialsNamed(root, def.paint),
     accent: def.accent ? materialsNamed(root, def.accent) : [],
-    head: materialsNamed(root, def.head),
-    tail: materialsNamed(root, def.tail),
+    head: Array.isArray(def.head) ? [] : materialsNamed(root, def.head),
+    tail: Array.isArray(def.tail) ? [] : materialsNamed(root, def.tail),
   };
 
   // Lamp textures carry the glow too, so the same map drives the emissive.
