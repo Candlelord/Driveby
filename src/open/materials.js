@@ -153,6 +153,19 @@ function buildingMaterial() {
           glass = mix(glass, vec3(0.28, 0.24, 0.18) * (0.8 + 0.2 * sin(f.x * 65.0)), curtain * 0.6);
           float mullion = 1.0 - smoothstep(0.009, 0.022, abs(f.x - 0.5));
           glass = mix(glass, vec3(0.36, 0.36, 0.32), mullion * 0.75);
+          // Meter-sized frames remain visible on shells beyond the instanced details.
+          vec4 opening = vStyle < 0.5 ? vec4(0.24, 0.76, 0.34, 0.82)
+            : vStyle < 1.5 ? vec4(0.05, 0.95, 0.14, 0.92)
+            : vStyle < 2.5 ? vec4(0.1, 0.9, 0.62, 0.8) : vec4(0.42, 0.58, 0.45, 0.65);
+          vec2 frameSize = vec2(0.09) / bay;
+          float surround = step(opening.x - frameSize.x, f.x) * step(f.x, opening.y + frameSize.x)
+            * step(opening.z - frameSize.y, f.y) * step(f.y, opening.w + frameSize.y);
+          float enabled = vStyle < 0.5 && cell.y < 1.0 ? step(0.5, bHash(id + 3.1))
+            : vStyle >= 2.5 ? step(bHash(id), 0.4) : vStyle >= 1.5 ? step(cell.y, 1.0) : 1.0;
+          vec3 frameColour = mix(vec3(0.52, 0.49, 0.42), vec3(0.74, 0.72, 0.65), vSeed);
+          diffuseColor.rgb = mix(diffuseColor.rgb, frameColour, surround * enabled * (1.0 - bWin));
+          float lintelShadow = 1.0 - smoothstep(opening.w - 0.12 / bay.y, opening.w, f.y);
+          glass *= 0.68 + 0.32 * lintelShadow;
           diffuseColor.rgb = mix(diffuseColor.rgb, glass, bWin);
         }
         // Grime at the foot of the walls, and a little patchiness everywhere.
@@ -177,6 +190,6 @@ function buildingMaterial() {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, bWin);')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += uWarm * bLit * uNight * 1.6;');
   };
-  material.customProgramCacheKey = () => 'open-buildings-plaster-v3';
+  material.customProgramCacheKey = () => 'open-buildings-framed-v4';
   return material;
 }
