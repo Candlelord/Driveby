@@ -66,9 +66,19 @@ export class Car {
     this.number = '07';
     this.paint = null;
     this.modelId = null;
-    // The real car arrives when it arrives; until then (or if it never does)
-    // the procedural one drives.
+    // The real car usually arrives while the menu is up. The procedural one
+    // stays hidden so it does not flash and pop on load, and only comes out
+    // if the model fails or is very slow.
+    this._showProcedural(false);
     this.setModel(model);
+    setTimeout(() => {
+      if (!this.model) this._showProcedural(true);
+    }, 6000);
+  }
+
+  _showProcedural(on) {
+    for (const part of this.proceduralParts) part.visible = on;
+    for (const wheel of this.wheels) wheel.visible = on;
   }
 
   /** Switch to one of CAR_MODELS (a garage choice). Resolves once it is on the road. */
@@ -83,7 +93,9 @@ export class Car {
       .then((gltf) => {
         if (ticket === this._ticket) this._useModel(gltf.scene, def);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (ticket === this._ticket && !this.model) this._showProcedural(true);
+      });
   }
 
   /** Swap the procedural car (or the previous model) for the loaded one. */
@@ -93,8 +105,7 @@ export class Car {
       this.model = null;
     }
     const model = buildCarModel(scene, def, { shadows: this.realShadow });
-    for (const part of this.proceduralParts) part.visible = false;
-    for (const wheel of this.wheels) wheel.visible = false;
+    this._showProcedural(false);
     this.group.add(model.group);
     this.model = model;
     for (const material of model.paint) this.livery.apply(material);

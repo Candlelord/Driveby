@@ -61,16 +61,18 @@ export class ChaseCamera {
     const ground = this.world.surfaceAt(DESIRED.x, DESIRED.z, DESIRED.y).y;
     DESIRED.y = Math.max(DESIRED.y, ground + 1.2);
 
-    if (this.first) {
+    // A snap (start, reset, teleport) lands the camera in place, aimed and
+    // zoomed, rather than swinging in from wherever it last looked.
+    const first = this.first;
+    this.first = false;
+    LOOK.set(vehicle.x + fx * 6, vehicle.y + 1.3, vehicle.z + fz * 6);
+    if (first) {
       this.position.copy(DESIRED);
-      this.first = false;
+      this.look.copy(LOOK);
     } else {
       this.position.lerp(DESIRED, 1 - Math.exp(-9 * dt));
+      this.look.lerp(LOOK, 1 - Math.exp(-12 * dt));
     }
-
-    LOOK.set(vehicle.x + fx * 6, vehicle.y + 1.3, vehicle.z + fz * 6);
-    this.look.lerp(LOOK, 1 - Math.exp(-12 * dt));
-    if (this.look.lengthSq() === 0) this.look.copy(LOOK);
 
     this.camera.position.copy(this.position);
     const shake = vehicle.impact * 0.5 + this.shake;
@@ -83,8 +85,8 @@ export class ChaseCamera {
     this.camera.rotateZ(clamp(-vehicle.lateral * 0.008, -0.06, 0.06));
 
     const fov = baseFov + clamp(speed / 55, 0, 1) * 12;
-    if (Math.abs(fov - this.fov) > 0.05) {
-      this.fov += (fov - this.fov) * (1 - Math.exp(-3 * dt));
+    if (first || Math.abs(fov - this.fov) > 0.05) {
+      this.fov = first ? fov : this.fov + (fov - this.fov) * (1 - Math.exp(-3 * dt));
       this.camera.fov = this.fov;
       this.camera.updateProjectionMatrix();
     }

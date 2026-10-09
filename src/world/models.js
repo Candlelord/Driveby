@@ -56,6 +56,16 @@ export function tuneModel(root, { shadows = true, envMapIntensity = 1.1 } = {}) 
         material.roughness = 0.04;
         material.depthWrite = false;
       }
+      // Window glass authored nearly clear and one-sided: from outside some
+      // panes face inwards and vanish, and the rest barely tint, so you look
+      // straight through the cabin. Tint it and draw both faces.
+      if (/glass|window|windshield/i.test(material.name) && material.transparent) {
+        material.side = THREE.DoubleSide;
+        material.opacity = Math.max(material.opacity, 0.68);
+        material.color.multiplyScalar(0.35);
+        material.roughness = Math.min(material.roughness, 0.08);
+        material.depthWrite = false;
+      }
       if (material.iridescence) material.iridescence = 0;
       material.envMapIntensity = envMapIntensity;
     }
